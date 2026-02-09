@@ -22,6 +22,83 @@ class DS01Game {
         this.loadConfig();
     }
     
+    // 默认配置（内置后备）
+    getDefaultConfig() {
+        return {
+            "version": "2.2",
+            "gameSettings": {
+                "gridSize": 12,
+                "mineCount": 20,
+                "maxRestPerDive": 3,
+                "maxWeight": 10,
+                "maxSanity": 100,
+                "scanCost": 10,
+                "scanRevealCount": 3,
+                "restRecovery": 15,
+                "mineDamage": 25,
+                "curseDamage": 5
+            },
+            "itemTypes": {
+                "fossil": { "name": "未知化石", "icon": "🦴", "value": 10, "weight": 1, "desc": "似乎来自某种巨大生物" },
+                "idol": { "name": "诡异神像", "icon": "🗿", "value": 50, "weight": 2, "desc": "注视它时，它也在注视你", "cursed": true },
+                "manuscript": { "name": "古老手稿", "icon": "📜", "value": 30, "weight": 0.5, "desc": "无法解读的文字" },
+                "relic": { "name": "深渊遗物", "icon": "💎", "value": 100, "weight": 3, "desc": "散发着不自然的寒气", "cursed": true },
+                "medkit": { "name": "理智药剂", "icon": "🧪", "value": 20, "weight": 0.5, "desc": "恢复理智", "consumable": true, "effect": { "type": "healSanity", "value": 30 } },
+                "tool": { "name": "探测工具", "icon": "🔧", "value": 5, "weight": 0.5, "desc": "可以帮助扫描", "consumable": true, "effect": { "type": "scan" } }
+            },
+            "npcConfig": {
+                "mysterious_merchant": {
+                    "name": "神秘商人",
+                    "icon": "🧙‍♂️",
+                    "dialogues": {
+                        "first": ["我在深渊中看到了...许多眼睛。", "你是新来的？小心别相信那些数字。"],
+                        "normal": ["有好货就拿来，我出公道价。", "昨天有人卖给我一个...不该存在的东西。"],
+                        "highAffinity": ["老朋友，给你看个稀罕货。", "我信任你，这是内部消息。"]
+                    },
+                    "services": ["buy", "sell"]
+                },
+                "wounded_explorer": {
+                    "name": "受伤探险家",
+                    "icon": "🤕",
+                    "dialogues": {
+                        "first": ["别去第三层...别去...", "我看到了门，但门后不是出口..."],
+                        "normal": ["我的腿...再也下不去了。", "它们还在下面唱歌，你听到了吗？"],
+                        "highAffinity": ["你救过我的命，给你这个。", "我发现了秘密通道，只告诉你。"]
+                    },
+                    "services": ["quest", "info"]
+                },
+                "mad_librarian": {
+                    "name": "疯图书管理员",
+                    "icon": "📚",
+                    "dialogues": {
+                        "first": ["这些手稿...它们在重写自己！", "知识是有重量的，你背得动吗？"],
+                        "normal": ["我数过那些格子，数字会撒谎。", "有些书读起来像尖叫。"],
+                        "highAffinity": ["给你看禁书，别告诉其他人。", "我发现了一个模式..."]
+                    },
+                    "services": ["identify", "lore"]
+                },
+                "bartender": {
+                    "name": "酒馆老板",
+                    "icon": "🍺",
+                    "dialogues": {
+                        "first": ["来杯'深渊凝视'？能让你看得更清楚...", "你的眼神，和上次不一样了。"],
+                        "normal": ["昨天有个人出去后再也没回来。", "休息一下？理智比金币重要。"],
+                        "highAffinity": ["老规矩，给你留最好的位置。", "听说你在下面干得不错，敬你一杯。"]
+                    },
+                    "services": ["rest", "rumor"]
+                }
+            },
+            "tavernSettings": {
+                "minNPCs": 2,
+                "maxNPCs": 4,
+                "refreshCost": 0,
+                "vaultSize": 20
+            },
+            "sellPriceRate": 0.7,
+            "extractGoldRate": 0.5
+        };
+    }
+    
     // 加载外部配置文件
     async loadConfig() {
         try {
@@ -29,14 +106,14 @@ class DS01Game {
             if (!response.ok) throw new Error('无法加载配置文件');
             
             this.config = await response.json();
-            console.log('配置加载成功:', this.config.version);
-            
-            // 配置加载完成后初始化游戏
-            this.init();
+            console.log('✅ 外部配置加载成功:', this.config.version);
         } catch (error) {
-            console.error('加载配置失败:', error);
-            this.showError('无法加载游戏配置，请检查 config.json 文件是否存在');
+            console.warn('⚠️ 无法加载外部配置，使用默认配置:', error.message);
+            this.config = this.getDefaultConfig();
         }
+        
+        // 无论加载外部配置成功与否，都初始化游戏
+        this.init();
     }
     
     showError(msg) {
@@ -56,13 +133,17 @@ class DS01Game {
             npcMet: {}, npcAffinity: {}, currentNPCs: []
         };
         try {
-            const saved = localStorage.getItem('DS01_v' + (this.config?.version || '22'));
+            // 先尝试加载 v2.2 版本存档
+            let saved = localStorage.getItem('DS01_v2.2');
+            // 兼容旧版本
+            if (!saved) saved = localStorage.getItem('DS01_v22');
+            if (!saved) saved = localStorage.getItem('DS01_v21');
             return saved ? { ...defaultData, ...JSON.parse(saved) } : defaultData;
         } catch(e) { return defaultData; }
     }
     
     saveData() {
-        localStorage.setItem('DS01_v' + this.config.version, JSON.stringify(this.persistent));
+        localStorage.setItem('DS01_v2.2', JSON.stringify(this.persistent));
     }
     
     deleteSave() {
