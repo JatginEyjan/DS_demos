@@ -1,0 +1,391 @@
+/* DS04 - 双层结构样式 */
+
+:root {
+    --bg: #0a0a0f;
+    --bg-light: #151520;
+    --bg-lighter: #202030;
+    --border: #2a2a40;
+    --text: #c0c0d0;
+    --accent: #4a90d9;
+    --danger: #d94a4a;
+    --success: #4ad94a;
+    --warning: #d9a04a;
+    --gold: #d4a017;
+    --cult: #9a4ad9;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Consolas', 'Microsoft YaHei', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+#game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px;
+}
+
+/* ===== 酒馆（上层）===== */
+
+.tavern-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--bg-light), var(--bg-lighter));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.tavern-header h1 {
+    color: var(--gold);
+    font-size: 28px;
+}
+
+.player-stats {
+    display: flex;
+    gap: 25px;
+    font-size: 16px;
+}
+
+.political-status {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.political-status h3 {
+    color: var(--accent);
+    margin-bottom: 15px;
+}
+
+.factions-display {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.faction-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.faction-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.faction-card.friendly {
+    border-color: var(--success);
+    background: rgba(74, 217, 74, 0.1);
+}
+
+.faction-card.hostile {
+    border-color: var(--danger);
+    background: rgba(217, 74, 74, 0.1);
+}
+
+.faction-icon {
+    font-size: 32px;
+}
+
+.faction-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.faction-name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.attitude {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.tavern-content {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 20px;
+}
+
+.quests-panel {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.quests-panel h3 {
+    color: var(--warning);
+    margin-bottom: 15px;
+}
+
+.quests-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.quest-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.quest-faction {
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.quest-desc {
+    font-size: 14px;
+}
+
+.quest-progress {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.7;
+}
+
+.quest-card button {
+    align-self: flex-end;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.get-quest-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--warning);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+.no-quests {
+    text-align: center;
+    padding: 30px;
+    opacity: 0.6;
+}
+
+.actions-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.political-event {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.political-event.active {
+    border-color: var(--cult);
+    background: rgba(154, 74, 217, 0.1);
+}
+
+.event-box h4 {
+    color: var(--cult);
+    margin-bottom: 10px;
+}
+
+.event-box p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.event-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tavern-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+button {
+    padding: 12px 24px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+button:hover {
+    background: var(--bg-lighter);
+    transform: translateY(-2px);
+}
+
+button.primary {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--bg);
+    font-weight: bold;
+}
+
+button.secondary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+button.danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+}
+
+/* ===== 地牢（下层）===== */
+
+#dungeon header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.dungeon-stats {
+    display: flex;
+    gap: 20px;
+}
+
+#minefield {
+    display: grid;
+    gap: 2px;
+    justify-content: center;
+    padding: 20px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.cell {
+    width: 40px;
+    height: 40px;
+    background: #1a1a2e;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.15s;
+}
+
+.cell:hover:not(.revealed) { 
+    background: #252540; 
+    border-color: var(--accent);
+}
+
+.cell.revealed {
+    background: #0f0f1a;
+    cursor: default;
+}
+
+.cell.mine {
+    background: var(--danger);
+    animation: shake 0.3s;
+}
+
+.cell.exit {
+    background: linear-gradient(135deg, var(--success), var(--accent));
+}
+
+.cell.flagged {
+    background: var(--warning);
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+#log {
+    height: 120px;
+    overflow-y: auto;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    margin-bottom: 15px;
+}
+
+#log div { padding: 4px 0; border-bottom: 1px solid var(--border); }
+#log div:last-child { border-bottom: none; }
+#log .bad { color: var(--danger); }
+#log .good { color: var(--success); }
+#log .system { color: var(--accent); }
+
+#dungeon footer {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 15px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+#dungeon footer button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.hidden { display: none !important; }
+
+/* 仓库弹窗 */
+.warehouse-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    .factions-display { grid-template-columns: repeat(2, 1fr); }
+    .tavern-content { grid-template-columns: 1fr; }
+    .cell { width: 30px; height: 30px; font-size: 12px; }
+}
