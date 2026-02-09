@@ -696,7 +696,7 @@ class DS03Game {
     
     cancelTarget() {
         this.pendingCard = null;
-        document.getElementById('target-modal').classList.remove('hidden');
+        document.getElementById('target-modal').classList.add('hidden');
     }
     
     endTurn() {

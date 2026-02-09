@@ -567,6 +567,19 @@ class DS04Game {
         }
         
         this.updateGrid();
+        this.updateStatsUI(); // 更新状态显示
+    }
+    
+    updateStatsUI() {
+        // 更新顶部状态栏
+        const statsDiv = document.querySelector('.dungeon-stats');
+        if (statsDiv) {
+            statsDiv.innerHTML = `
+                <span>🧠 ${this.sanity}</span>
+                <span>📦 ${this.dungeonInv.reduce((s,i)=>s+i.weight,0).toFixed(1)}/10</span>
+                <span>🛏️ ${this.MAX_REST - this.restCount}</span>
+            `;
+        }
     }
     
     flagCell(x, y) {
