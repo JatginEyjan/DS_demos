@@ -428,18 +428,21 @@ class DS08Game {
 
         if (cell.isTrap) {
             this.triggerTrap();
+            this.updateHallucination();
+            this.renderDungeon();
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-            // 触发剧情，带交互选项
+            // 触发剧情，带交互选项 - 不立即renderDungeon，避免关闭弹窗
             this.triggerStoryWithChoice(cell);
+            this.updateHallucination();
+            // 剧情弹窗保持打开，不调用renderDungeon
         } else {
             // 普通房间，自动展开
             if (cell.number === 0) {
                 this.autoExpand(x, y);
             }
+            this.updateHallucination();
+            this.renderDungeon();
         }
-
-        this.updateHallucination();
-        this.renderDungeon();
     }
 
     handleRightClick(x, y) {
@@ -476,20 +479,23 @@ class DS08Game {
             this.sanity = Math.min(100, this.sanity + 5);
             this.log(`✅ 标记陷阱成功！标记器返还，理智+5`, 'good');
             // 陷阱不触发，安全通过
+            this.updateHallucination();
+            this.renderDungeon();
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
             // 标记剧情房，70%基础好走向
             this.log(`发现了${cell.roomType==='main'?'主线':'支线'}剧情房`, 'info');
             this.triggerStoryWithChoice(cell, true); // true表示使用标记器触发
+            this.updateHallucination();
+            // 不调用renderDungeon，保持弹窗打开
         } else {
             // 普通房间
             this.log('❌ 标记错误，标记器已消耗', 'bad');
             if (cell.number === 0) {
                 this.autoExpand(x, y);
             }
+            this.updateHallucination();
+            this.renderDungeon();
         }
-
-        this.updateHallucination();
-        this.renderDungeon();
     }
 
     triggerTrap() {
@@ -685,7 +691,8 @@ class DS08Game {
                 const ny = y + dy, nx = x + dx;
                 if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
                     const neighbor = this.grid[ny][nx];
-                    if (!neighbor.isRevealed && !neighbor.isMarked && !neighbor.isTrap) {
+                    // 跳过陷阱和剧情房间，只展开普通房间
+                    if (!neighbor.isRevealed && !neighbor.isMarked && !neighbor.isTrap && neighbor.roomType === 'normal') {
                         neighbor.isRevealed = true;
                         this.exploredSteps++;
                         if (neighbor.number === 0) {
