@@ -255,9 +255,54 @@ button.disabled {
     font-size: 16px;
 }
 
-.resources .sanity.low {
-    color: var(--danger);
-    animation: pulse 1s infinite;
+.sanity-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+}
+
+.sanity-bar.low {
+    border-color: var(--danger);
+    animation: pulse-border 1s infinite;
+}
+
+.sanity-label {
+    font-size: 18px;
+}
+
+.sanity-progress {
+    width: 100px;
+    height: 12px;
+    background: #1a1a2e;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.sanity-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success), var(--accent));
+    border-radius: 6px;
+    transition: width 0.3s;
+}
+
+.sanity-bar.low .sanity-fill {
+    background: linear-gradient(90deg, var(--warning), var(--danger));
+}
+
+.sanity-value {
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}
+
+@keyframes pulse-border {
+    0%, 100% { border-color: var(--danger); box-shadow: 0 0 5px var(--danger); }
+    50% { border-color: var(--warning); box-shadow: 0 0 15px var(--danger); }
 }
 
 @keyframes pulse {

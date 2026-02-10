@@ -280,7 +280,13 @@ class DS08Game {
                         <span class="steps">步数: ${this.exploredSteps}/${config.steps}</span>
                     </div>
                     <div class="resources">
-                        <span class="sanity ${this.sanity < 30 ? 'low' : ''}">🧠 ${this.sanity}</span>
+                        <div class="sanity-bar ${this.sanity < 30 ? 'low' : ''}">
+                            <span class="sanity-label">🧠</span>
+                            <div class="sanity-progress">
+                                <div class="sanity-fill" style="width: ${this.sanity}%"></div>
+                            </div>
+                            <span class="sanity-value">${this.sanity}</span>
+                        </div>
                         <span class="markers">🚩 ${this.markers}</span>
                     </div>
                 </header>
@@ -569,8 +575,8 @@ class DS08Game {
     death() {
         this.persistent.stats.totalDeaths++;
         this.saveData();
-        alert('💀 你的理智崩溃了...\n但你的探索经验将保留。');
-        this.showLayerSelect();
+        alert('💀 理智崩溃！\n\n你的精神无法承受这片黑暗，意识陷入了永恒的混沌...');
+        this.showLobby();
     }
 
     log(msg, type) {
