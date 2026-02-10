@@ -341,6 +341,9 @@ class DS08Game {
                 </div>
             </div>
         `;
+        
+        // 渲染探索日志
+        this.renderLogs();
     }
 
     renderGridCells() {
