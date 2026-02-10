@@ -291,8 +291,30 @@ class DS08Game {
                     </div>
                 </header>
                 
-                <div id="minefield" style="grid-template-columns: repeat(${this.gridSize}, 36px);">
-                    ${this.renderGridCells()}
+                <div class="dungeon-main">
+                    <div id="minefield" style="grid-template-columns: repeat(${this.gridSize}, 36px);">
+                        ${this.renderGridCells()}
+                    </div>
+                    
+                    <div class="side-panel">
+                        <div class="panel-section">
+                            <h4>📦 背包 (${this.dungeonInv.reduce((s,i)=>s+(i.weight||1),0).toFixed(1)}/10)</h4>
+                            <div class="inventory-grid">
+                                ${this.dungeonInv.map((item, idx) => `
+                                    <div class="inv-slot" onclick="game.showItemDetail(${idx})" title="${item.desc||item.name}">
+                                        ${item.icon}
+                                    </div>
+                                `).join('') || '<span class="empty">空</span>'}
+                            </div>
+                        </div>
+                        
+                        <div class="panel-section">
+                            <h4>📝 探索日志</h4>
+                            <div id="exploration-log" class="log-panel">
+                                <div class="log-entry system">进入了${this.currentDungeon.name} ${this.currentLayer+1}层...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="legend">
@@ -343,7 +365,13 @@ class DS08Game {
                         content = '💀';
                     } else if (cell.roomType === 'main') {
                         className += ' main-room';
-                        content = cell.number > 0 ? `🔴${cell.number}` : '🔴0';
+                        // 如果可前往下一层，显示入口图标
+                        if (cell.canGoNext && this.currentLayer < this.currentDungeon.layers.length - 1) {
+                            content = '🚪';
+                            className += ' next-layer';
+                        } else {
+                            content = cell.number > 0 ? `🔴${cell.number}` : '🔴0';
+                        }
                     } else if (cell.roomType === 'sub') {
                         className += ' sub-room';
                         content = cell.number < 0 ? `🔵${cell.number}` : '🔵0';
@@ -355,9 +383,14 @@ class DS08Game {
                     content = '🚩';
                 }
 
+                // 如果已揭露的主线房可以前往下一层，添加点击事件
+                const clickHandler = (cell.isRevealed && cell.roomType === 'main' && cell.canGoNext && this.currentLayer < this.currentDungeon.layers.length - 1) 
+                    ? `onclick="game.goToNextLayerFromCell(${x}, ${y})"` 
+                    : `onclick="game.handleLeftClick(${x}, ${y})"`;
+                
                 html += `<div class="${className}" 
                              data-x="${x}" data-y="${y}"
-                             onclick="game.handleLeftClick(${x}, ${y})"
+                             ${clickHandler}
                              oncontextmenu="game.handleRightClick(${x}, ${y}); return false;">
                             ${content}
                         </div>`;
@@ -370,21 +403,33 @@ class DS08Game {
         if (this.state !== 'dungeon') return;
         
         const cell = this.grid[y][x];
-        if (cell.isRevealed || cell.isMarked) return;
+        if (cell.isRevealed) return;
+
+        // 左键直接揭露格子
+        this.revealCell(x, y, 'left');
+    }
+
+    revealCell(x, y, source) {
+        const cell = this.grid[y][x];
+        if (cell.isRevealed) return;
 
         cell.isRevealed = true;
         this.exploredSteps++;
+        
+        // 记录日志
+        if (cell.roomType === 'main') {
+            this.log(`发现了主线剧情房：${cell.roomData.title}`, 'special');
+        } else if (cell.roomType === 'sub') {
+            this.log(`发现了支线剧情房：${cell.roomData.title}`, 'info');
+        } else if (cell.isTrap) {
+            this.log('💀 触发了陷阱！', 'bad');
+        }
 
         if (cell.isTrap) {
             this.triggerTrap();
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-            // 左键触发剧情，30%基础好走向 + 理智加成
-            const bonus = Math.floor(this.sanity / 10) * 5;
-            const roll = Math.floor(Math.random() * 100) + 1;
-            const threshold = 30 + bonus;
-            const isGoodOutcome = roll <= threshold;
-            
-            this.triggerStory(cell, isGoodOutcome, roll, threshold);
+            // 触发剧情，带交互选项
+            this.triggerStoryWithChoice(cell);
         } else {
             // 普通房间，自动展开
             if (cell.number === 0) {
@@ -410,29 +455,39 @@ class DS08Game {
         // 消耗标记器
         this.markers--;
         cell.isMarked = true;
+        
+        this.log('使用了标记器 🚩', 'info');
 
-        if (cell.roomType === 'main' || cell.roomType === 'sub') {
-            // 标记剧情房，70%基础好走向
-            const roll = Math.floor(Math.random() * 100) + 1;
-            const threshold = 70;
-            const isGoodOutcome = roll <= threshold;
-            
-            if (isGoodOutcome) {
-                this.markers++; // 返还标记器
-                this.triggerStory(cell, true, roll, threshold);
-            } else {
-                this.triggerStory(cell, false, roll, threshold);
-            }
-        } else if (cell.isTrap) {
+        // 右键也揭露格子，但有标记器加成
+        this.revealCellWithMarker(x, y);
+    }
+
+    revealCellWithMarker(x, y) {
+        const cell = this.grid[y][x];
+        if (cell.isRevealed) return;
+
+        cell.isRevealed = true;
+        this.exploredSteps++;
+
+        if (cell.isTrap) {
             // 正确标记陷阱，返还标记器+奖励
             this.markers++;
             this.sanity = Math.min(100, this.sanity + 5);
-            this.log(`✅ 标记陷阱成功！理智+5`, 'good');
+            this.log(`✅ 标记陷阱成功！标记器返还，理智+5`, 'good');
+            // 陷阱不触发，安全通过
+        } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
+            // 标记剧情房，70%基础好走向
+            this.log(`发现了${cell.roomType==='main'?'主线':'支线'}剧情房`, 'info');
+            this.triggerStoryWithChoice(cell, true); // true表示使用标记器触发
         } else {
-            // 错误标记，不返还
+            // 普通房间
             this.log('❌ 标记错误，标记器已消耗', 'bad');
+            if (cell.number === 0) {
+                this.autoExpand(x, y);
+            }
         }
 
+        this.updateHallucination();
         this.renderDungeon();
     }
 
@@ -445,7 +500,7 @@ class DS08Game {
         }
     }
 
-    triggerStory(cell, isGoodOutcome, roll, threshold) {
+    triggerStoryWithChoice(cell, usedMarker = false) {
         const story = cell.roomData;
         const modal = document.getElementById('story-modal');
         const title = document.getElementById('story-title');
@@ -455,26 +510,50 @@ class DS08Game {
         title.textContent = story.title;
         text.textContent = story.text;
         
-        const outcome = isGoodOutcome ? story.goodOutcome : story.badOutcome;
-        
         // 检查是否是主线剧情房且可以前往下一层
         const isLastLayer = this.currentLayer >= this.currentDungeon.layers.length - 1;
         const canGoNext = cell.roomType === 'main' && !isLastLayer;
         
+        // 生成交互选项
+        let optionsHtml = '';
+        
+        if (story.choices && story.choices.length > 0) {
+            // 使用自定义选项
+            optionsHtml = story.choices.map((choice, idx) => `
+                <button onclick="game.makeStoryChoice('${cell.x}', '${cell.y}', ${idx})" 
+                        class="choice-btn ${choice.type || ''}">
+                    <span class="choice-num">${idx + 1}</span>
+                    <span class="choice-text">${choice.text}</span>
+                    <span class="choice-cost">${choice.cost || ''}</span>
+                </button>
+            `).join('');
+        } else {
+            // 默认选项
+            const baseProb = usedMarker ? 70 : 30;
+            const sanityBonus = Math.floor(this.sanity / 10) * 5;
+            const goodProb = baseProb + sanityBonus;
+            
+            optionsHtml = `
+                <button onclick="game.makeStoryChoice('${cell.x}', '${cell.y}', 0, ${usedMarker})" class="choice-btn risky">
+                    <span class="choice-num">1</span>
+                    <span class="choice-text">深入探索（${goodProb}%成功概率）</span>
+                    <span class="choice-cost">风险：可能损失理智</span>
+                </button>
+                <button onclick="game.makeStoryChoice('${cell.x}', '${cell.y}', 1)" class="choice-btn safe">
+                    <span class="choice-num">2</span>
+                    <span class="choice-text">谨慎离开</span>
+                    <span class="choice-cost">安全：无收益</span>
+                </button>
+            `;
+        }
+        
         result.innerHTML = `
-            <div class="dice-roll">🎲 d100: ${roll} / ${threshold}</div>
-            <div class="outcome ${isGoodOutcome ? 'good' : 'bad'}">
-                <h4>${isGoodOutcome ? '✨ 好走向' : '💀 坏走向'}</h4>
-                <p>${outcome.text}</p>
-                <p class="reward">${outcome.reward}</p>
+            <div class="story-choices">
+                <p class="choice-hint">选择你的行动：</p>
+                ${optionsHtml}
             </div>
-            ${canGoNext ? `<button onclick="game.goToNextLayer()" class="primary">🚪 前往下一层</button>` : ''}
+            ${canGoNext ? `<div class="next-layer-hint">🚪 揭露后可通过此处前往下一层</div>` : ''}
         `;
-
-        // 应用结果
-        if (outcome.sanity) this.sanity = Math.max(0, Math.min(100, this.sanity + outcome.sanity));
-        if (outcome.markers) this.markers += outcome.markers;
-        if (outcome.item) this.dungeonInv.push(outcome.item);
 
         modal.classList.remove('hidden');
         
@@ -485,14 +564,116 @@ class DS08Game {
         }
     }
 
+    makeStoryChoice(x, y, choiceIdx, usedMarker = false) {
+        const cell = this.grid[y][x];
+        const story = cell.roomData;
+        const resultDiv = document.getElementById('story-result');
+        
+        let outcome = null;
+        let roll = 0;
+        
+        if (story.choices && story.choices[choiceIdx]) {
+            // 自定义选项
+            const choice = story.choices[choiceIdx];
+            outcome = choice.outcome;
+            
+            // 应用代价
+            if (choice.sanityCost) {
+                this.sanity -= choice.sanityCost;
+                this.log(`消耗了 ${choice.sanityCost} 点理智`, 'info');
+            }
+        } else {
+            // 默认选项
+            if (choiceIdx === 0) {
+                // 深入探索
+                const baseProb = usedMarker ? 70 : 30;
+                const sanityBonus = Math.floor(this.sanity / 10) * 5;
+                const threshold = baseProb + sanityBonus;
+                roll = Math.floor(Math.random() * 100) + 1;
+                const isSuccess = roll <= threshold;
+                
+                outcome = isSuccess ? story.goodOutcome : story.badOutcome;
+                
+                resultDiv.innerHTML = `
+                    <div class="dice-roll">🎲 d100: ${roll} / ${threshold}</div>
+                    <div class="outcome ${isSuccess ? 'good' : 'bad'}">
+                        <h4>${isSuccess ? '✨ 成功' : '💀 失败'}</h4>
+                        <p>${outcome.text}</p>
+                        <p class="reward">${outcome.reward}</p>
+                    </div>
+                    <button onclick="game.closeStoryModal()">继续</button>
+                `;
+            } else {
+                // 离开
+                resultDiv.innerHTML = `
+                    <div class="outcome">
+                        <h4>👋 离开</h4>
+                        <p>你选择了谨慎行事，没有深入探索。</p>
+                    </div>
+                    <button onclick="game.closeStoryModal()">继续</button>
+                `;
+                return;
+            }
+        }
+        
+        if (outcome) {
+            // 应用结果
+            if (outcome.sanity) {
+                this.sanity = Math.max(0, Math.min(100, this.sanity + outcome.sanity));
+            }
+            if (outcome.markers) {
+                this.markers += outcome.markers;
+            }
+            if (outcome.item) {
+                this.dungeonInv.push(outcome.item);
+                this.log(`获得了 ${outcome.item.name || '物品'}`, 'good');
+            }
+            
+            resultDiv.innerHTML = `
+                ${roll ? `<div class="dice-roll">🎲 d100: ${roll}</div>` : ''}
+                <div class="outcome good">
+                    <h4>✨ 结果</h4>
+                    <p>${outcome.text}</p>
+                    <p class="reward">${outcome.reward}</p>
+                </div>
+                <button onclick="game.closeStoryModal()">继续</button>
+            `;
+        }
+        
+        // 如果是主线房，标记为可前往下一层
+        if (cell.roomType === 'main') {
+            cell.canGoNext = true;
+            this.renderDungeon();
+        }
+        
+        this.updateHallucination();
+        this.renderDungeon();
+    }
+
     goToNextLayer() {
         this.closeStoryModal();
         this.extract();
     }
 
+    goToNextLayerFromCell(x, y) {
+        const cell = this.grid[y][x];
+        if (cell.isRevealed && cell.roomType === 'main' && cell.canGoNext) {
+            if (confirm('🚪 发现通往下一层的入口，是否进入？')) {
+                this.extract();
+            }
+        }
+    }
+
     closeStoryModal() {
         document.getElementById('story-modal').classList.add('hidden');
         this.renderDungeon();
+    }
+
+    showItemDetail(idx) {
+        const item = this.dungeonInv[idx];
+        if (!item) return;
+        
+        alert(`📦 ${item.name || '未知物品'}\n\n${item.desc || '没有描述'}\n\n${item.effect || ''}`);
     }
 
     autoExpand(x, y) {
@@ -581,6 +762,20 @@ class DS08Game {
 
     log(msg, type) {
         console.log(`[${type || 'info'}] ${msg}`);
+        
+        // 添加到探索日志面板
+        const logPanel = document.getElementById('exploration-log');
+        if (logPanel) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type || 'info'}`;
+            entry.textContent = msg;
+            logPanel.insertBefore(entry, logPanel.firstChild);
+            
+            // 限制日志条目数
+            while (logPanel.children.length > 20) {
+                logPanel.removeChild(logPanel.lastChild);
+            }
+        }
     }
 
     // 剧情数据 - 岭下暗影

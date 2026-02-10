@@ -229,6 +229,103 @@ button.disabled {
     gap: 10px;
 }
 
+.dungeon-main {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.panel-section {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.panel-section h4 {
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.inventory-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 50px;
+}
+
+.inv-slot {
+    width: 40px;
+    height: 40px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.2s;
+}
+
+.inv-slot:hover {
+    border-color: var(--accent);
+    transform: scale(1.1);
+}
+
+.inv-slot .empty {
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.log-panel {
+    height: 200px;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.4;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry.system {
+    color: var(--accent);
+}
+
+.log-entry.good {
+    color: var(--success);
+}
+
+.log-entry.bad {
+    color: var(--danger);
+}
+
+.log-entry.special {
+    color: var(--warning);
+}
+
+.log-entry.info {
+    color: var(--text-dim);
+}
+
 .dungeon-info {
     display: flex;
     flex-direction: column;
@@ -455,6 +552,97 @@ button.disabled {
     margin-bottom: 15px;
 }
 
+.story-choices {
+    margin: 20px 0;
+}
+
+.choice-hint {
+    color: var(--text-dim);
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.choice-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.choice-btn:hover {
+    border-color: var(--accent);
+    background: var(--bg-light);
+    transform: translateX(5px);
+}
+
+.choice-btn.risky {
+    border-color: var(--danger);
+}
+
+.choice-btn.risky:hover {
+    background: rgba(217, 74, 74, 0.1);
+}
+
+.choice-btn.safe {
+    border-color: var(--success);
+}
+
+.choice-btn.safe:hover {
+    background: rgba(74, 217, 74, 0.1);
+}
+
+.choice-num {
+    width: 30px;
+    height: 30px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.choice-text {
+    flex: 1;
+    font-size: 14px;
+}
+
+.choice-cost {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+.next-layer-hint {
+    background: rgba(74, 144, 217, 0.2);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    margin-top: 15px;
+    color: var(--accent);
+}
+
+.cell.next-layer {
+    background: linear-gradient(135deg, var(--success), var(--accent));
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px var(--accent); }
+    50% { box-shadow: 0 0 20px var(--accent); }
+}
+
 .dice-roll {
     background: var(--bg);
     padding: 10px;
@@ -510,5 +698,21 @@ button.disabled {
     #dungeon header {
         flex-direction: column;
         align-items: flex-start;
+    }
+    
+    .dungeon-main {
+        grid-template-columns: 1fr;
+    }
+    
+    .side-panel {
+        order: -1;
+    }
+    
+    .panel-section {
+        padding: 10px;
+    }
+    
+    .log-panel {
+        height: 120px;
     }
 }
