@@ -49,6 +49,7 @@ class DS08Game {
         // 幻觉模式
         this.hallucinationMode = false;
         this.hallucinationTurns = 0;
+        this.explorationLogs = []; // 存储探索日志
 
         this.persistent = this.loadData();
         this.init();
@@ -154,6 +155,7 @@ class DS08Game {
         this.exploredSteps = 0;
         this.dungeonInv = [];
         this.hallucinationMode = false;
+        this.explorationLogs = []; // 重置日志
         
         this.createGrid(config.size);
         this.placeRooms(config.main, config.sub);
@@ -161,7 +163,8 @@ class DS08Game {
         this.calcNumbers();
         
         this.renderDungeon();
-        this.log(`进入了${this.currentDungeon.name} ${layerIndex + 1}层...`, 'system');
+        this.explorationLogs = [{ msg: `进入了${this.currentDungeon.name} ${layerIndex + 1}层...`, type: 'system', time: Date.now() }];
+        this.renderLogs();
     }
 
     createGrid(size) {
@@ -310,9 +313,7 @@ class DS08Game {
                         
                         <div class="panel-section">
                             <h4>📝 探索日志</h4>
-                            <div id="exploration-log" class="log-panel">
-                                <div class="log-entry system">进入了${this.currentDungeon.name} ${this.currentLayer+1}层...</div>
-                            </div>
+                            <div id="exploration-log" class="log-panel"></div>
                         </div>
                     </div>
                 </div>
@@ -643,7 +644,9 @@ class DS08Game {
         // 如果是主线房，标记为可前往下一层
         if (cell.roomType === 'main') {
             cell.canGoNext = true;
-            this.renderDungeon();
+            this.log(`🚪 主线剧情完成！出现前往下一层的入口`, 'special');
+        } else if (cell.roomType === 'sub') {
+            this.log(`✅ 支线剧情完成！`, 'info');
         }
         
         this.updateHallucination();
@@ -763,18 +766,30 @@ class DS08Game {
     log(msg, type) {
         console.log(`[${type || 'info'}] ${msg}`);
         
+        // 保存到日志数组
+        this.explorationLogs.unshift({ msg, type, time: Date.now() });
+        
+        // 限制日志条目数
+        while (this.explorationLogs.length > 20) {
+            this.explorationLogs.pop();
+        }
+        
         // 添加到探索日志面板
         const logPanel = document.getElementById('exploration-log');
         if (logPanel) {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type || 'info'}`;
-            entry.textContent = msg;
-            logPanel.insertBefore(entry, logPanel.firstChild);
-            
-            // 限制日志条目数
-            while (logPanel.children.length > 20) {
-                logPanel.removeChild(logPanel.lastChild);
-            }
+            // 清空并重新渲染所有日志
+            logPanel.innerHTML = this.explorationLogs.map(log => 
+                `<div class="log-entry ${log.type || 'info'}">${log.msg}</div>`
+            ).join('');
+        }
+    }
+    
+    renderLogs() {
+        const logPanel = document.getElementById('exploration-log');
+        if (logPanel && this.explorationLogs.length > 0) {
+            logPanel.innerHTML = this.explorationLogs.map(log => 
+                `<div class="log-entry ${log.type || 'info'}">${log.msg}</div>`
+            ).join('');
         }
     }
 

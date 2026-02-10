@@ -494,11 +494,17 @@ button.disabled {
 /* ===== 幻觉模式 ===== */
 
 #dungeon.hallucination {
-    animation: hallucination-bg 3s infinite;
+    animation: hallucination-bg 2s infinite !important;
+}
+
+#dungeon.hallucination #minefield {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 30px rgba(217, 74, 74, 0.3) !important;
 }
 
 #dungeon.hallucination .cell:not(.revealed) {
-    animation: hallucination-cell 2s infinite;
+    animation: hallucination-cell 1.5s infinite !important;
+    border-color: var(--danger) !important;
 }
 
 @keyframes hallucination-bg {
@@ -507,8 +513,26 @@ button.disabled {
 }
 
 @keyframes hallucination-cell {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+        border-color: var(--border);
+    }
+    25% { 
+        opacity: 0.7; 
+        transform: scale(0.98);
+        border-color: var(--danger);
+    }
+    50% { 
+        opacity: 0.9; 
+        transform: scale(1.02);
+        border-color: var(--warning);
+    }
+    75% { 
+        opacity: 0.7; 
+        transform: scale(0.98);
+        border-color: var(--danger);
+    }
 }
 
 /* ===== 剧情弹窗 ===== */
@@ -634,13 +658,21 @@ button.disabled {
 }
 
 .cell.next-layer {
-    background: linear-gradient(135deg, var(--success), var(--accent));
-    animation: pulse-glow 2s infinite;
+    background: linear-gradient(135deg, var(--success), var(--accent)) !important;
+    animation: pulse-glow 1s infinite !important;
+    border: 2px solid var(--success) !important;
+    font-size: 20px !important;
 }
 
 @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 5px var(--accent); }
-    50% { box-shadow: 0 0 20px var(--accent); }
+    0%, 100% { 
+        box-shadow: 0 0 5px var(--accent); 
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 20px var(--success), 0 0 30px var(--accent); 
+        transform: scale(1.1);
+    }
 }
 
 .dice-roll {
