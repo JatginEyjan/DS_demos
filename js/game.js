@@ -1,383 +1,104 @@
 /**
- * DS01 - 深渊扫雷 v2.2
- * 扫雷 + 搜打撤 + 克苏鲁 + 酒馆 + 外部配置系统
+ * DS01 - 深渊扫雷
+ * 扫雷 + 搜打撤 + 克苏鲁
  */
 
-class DS01Game {
+class DeepSweeper {
     constructor() {
-        this.config = null;
-        this.state = 'loading';
-        this.mode = 'explore';
-        
+        this.gridSize = 12;
+        this.mineCount = 20;
         this.grid = [];
-        this.sanity = 100;
-        this.dungeonInv = [];
-        this.restCount = 0;
+        this.gameState = 'playing'; // playing, won, lost, extracted
+        this.mode = 'explore'; // explore, flag
+        
+        // 搜打撤系统
+        this.inventory = [];
+        this.maxWeight = 10;
+        this.currentWeight = 0;
         this.depth = 1;
         
-        this.persistent = this.loadData();
-        this.currentTalkingNPC = null;
+        // 克苏鲁系统
+        this.sanity = 100;
+        this.maxSanity = 100;
+        this.insanityLevel = 0; // 0-3
+        this.whispers = [];
         
-        // 加载配置
-        this.loadConfig();
-    }
-    
-    // 默认配置（内置后备）
-    getDefaultConfig() {
-        return {
-            "version": "2.2",
-            "gameSettings": {
-                "gridSize": 12,
-                "mineCount": 20,
-                "maxRestPerDive": 3,
-                "maxWeight": 10,
-                "maxSanity": 100,
-                "scanCost": 10,
-                "scanRevealCount": 3,
-                "restRecovery": 15,
-                "mineDamage": 25,
-                "curseDamage": 5
-            },
-            "itemTypes": {
-                "fossil": { "name": "未知化石", "icon": "🦴", "value": 10, "weight": 1, "desc": "似乎来自某种巨大生物" },
-                "idol": { "name": "诡异神像", "icon": "🗿", "value": 50, "weight": 2, "desc": "注视它时，它也在注视你", "cursed": true },
-                "manuscript": { "name": "古老手稿", "icon": "📜", "value": 30, "weight": 0.5, "desc": "无法解读的文字" },
-                "relic": { "name": "深渊遗物", "icon": "💎", "value": 100, "weight": 3, "desc": "散发着不自然的寒气", "cursed": true },
-                "medkit": { "name": "理智药剂", "icon": "🧪", "value": 20, "weight": 0.5, "desc": "恢复理智", "consumable": true, "effect": { "type": "healSanity", "value": 30 } },
-                "tool": { "name": "探测工具", "icon": "🔧", "value": 5, "weight": 0.5, "desc": "可以帮助扫描", "consumable": true, "effect": { "type": "scan" } }
-            },
-            "npcConfig": {
-                "mysterious_merchant": {
-                    "name": "神秘商人",
-                    "icon": "🧙‍♂️",
-                    "dialogues": {
-                        "first": ["我在深渊中看到了...许多眼睛。", "你是新来的？小心别相信那些数字。"],
-                        "normal": ["有好货就拿来，我出公道价。", "昨天有人卖给我一个...不该存在的东西。"],
-                        "highAffinity": ["老朋友，给你看个稀罕货。", "我信任你，这是内部消息。"]
-                    },
-                    "services": ["buy", "sell"]
-                },
-                "wounded_explorer": {
-                    "name": "受伤探险家",
-                    "icon": "🤕",
-                    "dialogues": {
-                        "first": ["别去第三层...别去...", "我看到了门，但门后不是出口..."],
-                        "normal": ["我的腿...再也下不去了。", "它们还在下面唱歌，你听到了吗？"],
-                        "highAffinity": ["你救过我的命，给你这个。", "我发现了秘密通道，只告诉你。"]
-                    },
-                    "services": ["quest", "info"]
-                },
-                "mad_librarian": {
-                    "name": "疯图书管理员",
-                    "icon": "📚",
-                    "dialogues": {
-                        "first": ["这些手稿...它们在重写自己！", "知识是有重量的，你背得动吗？"],
-                        "normal": ["我数过那些格子，数字会撒谎。", "有些书读起来像尖叫。"],
-                        "highAffinity": ["给你看禁书，别告诉其他人。", "我发现了一个模式..."]
-                    },
-                    "services": ["identify", "lore"]
-                },
-                "bartender": {
-                    "name": "酒馆老板",
-                    "icon": "🍺",
-                    "dialogues": {
-                        "first": ["来杯'深渊凝视'？能让你看得更清楚...", "你的眼神，和上次不一样了。"],
-                        "normal": ["昨天有个人出去后再也没回来。", "休息一下？理智比金币重要。"],
-                        "highAffinity": ["老规矩，给你留最好的位置。", "听说你在下面干得不错，敬你一杯。"]
-                    },
-                    "services": ["rest", "rumor"]
-                }
-            },
-            "tavernSettings": {
-                "minNPCs": 2,
-                "maxNPCs": 4,
-                "refreshCost": 0,
-                "vaultSize": 20
-            },
-            "sellPriceRate": 0.7,
-            "extractGoldRate": 0.5
+        // 游戏统计
+        this.revealedCells = 0;
+        this.collectedItems = 0;
+        this.encounters = 0;
+        
+        // 物品类型
+        this.itemTypes = {
+            'fossil': { name: '未知化石', icon: '🦴', value: 10, weight: 1, desc: '似乎来自某种巨大生物' },
+            'idol': { name: '诡异 idol', icon: '🗿', value: 50, weight: 2, desc: '注视它时，它也在注视你', cursed: true },
+            'manuscript': { name: '古老手稿', icon: '📜', value: 30, weight: 0.5, desc: '无法解读的文字' },
+            'relic': { name: '深渊遗物', icon: '💎', value: 100, weight: 3, desc: '散发着不自然的寒气', cursed: true },
+            'tool': { name: '探测工具', icon: '🔧', value: 5, weight: 0.5, desc: '可以帮助扫描', consumable: true },
+            'medkit': { name: '理智药剂', icon: '🧪', value: 20, weight: 0.5, desc: '恢复理智', consumable: true },
         };
-    }
-    
-    // 加载外部配置文件
-    async loadConfig() {
-        try {
-            const response = await fetch('config.json');
-            if (!response.ok) throw new Error('无法加载配置文件');
-            
-            this.config = await response.json();
-            console.log('✅ 外部配置加载成功:', this.config.version);
-        } catch (error) {
-            console.warn('⚠️ 无法加载外部配置，使用默认配置:', error.message);
-            this.config = this.getDefaultConfig();
-        }
         
-        // 无论加载外部配置成功与否，都初始化游戏
+        // 疯狂事件
+        this.madnessEvents = [
+            { title: '低语', text: '你听到了无法理解的低语...理智下降5点', sanity: -5 },
+            { title: '幻觉', text: '某些格子的数字似乎在不断变化...', sanity: -10, effect: 'shuffle' },
+            { title: '恐惧', text: '一种莫名的恐惧攫住了你...', sanity: -15 },
+            { title: '窥视', text: '有什么东西从角落窥视着你...', sanity: -8 },
+            { title: '迷失', text: '你突然忘记了自己在哪里...', sanity: -12 },
+        ];
+        
+        // 古神低语
+        this.eldritchWhispers = [
+            '它们在等待...',
+            '不要相信数字...',
+            '深渊也在凝视你...',
+            '你挖得太深了...',
+            '那不是化石...',
+            '撤离是幻觉...',
+            '我们已经在这里很久了...',
+            '标记它们...标记所有...',
+        ];
+        
         this.init();
     }
     
-    showError(msg) {
-        document.getElementById('game-container').innerHTML = `
-            <div class="error-screen">
-                <h2>⚠️ 错误</h2>
-                <p>${msg}</p>
-                <button onclick="location.reload()">重试</button>
-            </div>
-        `;
-    }
-    
-    // 存档系统
-    loadData() {
-        const defaultData = { 
-            vault: [], gold: 0, dives: 0, extracts: 0, maxDepth: 1, 
-            npcMet: {}, npcAffinity: {}, currentNPCs: []
-        };
-        try {
-            // 先尝试加载 v2.2 版本存档
-            let saved = localStorage.getItem('DS01_v2.2');
-            // 兼容旧版本
-            if (!saved) saved = localStorage.getItem('DS01_v22');
-            if (!saved) saved = localStorage.getItem('DS01_v21');
-            return saved ? { ...defaultData, ...JSON.parse(saved) } : defaultData;
-        } catch(e) { return defaultData; }
-    }
-    
-    saveData() {
-        localStorage.setItem('DS01_v2.2', JSON.stringify(this.persistent));
-    }
-    
-    deleteSave() {
-        if (confirm('删除所有存档？')) {
-            localStorage.removeItem('DS01_v' + this.config.version);
-            this.persistent = this.loadData();
-            this.showTavern();
-        }
-    }
-    
-    // NPC刷新机制
-    refreshNPCs() {
-        const npcKeys = Object.keys(this.config.npcConfig);
-        const shuffled = npcKeys.sort(() => 0.5 - Math.random());
-        const count = this.config.tavernSettings.minNPCs + 
-            Math.floor(Math.random() * (this.config.tavernSettings.maxNPCs - this.config.tavernSettings.minNPCs + 1));
-        this.persistent.currentNPCs = shuffled.slice(0, count);
-        this.saveData();
-    }
-    
-    // 获取NPC对话
-    getNPCDialogue(npcKey) {
-        const npc = this.config.npcConfig[npcKey];
-        const met = this.persistent.npcMet[npcKey] || false;
-        const affinity = this.persistent.npcAffinity[npcKey] || 0;
-        
-        let dialoguePool;
-        if (!met) {
-            dialoguePool = npc.dialogues.first;
-            this.persistent.npcMet[npcKey] = true;
-        } else if (affinity >= 3) {
-            dialoguePool = npc.dialogues.highAffinity;
-        } else {
-            dialoguePool = npc.dialogues.normal;
-        }
-        
-        const dialogue = dialoguePool[Math.floor(Math.random() * dialoguePool.length)];
-        this.saveData();
-        return { name: npc.name, icon: npc.icon, dialogue, npcKey, services: npc.services };
-    }
-    
-    // 酒馆系统
-    showTavern() {
-        this.state = 'tavern';
-        
-        if (!this.persistent.currentNPCs || this.persistent.currentNPCs.length === 0) {
-            this.refreshNPCs();
-        }
-        
-        const c = document.getElementById('game-container');
-        c.innerHTML = `
-            <div id="tavern">
-                <header>
-                    <h1>🍺 深渊酒馆</h1>
-                    <div class="stats">
-                        <span>💰 ${this.persistent.gold}</span>
-                        <span>🏆 ${this.persistent.extracts}/${this.persistent.dives}</span>
-                        <span>📦 ${this.persistent.vault.length}/${this.config.tavernSettings.vaultSize}</span>
-                    </div>
-                </header>
-                <div class="tavern-main">
-                    <div class="vault-section">
-                        <h3>🏛️ 仓库</h3>
-                        <div id="vault-grid"></div>
-                    </div>
-                    <div class="npc-section">
-                        <div class="npc-header">
-                            <h3>今晚的客人 (${this.persistent.currentNPCs.length})</h3>
-                            <button onclick="game.refreshNPCs(); game.showTavern();" class="small-btn">🔄 刷新</button>
-                        </div>
-                        <div id="npc-list"></div>
-                    </div>
-                </div>
-                <div class="tavern-actions">
-                    <button id="dive-btn" class="primary">🕳️ 潜入深渊 (层级 ${this.persistent.maxDepth})</button>
-                    <button id="delete-btn">🗑️ 删除存档</button>
-                </div>
-            </div>
-            
-            <div id="npc-modal" class="modal hidden">
-                <div class="modal-content">
-                    <div class="npc-info"></div>
-                    <p id="npc-text"></p>
-                    <div id="npc-services"></div>
-                    <div class="npc-actions">
-                        <button onclick="game.giftNPC()">🎁 赠送物品 (+好感)</button>
-                        <button onclick="document.getElementById('npc-modal').classList.add('hidden')">👋 离开</button>
-                    </div>
-                </div>
-            </div>`;
-        
-        this.renderVault();
-        this.renderNPCs();
-        document.getElementById('dive-btn').onclick = () => this.startDive();
-        document.getElementById('delete-btn').onclick = () => this.deleteSave();
-    }
-    
-    renderVault() {
-        const grid = document.getElementById('vault-grid');
-        if (!grid) return;
-        
-        grid.innerHTML = this.persistent.vault.map((item, i) => `
-            <div class="slot ${item.cursed ? 'cursed' : ''}" onclick="game.sellItem(${i})" 
-                 title="${item.name}\n${item.desc}\n价值: ${item.value}">
-                ${item.icon}
-                <span class="value">${item.value}</span>
-            </div>
-        `).join('') + '<div class="slot empty"></div>'.repeat(
-            Math.max(0, this.config.tavernSettings.vaultSize - this.persistent.vault.length)
-        );
-    }
-    
-    renderNPCs() {
-        const list = document.getElementById('npc-list');
-        if (!list) return;
-        
-        list.innerHTML = this.persistent.currentNPCs.map(key => {
-            const npc = this.config.npcConfig[key];
-            const affinity = this.persistent.npcAffinity[key] || 0;
-            const hearts = '❤️'.repeat(Math.min(5, affinity)) + '🖤'.repeat(Math.max(0, 5 - affinity));
-            
-            return `
-                <div class="npc-card" onclick="game.openNPCDialogue('${key}')">
-                    <span class="npc-icon">${npc.icon}</span>
-                    <div class="npc-details">
-                        <span class="npc-name">${npc.name}</span>
-                        <span class="affinity">${hearts}</span>
-                        <span class="services">${npc.services.join(' | ')}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    openNPCDialogue(npcKey) {
-        this.currentTalkingNPC = npcKey;
-        const data = this.getNPCDialogue(npcKey);
-        const modal = document.getElementById('npc-modal');
-        
-        modal.querySelector('.npc-info').innerHTML = `<h2>${data.icon} ${data.name}</h2>`;
-        document.getElementById('npc-text').textContent = data.dialogue;
-        
-        // 显示NPC服务
-        const servicesDiv = document.getElementById('npc-services');
-        servicesDiv.innerHTML = data.services.map(s => `<span class="service-tag">${s}</span>`).join('');
-        
-        modal.classList.remove('hidden');
-    }
-    
-    giftNPC() {
-        if (!this.currentTalkingNPC || this.persistent.vault.length === 0) {
-            alert('没有可赠送的物品！');
-            return;
-        }
-        
-        const item = this.persistent.vault.shift();
-        
-        if (!this.persistent.npcAffinity[this.currentTalkingNPC]) {
-            this.persistent.npcAffinity[this.currentTalkingNPC] = 0;
-        }
-        this.persistent.npcAffinity[this.currentTalkingNPC] = 
-            Math.min(5, this.persistent.npcAffinity[this.currentTalkingNPC] + 1);
-        
-        this.saveData();
-        alert(`赠送了 ${item.name}，好感度+1！`);
-        document.getElementById('npc-modal').classList.add('hidden');
-        this.showTavern();
-    }
-    
-    sellItem(i) {
-        const item = this.persistent.vault[i];
-        const price = Math.floor(item.value * this.config.sellPriceRate);
-        if (confirm(`出售 ${item.name} 获得 ${price} 金币？`)) {
-            this.persistent.gold += price;
-            this.persistent.vault.splice(i, 1);
-            this.saveData();
-            this.showTavern();
-        }
-    }
-    
-    // 地牢系统
-    startDive() {
-        this.state = 'dungeon';
-        this.persistent.dives++;
-        
-        const settings = this.config.gameSettings;
-        this.sanity = settings.maxSanity;
-        this.maxSanity = settings.maxSanity;
-        this.dungeonInv = [];
-        this.restCount = 0;
-        this.depth = this.persistent.maxDepth;
-        
+    init() {
         this.createGrid();
         this.placeMines();
         this.placeItems();
         this.placeExit();
-        this.calcNumbers();
-        
-        this.renderDungeon();
-        this.log('潜入深渊层级 ' + this.depth, 'system');
-        
-        // 开局自动开格
-        this.revealFirstSafeCell();
-        this.saveData();
-    }
-    
-    revealFirstSafeCell() {
-        for (let y = 0; y < 3; y++) {
-            for (let x = 0; x < 3; x++) {
-                if (!this.grid[y][x].isMine) {
-                    setTimeout(() => this.clickCell(x, y), 300);
-                    return;
-                }
-            }
-        }
+        this.calculateNumbers();
+        this.render();
+        this.setupEventListeners();
+        this.addLog('你潜入了深渊层级 1...', 'important');
+        this.startWhisperLoop();
     }
     
     createGrid() {
-        const size = this.config.gameSettings.gridSize;
-        this.grid = Array(size).fill(null).map((_, y) =>
-            Array(size).fill(null).map((_, x) => ({
-                x, y, isMine: false, isRevealed: false, isFlagged: false, 
-                number: 0, item: null, isExit: false
-            }))
-        );
+        this.grid = [];
+        for (let y = 0; y < this.gridSize; y++) {
+            const row = [];
+            for (let x = 0; x < this.gridSize; x++) {
+                row.push({
+                    x, y,
+                    isMine: false,
+                    isRevealed: false,
+                    isFlagged: false,
+                    number: 0,
+                    item: null,
+                    isExit: false
+                });
+            }
+            this.grid.push(row);
+        }
     }
     
     placeMines() {
-        const settings = this.config.gameSettings;
         let placed = 0;
-        while (placed < settings.mineCount) {
-            const x = Math.floor(Math.random() * settings.gridSize);
-            const y = Math.floor(Math.random() * settings.gridSize);
-            if (!this.grid[y][x].isMine && !(x < 3 && y < 3)) {
+        while (placed < this.mineCount) {
+            const x = Math.floor(Math.random() * this.gridSize);
+            const y = Math.floor(Math.random() * this.gridSize);
+            if (!this.grid[y][x].isMine && !this.grid[y][x].isExit) {
                 this.grid[y][x].isMine = true;
                 placed++;
             }
@@ -385,332 +106,487 @@ class DS01Game {
     }
     
     placeItems() {
-        const keys = Object.keys(this.config.itemTypes);
-        for (let i = 0; i < 8; i++) {
-            const x = Math.floor(Math.random() * this.config.gameSettings.gridSize);
-            const y = Math.floor(Math.random() * this.config.gameSettings.gridSize);
+        const itemCount = 8 + Math.floor(Math.random() * 5);
+        let placed = 0;
+        const itemKeys = Object.keys(this.itemTypes);
+        
+        while (placed < itemCount) {
+            const x = Math.floor(Math.random() * this.gridSize);
+            const y = Math.floor(Math.random() * this.gridSize);
             const cell = this.grid[y][x];
+            
             if (!cell.isMine && !cell.item && !cell.isExit) {
-                const key = keys[Math.floor(Math.random() * keys.length)];
-                cell.item = { type: key, ...this.config.itemTypes[key] };
+                const itemKey = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+                cell.item = { type: itemKey, ...this.itemTypes[itemKey] };
+                placed++;
             }
         }
     }
     
     placeExit() {
-        const size = this.config.gameSettings.gridSize;
+        // 放置撤离点在远离起点的位置
         let placed = false;
         while (!placed) {
-            const x = Math.floor(Math.random() * size);
-            const y = Math.floor(Math.random() * size);
-            if (!this.grid[y][x].isMine && !this.grid[y][x].item && x > size/2 && y > size/2) {
-                this.grid[y][x].isExit = true;
+            const x = Math.floor(Math.random() * this.gridSize);
+            const y = Math.floor(Math.random() * this.gridSize);
+            const cell = this.grid[y][x];
+            
+            // 确保撤离点在底部右侧区域，远离起点(0,0)
+            if (!cell.isMine && !cell.item && x > 6 && y > 6) {
+                cell.isExit = true;
                 placed = true;
             }
         }
     }
     
-    calcNumbers() {
-        const size = this.config.gameSettings.gridSize;
-        for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
+    calculateNumbers() {
+        for (let y = 0; y < this.gridSize; y++) {
+            for (let x = 0; x < this.gridSize; x++) {
                 if (!this.grid[y][x].isMine) {
-                    let count = 0;
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dx = -1; dx <= 1; dx++) {
-                            const ny = y + dy, nx = x + dx;
-                            if (ny >= 0 && ny < size && nx >= 0 && nx < size) {
-                                if (this.grid[ny][nx].isMine) count++;
-                            }
-                        }
-                    }
-                    this.grid[y][x].number = count;
+                    this.grid[y][x].number = this.countAdjacentMines(x, y);
                 }
             }
         }
     }
     
-    renderDungeon() {
-        const c = document.getElementById('game-container');
-        const settings = this.config.gameSettings;
-        
-        c.innerHTML = `
-            <div id="dungeon">
-                <header>
-                    <button onclick="game.quitDive()">⬅️ 放弃</button>
-                    <div class="dungeon-info">
-                        <span>🕳️ 层级 ${this.depth}</span>
-                        <span class="rest-count">🛏️ ${settings.maxRestPerDive - this.restCount}</span>
-                    </div>
-                    <div class="stats-bars">
-                        <div class="stat-bar sanity-bar">
-                            <span>🧠</span>
-                            <div class="bar"><div id="sanity-fill" style="width:100%"></div></div>
-                            <span id="sanity-text">${settings.maxSanity}/${settings.maxSanity}</span>
-                        </div>
-                        <div class="stat-bar weight-bar">
-                            <span>📦</span>
-                            <span id="weight-text">0/${settings.maxWeight}</span>
-                        </div>
-                    </div>
-                </header>
-                <div id="minefield"></div>
-                <div id="dung-inv"><h4>探索背包</h4><div id="inv-grid"></div></div>
-                <div id="log"></div>
-                <footer>
-                    <button onclick="game.setMode('explore')" id="btn-explore" class="active">🔍 探索</button>
-                    <button onclick="game.setMode('flag')" id="btn-flag">🚩 标记</button>
-                    <button onclick="game.scan()">🔍 扫描(-${settings.scanCost})</button>
-                    <button onclick="game.rest()">🛏️ 休息(+${settings.restRecovery})</button>
-                    <button onclick="game.extract()" id="btn-extract" class="hidden primary">🚪 撤离</button>
-                </footer>
-            </div>`;
-        
-        const mf = document.getElementById('minefield');
-        mf.style.display = 'grid';
-        mf.style.gridTemplateColumns = `repeat(${settings.gridSize}, 40px)`;
-        
-        for (let y = 0; y < settings.gridSize; y++) {
-            for (let x = 0; x < settings.gridSize; x++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.x = x;
-                cell.dataset.y = y;
-                cell.onclick = () => this.clickCell(x, y);
-                cell.oncontextmenu = (e) => { e.preventDefault(); this.flagCell(x, y); };
-                mf.appendChild(cell);
-            }
-        }
-        this.updateGrid();
-    }
-    
-    updateGrid() {
-        const settings = this.config.gameSettings;
-        
-        // 更新理智条
-        const sanityFill = document.getElementById('sanity-fill');
-        const sanityText = document.getElementById('sanity-text');
-        if (sanityFill && sanityText) {
-            const pct = Math.max(0, this.sanity);
-            sanityFill.style.width = (pct / settings.maxSanity * 100) + '%';
-            sanityFill.className = pct < 30 ? 'low' : pct < 60 ? 'med' : '';
-            sanityText.textContent = `${Math.floor(this.sanity)}/${settings.maxSanity}`;
-        }
-        
-        // 更新负重
-        const weightText = document.getElementById('weight-text');
-        if (weightText) {
-            const w = this.dungeonInv.reduce((s, i) => s + i.weight, 0);
-            weightText.textContent = `${w.toFixed(1)}/${settings.maxWeight}`;
-        }
-        
-        // 更新格子
-        for (let y = 0; y < settings.gridSize; y++) {
-            for (let x = 0; x < settings.gridSize; x++) {
-                const cell = this.grid[y][x];
-                const div = document.querySelector(`#minefield .cell[data-x="${x}"][data-y="${y}"]`);
-                if (!div) continue;
-                
-                div.className = 'cell';
-                div.textContent = '';
-                
-                if (cell.isRevealed) {
-                    div.classList.add('revealed');
-                    if (cell.isMine) { div.classList.add('mine'); div.textContent = '💀'; }
-                    else if (cell.isExit) { div.classList.add('exit'); div.textContent = '🚪'; }
-                    else if (cell.number > 0) { 
-                        div.classList.add('n' + cell.number);
-                        div.textContent = cell.number; 
-                    }
-                } else if (cell.isFlagged) {
-                    div.classList.add('flagged');
-                    div.textContent = '🚩';
+    countAdjacentMines(x, y) {
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
+                    if (this.grid[ny][nx].isMine) count++;
                 }
             }
         }
-        this.updateInv();
+        return count;
     }
     
-    updateInv() {
-        const grid = document.getElementById('inv-grid');
-        if (grid) {
-            grid.innerHTML = this.dungeonInv.map((item, i) => 
-                `<div class="slot ${item.cursed ? 'cursed' : ''}" onclick="game.useItem(${i})" title="${item.name}">${item.icon}</div>`
-            ).join('');
-        }
-    }
-    
-    scan() {
-        const settings = this.config.gameSettings;
-        if (this.sanity < settings.scanCost) {
-            this.log('⚠️ 理智不足！', 'bad');
-            return;
-        }
-        
-        this.sanity -= settings.scanCost;
-        let revealed = 0;
-        const safeCells = [];
-        
-        for (let y = 0; y < settings.gridSize; y++) {
-            for (let x = 0; x < settings.gridSize; x++) {
-                if (!this.grid[y][x].isMine && !this.grid[y][x].isRevealed) {
-                    safeCells.push({x, y});
-                }
-            }
-        }
-        
-        safeCells.sort(() => 0.5 - Math.random());
-        for (let i = 0; i < Math.min(settings.scanRevealCount, safeCells.length); i++) {
-            const cell = safeCells[i];
-            this.grid[cell.y][cell.x].isRevealed = true;
-            revealed++;
-        }
-        
-        this.log(`🔍 扫描完成，揭示 ${revealed} 个安全区域`);
-        this.updateGrid();
-    }
-    
-    clickCell(x, y) {
-        if (this.state !== 'dungeon') return;
-        if (this.mode === 'flag') {
-            this.flagCell(x, y);
-            return;
-        }
+    reveal(x, y) {
+        if (this.gameState !== 'playing') return;
         
         const cell = this.grid[y][x];
         if (cell.isRevealed || cell.isFlagged) return;
         
         cell.isRevealed = true;
+        this.revealedCells++;
         
+        // 检查地雷
         if (cell.isMine) {
-            this.sanity -= this.config.gameSettings.mineDamage;
-            this.log('💀 触发陷阱！理智-' + this.config.gameSettings.mineDamage, 'bad');
-            if (this.sanity <= 0) { this.gameOver(); return; }
-        } else {
-            if (cell.isExit) {
-                document.getElementById('btn-extract').classList.remove('hidden');
-                this.log('🚪 发现撤离点！');
-            }
-            if (cell.item) {
-                const w = this.dungeonInv.reduce((s, i) => s + i.weight, 0);
-                if (w + cell.item.weight <= this.config.gameSettings.maxWeight) {
-                    this.dungeonInv.push(cell.item);
-                    this.log(`✅ 获得 ${cell.item.name}`);
-                    if (cell.item.cursed) { 
-                        this.sanity -= this.config.gameSettings.curseDamage; 
-                        this.log('😈 诅咒侵蚀理智', 'bad'); 
-                    }
-                } else {
-                    this.log('⚠️ 负重已满！', 'bad');
-                }
-                cell.item = null;
-            }
-            if (cell.number === 0) {
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const ny = y + dy, nx = x + dx;
-                        if (ny >= 0 && ny < this.config.gameSettings.gridSize && 
-                            nx >= 0 && nx < this.config.gameSettings.gridSize) {
-                            setTimeout(() => this.clickCell(nx, ny), 30);
-                        }
-                    }
-                }
-            }
-        }
-        
-        this.updateGrid();
-    }
-    
-    flagCell(x, y) {
-        const cell = this.grid[y][x];
-        if (!cell.isRevealed) {
-            cell.isFlagged = !cell.isFlagged;
-            this.updateGrid();
-        }
-    }
-    
-    setMode(m) {
-        this.mode = m;
-        document.getElementById('btn-explore').classList.toggle('active', m === 'explore');
-        document.getElementById('btn-flag').classList.toggle('active', m === 'flag');
-    }
-    
-    rest() {
-        const settings = this.config.gameSettings;
-        if (this.restCount >= settings.maxRestPerDive) {
-            this.log('⚠️ 无法继续休息', 'bad');
+            this.triggerMine(cell);
             return;
         }
-        this.restCount++;
-        this.sanity = Math.min(settings.maxSanity, this.sanity + settings.restRecovery);
-        this.log(`🛏️ 休息恢复 (剩余${settings.maxRestPerDive - this.restCount}次)`);
-        this.updateGrid();
-    }
-    
-    useItem(i) {
-        const item = this.dungeonInv[i];
-        if (!item.consumable || !item.effect) return;
         
-        if (item.effect.type === 'healSanity') {
-            this.sanity = Math.min(this.config.gameSettings.maxSanity, 
-                this.sanity + item.effect.value);
-            this.log(`💊 理智+${item.effect.value}`);
-        } else if (item.effect.type === 'scan') {
-            this.scan();
-            return; // 不删除，因为scan已经扣过理智了
+        // 检查撤离点
+        if (cell.isExit) {
+            this.showExtractOption();
         }
         
-        this.dungeonInv.splice(i, 1);
-        this.updateGrid();
+        // 拾取物品
+        if (cell.item) {
+            this.collectItem(cell);
+        }
+        
+        // 理智消耗（每次点击都有小概率触发疯狂）
+        if (Math.random() < 0.05) {
+            this.triggerMadness();
+        }
+        
+        // 空格子自动展开
+        if (cell.number === 0 && !cell.item) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const ny = y + dy;
+                    const nx = x + dx;
+                    if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
+                        setTimeout(() => this.reveal(nx, ny), 50);
+                    }
+                }
+            }
+        }
+        
+        // 检查胜利条件（到达撤离点并选择撤离）
+        this.render();
+    }
+    
+    triggerMine(cell) {
+        // 踩雷不一定立即死亡，而是造成理智损失和事件
+        this.sanity -= 20;
+        this.addLog('你触发了陷阱！理智受损！', 'insanity');
+        
+        if (this.sanity <= 0) {
+            this.gameOver('疯狂');
+        } else {
+            // 标记这个格子为"已触发"但继续游戏（这是搜打撤的特点）
+            cell.isRevealed = true;
+            this.encounters++;
+            this.updateInsanityLevel();
+        }
+    }
+    
+    collectItem(cell) {
+        const item = cell.item;
+        if (this.currentWeight + item.weight > this.maxWeight) {
+            this.addLog(`负重已满，无法拾取 ${item.name}`, 'important');
+            return;
+        }
+        
+        this.inventory.push(item);
+        this.currentWeight += item.weight;
+        this.collectedItems++;
+        
+        this.addLog(`拾取了 ${item.name} - ${item.desc}`, 'important');
+        
+        // 诅咒物品降低理智
+        if (item.cursed) {
+            this.sanity -= 5;
+            this.addLog(`诅咒之物在侵蚀你的理智...`, 'insanity');
+        }
+        
+        // 消耗品立即使用
+        if (item.consumable) {
+            this.useItem(this.inventory.length - 1);
+        }
+        
+        cell.item = null;
+        this.updateUI();
+    }
+    
+    useItem(index) {
+        const item = this.inventory[index];
+        if (!item.consumable) return;
+        
+        if (item.type === 'medkit') {
+            this.sanity = Math.min(this.maxSanity, this.sanity + 30);
+            this.addLog('理智药剂恢复了一些理智', 'important');
+        } else if (item.type === 'tool') {
+            this.revealRandomSafeCell();
+            this.addLog('探测工具揭示了一个安全区域', 'important');
+        }
+        
+        this.inventory.splice(index, 1);
+        this.currentWeight -= item.weight;
+        this.updateUI();
+    }
+    
+    revealRandomSafeCell() {
+        const safeCells = [];
+        for (let y = 0; y < this.gridSize; y++) {
+            for (let x = 0; x < this.gridSize; x++) {
+                const cell = this.grid[y][x];
+                if (!cell.isMine && !cell.isRevealed) {
+                    safeCells.push(cell);
+                }
+            }
+        }
+        
+        if (safeCells.length > 0) {
+            const cell = safeCells[Math.floor(Math.random() * safeCells.length)];
+            this.reveal(cell.x, cell.y);
+        }
+    }
+    
+    toggleFlag(x, y) {
+        if (this.gameState !== 'playing') return;
+        const cell = this.grid[y][x];
+        if (cell.isRevealed) return;
+        cell.isFlagged = !cell.isFlagged;
+        this.render();
+    }
+    
+    triggerMadness() {
+        const event = this.madnessEvents[Math.floor(Math.random() * this.madnessEvents.length)];
+        this.sanity += event.sanity;
+        
+        this.showModal(event.title, event.text, [
+            { text: '继续...', action: () => this.hideModal() }
+        ]);
+        
+        this.addLog(`[疯狂] ${event.title}: ${event.text}`, 'insanity');
+        this.updateInsanityLevel();
+    }
+    
+    updateInsanityLevel() {
+        const oldLevel = this.insanityLevel;
+        if (this.sanity > 70) this.insanityLevel = 0;
+        else if (this.sanity > 40) this.insanityLevel = 1;
+        else if (this.sanity > 20) this.insanityLevel = 2;
+        else this.insanityLevel = 3;
+        
+        if (this.insanityLevel !== oldLevel) {
+            this.applyInsanityEffects();
+        }
+        
+        this.updateUI();
+    }
+    
+    applyInsanityEffects() {
+        const body = document.body;
+        body.classList.remove('insanity-low', 'insanity-med', 'insanity-high');
+        
+        if (this.insanityLevel >= 2) {
+            body.classList.add('insanity-low');
+        }
+        
+        if (this.insanityLevel >= 3) {
+            this.addLog('警告：理智濒临崩溃边缘！', 'insanity');
+        }
+    }
+    
+    showExtractOption() {
+        const btn = document.getElementById('extract-btn');
+        btn.classList.remove('hidden');
+        this.addLog('发现了撤离点！你可以选择带着战利品撤离，或者继续探索更深...', 'important');
     }
     
     extract() {
-        const value = this.dungeonInv.reduce((s, i) => s + i.value, 0);
-        const goldGain = Math.floor(value * this.config.extractGoldRate);
+        // 计算得分
+        let totalValue = 0;
+        this.inventory.forEach(item => totalValue += item.value);
         
-        this.persistent.vault.push(...this.dungeonInv);
-        this.persistent.gold += goldGain;
-        this.persistent.extracts++;
+        const stats = `
+            <div class="stat-line">探索深度: ${this.depth}</div>
+            <div class="stat-line">揭示区域: ${this.revealedCells}</div>
+            <div class="stat-line">收集物品: ${this.collectedItems}</div>
+            <div class="stat-line">遭遇事件: ${this.encounters}</div>
+            <div class="stat-line">剩余理智: ${this.sanity}</div>
+            <div class="stat-line">总收益: ${totalValue}</div>
+        `;
         
-        if (this.depth === this.persistent.maxDepth) {
-            this.persistent.maxDepth++;
-            this.log(`🎉 解锁新深度: 层级 ${this.persistent.maxDepth}`);
+        this.showEndModal('成功撤离', '你带着战利品逃出了深渊。但你知道，那里还有更多秘密...', stats);
+        this.gameState = 'extracted';
+    }
+    
+    gameOver(reason) {
+        let text = '';
+        if (reason === '疯狂') {
+            text = '你的理智崩溃了。在最后的清醒时刻，你意识到自己成为了深渊的一部分...';
         }
         
-        this.saveData();
-        alert(`成功撤离！\n💰 +${goldGain}金币\n📦 ${this.dungeonInv.length}件物品`);
-        this.showTavern();
+        this.showEndModal('探索失败', text, '');
+        this.gameState = 'lost';
     }
     
-    quitDive() {
-        if (confirm('放弃探索？物品将丢失！')) {
-            this.dungeonInv = [];
-            this.showTavern();
+    scan() {
+        if (this.sanity < 10) {
+            this.addLog('理智不足，无法进行扫描', 'important');
+            return;
+        }
+        
+        this.sanity -= 10;
+        // 揭示周围3x3区域内是否有地雷
+        this.addLog('扫描完成...周围的地雷分布在你的脑海中显现', 'important');
+        this.updateUI();
+    }
+    
+    rest() {
+        this.sanity = Math.min(this.maxSanity, this.sanity + 10);
+        this.addLog('你休息了一会儿，恢复了些许理智...', 'important');
+        this.updateUI();
+    }
+    
+    startWhisperLoop() {
+        setInterval(() => {
+            if (this.gameState === 'playing' && this.insanityLevel >= 1) {
+                if (Math.random() < 0.3) {
+                    const whisper = this.eldritchWhispers[Math.floor(Math.random() * this.eldritchWhispers.length)];
+                    this.addLog(`低语: "${whisper}"`, 'insanity');
+                }
+            }
+        }, 15000);
+    }
+    
+    addLog(text, type = '') {
+        const logContent = document.getElementById('log-content');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+        logContent.insertBefore(entry, logContent.firstChild);
+        
+        // 限制日志数量
+        while (logContent.children.length > 20) {
+            logContent.removeChild(logContent.lastChild);
         }
     }
     
-    gameOver() {
-        this.dungeonInv = [];
-        this.saveData();
-        alert('理智崩溃...你在深渊中迷失了');
-        this.showTavern();
+    showModal(title, text, choices) {
+        const modal = document.getElementById('event-modal');
+        document.getElementById('event-title').textContent = title;
+        document.getElementById('event-text').textContent = text;
+        
+        const choicesContainer = document.getElementById('event-choices');
+        choicesContainer.innerHTML = '';
+        
+        choices.forEach(choice => {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = choice.text;
+            btn.onclick = choice.action;
+            choicesContainer.appendChild(btn);
+        });
+        
+        modal.classList.remove('hidden');
     }
     
-    log(msg, type) {
-        const log = document.getElementById('log');
-        if (log) {
-            const div = document.createElement('div');
-            div.className = type || '';
-            div.textContent = msg;
-            log.insertBefore(div, log.firstChild);
-            while (log.children.length > 20) log.removeChild(log.lastChild);
+    hideModal() {
+        document.getElementById('event-modal').classList.add('hidden');
+    }
+    
+    showEndModal(title, text, stats) {
+        const modal = document.getElementById('end-modal');
+        document.getElementById('end-title').textContent = title;
+        document.getElementById('end-text').textContent = text;
+        document.getElementById('end-stats').innerHTML = stats;
+        modal.classList.remove('hidden');
+    }
+    
+    restart() {
+        document.getElementById('end-modal').classList.add('hidden');
+        document.body.classList.remove('insanity-low', 'insanity-med', 'insanity-high');
+        document.getElementById('extract-btn').classList.add('hidden');
+        
+        // 重置所有状态
+        this.inventory = [];
+        this.currentWeight = 0;
+        this.sanity = 100;
+        this.insanityLevel = 0;
+        this.revealedCells = 0;
+        this.collectedItems = 0;
+        this.encounters = 0;
+        this.gameState = 'playing';
+        
+        document.getElementById('log-content').innerHTML = '';
+        this.init();
+    }
+    
+    updateUI() {
+        // 更新理智条
+        const sanityBar = document.getElementById('sanity-bar');
+        const sanityValue = document.getElementById('sanity-value');
+        const percentage = (this.sanity / this.maxSanity) * 100;
+        sanityBar.style.width = `${percentage}%`;
+        sanityValue.textContent = Math.floor(this.sanity);
+        
+        if (percentage < 30) {
+            sanityBar.classList.add('low');
+        } else {
+            sanityBar.classList.remove('low');
+        }
+        
+        // 更新负重
+        document.getElementById('weight-value').textContent = 
+            `${this.currentWeight.toFixed(1)}/${this.maxWeight}`;
+        
+        // 更新深度
+        document.getElementById('depth-value').textContent = this.depth;
+        
+        // 更新背包
+        this.renderInventory();
+    }
+    
+    renderInventory() {
+        const grid = document.getElementById('inventory-grid');
+        grid.innerHTML = '';
+        
+        for (let i = 0; i < 15; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'inv-slot';
+            
+            if (i < this.inventory.length) {
+                const item = this.inventory[i];
+                slot.textContent = item.icon;
+                slot.title = `${item.name} (${item.weight}kg)\n${item.desc}`;
+                if (item.cursed) slot.classList.add('artifact');
+                
+                if (item.consumable) {
+                    slot.onclick = () => this.useItem(i);
+                }
+            }
+            
+            grid.appendChild(slot);
         }
     }
     
-    init() {
-        this.showTavern();
+    render() {
+        const minefield = document.getElementById('minefield');
+        minefield.innerHTML = '';
+        
+        for (let y = 0; y < this.gridSize; y++) {
+            for (let x = 0; x < this.gridSize; x++) {
+                const cell = this.grid[y][x];
+                const cellDiv = document.createElement('div');
+                cellDiv.className = 'cell';
+                cellDiv.dataset.x = x;
+                cellDiv.dataset.y = y;
+                
+                if (cell.isRevealed) {
+                    cellDiv.classList.add('revealed');
+                    
+                    if (cell.isMine) {
+                        cellDiv.classList.add('mine');
+                        cellDiv.textContent = '💀';
+                    } else if (cell.isExit) {
+                        cellDiv.classList.add('exit');
+                        cellDiv.textContent = '🚪';
+                    } else if (cell.number > 0) {
+                        cellDiv.dataset.number = cell.number;
+                        cellDiv.textContent = cell.number;
+                    }
+                } else {
+                    if (cell.isFlagged) {
+                        cellDiv.classList.add('flagged');
+                        cellDiv.textContent = '🚩';
+                    } else if (cell.item && this.insanityLevel >= 2) {
+                        // 高疯狂等级时可以看到物品
+                        cellDiv.classList.add('whisper');
+                        cellDiv.textContent = '?';
+                    }
+                }
+                
+                cellDiv.onclick = () => {
+                    if (this.mode === 'explore') {
+                        this.reveal(x, y);
+                    } else {
+                        this.toggleFlag(x, y);
+                    }
+                };
+                
+                cellDiv.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    this.toggleFlag(x, y);
+                };
+                
+                minefield.appendChild(cellDiv);
+            }
+        }
+        
+        this.updateUI();
+    }
+    
+    setupEventListeners() {
+        // 模式切换
+        document.getElementById('explore-mode').onclick = () => {
+            this.mode = 'explore';
+            document.getElementById('explore-mode').classList.add('active');
+            document.getElementById('flag-mode').classList.remove('active');
+        };
+        
+        document.getElementById('flag-mode').onclick = () => {
+            this.mode = 'flag';
+            document.getElementById('flag-mode').classList.add('active');
+            document.getElementById('explore-mode').classList.remove('active');
+        };
+        
+        // 动作按钮
+        document.getElementById('scan-btn').onclick = () => this.scan();
+        document.getElementById('rest-btn').onclick = () => this.rest();
+        document.getElementById('extract-btn').onclick = () => this.extract();
+        document.getElementById('restart-btn').onclick = () => this.restart();
     }
 }
 
 // 启动游戏
-window.onload = () => { window.game = new DS01Game(); };
+window.onload = () => {
+    window.game = new DeepSweeper();
+};
