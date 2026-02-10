@@ -1,4 +1,4 @@
-/** DS08 - 幽暗编年史样式 **/
+/* DS08 - 幽暗编年史样式 */
 
 :root {
     --bg: #0a0a0f;
@@ -13,7 +13,6 @@
     --warning: #d9a04a;
     --main-room: #d94a4a;
     --sub-room: #4a90d9;
-    --gold: #ffd700;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,15 +22,17 @@ body {
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    line-height: 1.6;
 }
 
 #game-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 15px;
 }
 
-/** 大厅 **/
+/* ===== 大厅 ===== */
+
 #lobby header {
     display: flex;
     justify-content: space-between;
@@ -44,35 +45,37 @@ body {
 }
 
 #lobby header h1 {
+    color: var(--accent);
     font-size: 28px;
-    background: linear-gradient(90deg, var(--accent), var(--gold));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
-#lobby .stats {
+.stats {
     display: flex;
-    gap: 20px;
+    gap: 25px;
+    font-size: 16px;
 }
 
 .dungeon-selection {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
     margin-bottom: 20px;
 }
 
 .dungeon-selection h2 {
-    text-align: center;
     margin-bottom: 20px;
-    color: var(--text-dim);
+    color: var(--text);
 }
 
 .dungeon-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
 }
 
 .dungeon-card {
-    background: var(--bg-light);
+    background: var(--bg);
     border: 2px solid var(--border);
     border-radius: 12px;
     padding: 25px;
@@ -81,20 +84,21 @@ body {
 }
 
 .dungeon-card:hover:not(.locked) {
-    transform: translateY(-5px);
     border-color: var(--accent);
-    box-shadow: 0 10px 30px rgba(74, 144, 217, 0.2);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .dungeon-card.locked {
     opacity: 0.5;
     cursor: not-allowed;
-    background: var(--bg);
+    border-style: dashed;
 }
 
 .dungeon-card h3 {
-    font-size: 20px;
+    color: var(--accent);
     margin-bottom: 10px;
+    font-size: 20px;
 }
 
 .dungeon-card .theme {
@@ -104,8 +108,8 @@ body {
 }
 
 .dungeon-card .status {
-    font-size: 12px;
     color: var(--warning);
+    font-size: 13px;
 }
 
 .lobby-actions {
@@ -132,16 +136,13 @@ button:hover:not(:disabled) {
 }
 
 button.primary {
-    background: var(--success);
-    border-color: var(--success);
-    color: var(--bg);
-    font-weight: bold;
-}
-
-button.secondary {
     background: var(--accent);
     border-color: var(--accent);
     color: white;
+}
+
+button.secondary {
+    background: var(--bg-lighter);
 }
 
 button.danger {
@@ -155,16 +156,21 @@ button.disabled {
     cursor: not-allowed;
 }
 
-/** 层选择 **/
+/* ===== 层级选择 ===== */
+
 #layer-select header {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 15px;
+    padding: 20px;
     background: var(--bg-light);
     border: 1px solid var(--border);
     border-radius: 8px;
     margin-bottom: 20px;
+}
+
+#layer-select h2 {
+    color: var(--accent);
 }
 
 .layer-grid {
@@ -177,20 +183,24 @@ button.disabled {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
     padding: 20px;
     background: var(--bg-light);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .layer-btn:hover {
     border-color: var(--accent);
+    transform: translateY(-3px);
 }
 
 .layer-btn .layer-num {
     font-size: 18px;
     font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 5px;
 }
 
 .layer-btn .layer-size {
@@ -201,9 +211,11 @@ button.disabled {
 .layer-btn .layer-steps {
     font-size: 12px;
     color: var(--warning);
+    margin-top: 5px;
 }
 
-/** 地牢 **/
+/* ===== 地牢 ===== */
+
 #dungeon header {
     display: flex;
     justify-content: space-between;
@@ -226,11 +238,12 @@ button.disabled {
 .dungeon-name {
     font-size: 16px;
     font-weight: bold;
+    color: var(--accent);
 }
 
 .steps {
-    font-size: 12px;
-    color: var(--warning);
+    font-size: 13px;
+    color: var(--text-dim);
 }
 
 .resources {
@@ -261,13 +274,14 @@ button.disabled {
     border: 1px solid var(--border);
     border-radius: 8px;
     margin-bottom: 15px;
-    overflow-x: auto;
+    overflow: auto;
+    max-width: 100%;
 }
 
 .cell {
     width: 36px;
     height: 36px;
-    background: var(--bg-lighter);
+    background: #1a1a2e;
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -280,12 +294,12 @@ button.disabled {
 }
 
 .cell:hover:not(.revealed):not(.marked) {
-    background: #2a2a4a;
+    background: #252540;
     border-color: var(--accent);
 }
 
 .cell.revealed {
-    background: var(--bg);
+    background: #0f0f1a;
     cursor: default;
 }
 
@@ -321,40 +335,42 @@ button.disabled {
     display: flex;
     justify-content: center;
     gap: 20px;
+    padding: 10px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
     margin-bottom: 15px;
-    font-size: 12px;
-    color: var(--text-dim);
+    font-size: 13px;
 }
 
 #dungeon footer {
     display: flex;
     justify-content: center;
     padding: 15px;
-    background: var(--bg-light);
-    border: 1px solid var(--border);
-    border-radius: 8px;
 }
 
-/** 幻觉模式 **/
+/* ===== 幻觉模式 ===== */
+
 #dungeon.hallucination {
-    animation: hallucination 3s infinite;
-}
-
-@keyframes hallucination {
-    0%, 100% { filter: hue-rotate(0deg); }
-    50% { filter: hue-rotate(10deg) saturate(1.2); }
+    animation: hallucination-bg 3s infinite;
 }
 
 #dungeon.hallucination .cell:not(.revealed) {
-    animation: cellFlicker 2s infinite;
+    animation: hallucination-cell 2s infinite;
 }
 
-@keyframes cellFlicker {
+@keyframes hallucination-bg {
+    0%, 100% { background: var(--bg); }
+    50% { background: #1a0a1a; }
+}
+
+@keyframes hallucination-cell {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.8; }
 }
 
-/** 剧情弹窗 **/
+/* ===== 剧情弹窗 ===== */
+
 .modal {
     position: fixed;
     top: 0;
@@ -377,7 +393,7 @@ button.disabled {
     border: 2px solid var(--border);
     border-radius: 12px;
     padding: 30px;
-    max-width: 500px;
+    max-width: 600px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
@@ -399,9 +415,9 @@ button.disabled {
     padding: 10px;
     border-radius: 6px;
     text-align: center;
-    font-family: monospace;
-    font-size: 16px;
+    font-size: 18px;
     margin-bottom: 15px;
+    font-weight: bold;
 }
 
 .outcome {
@@ -425,14 +441,19 @@ button.disabled {
 }
 
 .outcome .reward {
-    color: var(--gold);
+    color: var(--warning);
     font-weight: bold;
 }
 
-/** 响应式 **/
+/* ===== 响应式 ===== */
+
 @media (max-width: 768px) {
     .dungeon-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .layer-grid {
+        grid-template-columns: 1fr 1fr;
     }
     
     .cell {
@@ -441,9 +462,8 @@ button.disabled {
         font-size: 10px;
     }
     
-    .legend {
+    #dungeon header {
         flex-direction: column;
-        align-items: center;
-        gap: 10px;
+        align-items: flex-start;
     }
 }
