@@ -544,22 +544,34 @@ class DS08Game {
     }
 
     handleLeftClick(x, y) {
-        if (this.state !== 'dungeon') return;
+        console.log(`[CLICK] handleLeftClick 被调用 (${x},${y})`);
+        if (this.state !== 'dungeon') {
+            console.log(`[CLICK] 失败: state=${this.state}`);
+            return;
+        }
         
         const cell = this.grid[y][x];
-        if (cell.isRevealed) return;
+        if (cell.isRevealed) {
+            console.log(`[CLICK] 失败: 格子已揭示`);
+            return;
+        }
 
+        console.log(`[CLICK] 调用 revealCell`);
         this.revealCell(x, y, 'left');
+        console.log(`[CLICK] revealCell 完成`);
     }
 
     revealCell(x, y, source) {
+        console.log(`[REVEAL] revealCell 开始 (${x},${y})`);
         const cell = this.grid[y][x];
         if (cell.isRevealed) {
+            console.log(`[REVEAL] 跳过: 已揭示`);
             return;
         }
 
         cell.isRevealed = true;
         this.exploredSteps++;
+        console.log(`[REVEAL] 格子已揭示，类型:${cell.roomType}`);
         
         // 记录日志
         if (cell.roomType === 'main') {
@@ -571,22 +583,28 @@ class DS08Game {
         }
 
         if (cell.isTrap) {
+            console.log(`[REVEAL] 分支: 陷阱`);
             this.triggerTrap();
             this.updateHallucination();
             this.renderDungeon();
+            console.log(`[REVEAL] renderDungeon 完成`);
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
             // 触发剧情，带交互选项 - 不立即renderDungeon，避免关闭弹窗
+            console.log(`[REVEAL] 分支: 剧情房`);
             this.triggerStoryWithChoice(cell);
             this.updateHallucination();
             // 剧情弹窗保持打开，不调用renderDungeon
         } else {
             // 普通房间，自动展开
+            console.log(`[REVEAL] 分支: 普通房，数字:${cell.number}`);
             if (cell.number === 0) {
                 this.autoExpand(x, y);
             }
             this.updateHallucination();
             this.renderDungeon();
+            console.log(`[REVEAL] renderDungeon 完成`);
         }
+        console.log(`[REVEAL] revealCell 结束`);
     }
 
     handleRightClick(x, y) {
