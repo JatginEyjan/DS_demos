@@ -514,10 +514,21 @@ class DS08Game {
                     content = '🚩';
                 }
 
-                // 如果已揭露的主线房可以前往下一层，添加点击事件
-                const clickHandler = (cell.isRevealed && cell.roomType === 'main' && cell.canGoNext && this.currentLayer < this.currentDungeon.layers.length - 1) 
-                    ? `onclick="game.goToNextLayerFromCell(${x}, ${y})"` 
-                    : `onclick="game.handleLeftClick(${x}, ${y})"`;
+                // 点击事件处理
+                let clickHandler;
+                if (cell.isRevealed) {
+                    // 已揭示的格子
+                    if (cell.roomType === 'main' && cell.canGoNext && this.currentLayer < this.currentDungeon.layers.length - 1) {
+                        // 已揭示的主线房可以前往下一层
+                        clickHandler = `onclick="game.goToNextLayerFromCell(${x}, ${y})"`;
+                    } else {
+                        // 其他已揭示格子不处理点击
+                        clickHandler = '';
+                    }
+                } else {
+                    // 未揭示的格子，正常点击处理
+                    clickHandler = `onclick="game.handleLeftClick(${x}, ${y})"`;
+                }
                 
                 html += `<div class="${className}" 
                              data-x="${x}" data-y="${y}"
