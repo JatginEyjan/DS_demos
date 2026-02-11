@@ -5,6 +5,20 @@
 
 class DS08Game {
     constructor() {
+        // 道具定义
+        this.itemTypes = {
+            // 功能向道具
+            sanityPotion: { id: 'sanityPotion', name: '理智药水', icon: '🧪', type: 'functional', desc: '恢复20点理智值', effect: 'sanity+20', value: 50 },
+            detector: { id: 'detector', name: '探测器', icon: '🔍', type: 'functional', desc: '揭示任意1格内容', effect: 'reveal', value: 100 },
+            markerPack: { id: 'markerPack', name: '标记器套装', icon: '🚩', type: 'functional', desc: '获得2个额外标记器', effect: 'markers+2', value: 30 },
+            lantern: { id: 'lantern', name: '煤油灯', icon: '🏮', type: 'functional', desc: '降低幻觉效果30秒', effect: 'antiHallucination', value: 80 },
+            // 剧情向道具
+            oldKey: { id: 'oldKey', name: '古老钥匙', icon: '🗝️', type: 'story', desc: '用于开启隐藏的密室', value: 200 },
+            mysteriousScroll: { id: 'mysteriousScroll', name: '神秘卷轴', icon: '📜', type: 'story', desc: '记载着古老的咒语', value: 300 },
+            amulet: { id: 'amulet', name: '护身符', icon: '✨', type: 'story', desc: '蛇人信徒的护身符，可降低遭遇危险的概率', value: 250 },
+            slaveMap: { id: 'slaveMap', name: '奴隶地图', icon: '🗺️', type: 'story', desc: '记录着秘密通道的位置', value: 150 }
+        };
+        
         // 副本配置
         this.dungeons = {
             shadow: {
@@ -42,6 +56,7 @@ class DS08Game {
         this.currentLayer = 0;
         this.grid = [];
         this.sanity = 100;
+        this.startingSanity = 100; // 初始理智，用于计算继承
         this.markers = 3;
         this.exploredSteps = 0;
         this.dungeonInv = [];
@@ -50,6 +65,9 @@ class DS08Game {
         this.hallucinationMode = false;
         this.hallucinationTurns = 0;
         this.explorationLogs = []; // 存储探索日志
+        
+        // 商店物品（进入副本时刷新）
+        this.shopItems = [];
 
         this.persistent = this.loadData();
         this.init();
@@ -119,30 +137,102 @@ class DS08Game {
     selectDungeon(dungeonId) {
         this.currentDungeon = this.dungeons[dungeonId];
         this.currentLayer = 0;
-        this.showLayerSelect();
+        this.refreshShop(); // 刷新商店
+        this.showShop(); // 显示商店而非层数选择
     }
 
-    showLayerSelect() {
+    // 刷新商店物品
+    refreshShop() {
+        this.shopItems = [];
+        const functionalItems = ['sanityPotion', 'detector', 'markerPack', 'lantern'];
+        const storyItems = ['oldKey', 'mysteriousScroll', 'amulet', 'slaveMap'];
+        
+        // 固定出现3个功能道具
+        for (let i = 0; i < 3; i++) {
+            const itemId = functionalItems[Math.floor(Math.random() * functionalItems.length)];
+            this.shopItems.push({ ...this.itemTypes[itemId], shopPrice: this.itemTypes[itemId].value });
+        }
+        
+        // 20%概率出现1个剧情道具
+        if (Math.random() < 0.2) {
+            const itemId = storyItems[Math.floor(Math.random() * storyItems.length)];
+            this.shopItems.push({ ...this.itemTypes[itemId], shopPrice: this.itemTypes[itemId].value });
+        }
+    }
+
+    // 显示商店
+    showShop() {
         const c = document.getElementById('game-container');
-        const layerButtons = this.currentDungeon.layers.map((layer, idx) => `
-            <button onclick="game.startLayer(${idx})" class="layer-btn">
-                <span class="layer-num">${idx + 1}层</span>
-                <span class="layer-size">${layer.size}×${layer.size}</span>
-                <span class="layer-steps">需探索 ${layer.steps} 步</span>
-            </button>
+        
+        const shopItemsHtml = this.shopItems.map((item, idx) => `
+            <div class="shop-item">
+                <span class="item-icon">${item.icon}</span>
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-desc">${item.desc}</span>
+                </div>
+                <span class="item-price">💰 ${item.shopPrice}</span>
+                <button onclick="game.buyShopItem(${idx})" ${this.persistent.gold >= item.shopPrice ? '' : 'disabled'}>购买</button>
+            </div>
         `).join('');
 
         c.innerHTML = `
-            <div id="layer-select">
+            <div id="shop">
                 <header>
-                    <button onclick="game.showLobby()">⬅️ 返回</button>
-                    <h2>${this.currentDungeon.name}</h2>
+                    <button onclick="game.showLobby()">⬅️ 返回大厅</button>
+                    <h2>🛒 补给商店 - ${this.currentDungeon.name}</h2>
+                    <span class="gold-display">💰 ${this.persistent.gold}</span>
                 </header>
-                <div class="layer-grid">
-                    ${layerButtons}
+                <div class="shop-desc">
+                    <p>准备进入副本前，你可以购买一些补给道具。</p>
+                    <p>💡 购买的道具将在本次副本中使用，撤退时可结算为金币。</p>
+                </div>
+                <div class="shop-items">
+                    ${shopItemsHtml || '<p class="empty">商店已售罄</p>'}
+                </div>
+                <div class="shop-actions">
+                    <button onclick="game.refreshShop()" class="secondary">🔄 刷新商店 (💰 50)</button>
+                    <button onclick="game.startDungeonFromLayer1()" class="primary">🎮 开始副本 (从第1层)</button>
+                </div>
+                <div class="starting-items">
+                    <h4>📦 开局携带 (${this.dungeonInv.length} 件)</h4>
+                    <div class="inventory-grid">
+                        ${this.dungeonInv.map(item => `<span>${item.icon}</span>`).join('') || '<span class="empty">空</span>'}
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    // 购买商店物品
+    buyShopItem(idx) {
+        const item = this.shopItems[idx];
+        if (!item || this.persistent.gold < item.shopPrice) {
+            alert('金币不足！');
+            return;
+        }
+        
+        this.persistent.gold -= item.shopPrice;
+        // 标记为商店购买（死亡时不丢失）
+        this.dungeonInv.push({ ...item, obtainedInDungeon: false, source: 'shop' });
+        this.shopItems.splice(idx, 1); // 从商店移除
+        this.saveData();
+        this.showShop(); // 刷新界面
+    }
+
+    // 从第1层开始副本
+    startDungeonFromLayer1() {
+        this.currentLayer = 0;
+        this.sanity = 100;
+        this.startingSanity = 100;
+        this.markers = 3;
+        this.exploredSteps = 0;
+        this.startLayer(0);
+    }
+
+    showLayerSelect() {
+        // 保留此函数用于兼容，但实际不使用了
+        this.showShop();
     }
 
     startLayer(layerIndex) {
@@ -150,10 +240,21 @@ class DS08Game {
         const config = this.currentDungeon.layers[layerIndex];
         
         this.state = 'dungeon';
-        this.sanity = 100;
-        this.markers = 3;
-        this.exploredSteps = 0;
-        this.dungeonInv = [];
+        
+        // 第1层重置所有状态，后续层继承理智值
+        if (layerIndex === 0) {
+            this.sanity = 100;
+            this.startingSanity = 100;
+            this.markers = 3;
+            this.exploredSteps = 0;
+            // dungeonInv 保留（商店购买的道具）
+        } else {
+            // 继承上一层理智值，其他状态重置
+            this.sanity = Math.max(0, this.sanity); // 确保不变成负数
+            this.markers = 3; // 标记器每层重置
+            this.exploredSteps = 0;
+        }
+        
         this.hallucinationMode = false;
         this.explorationLogs = []; // 重置日志
         
@@ -163,7 +264,12 @@ class DS08Game {
         this.calcNumbers();
         
         this.renderDungeon();
-        this.explorationLogs = [{ msg: `进入了${this.currentDungeon.name} ${layerIndex + 1}层...`, type: 'system', time: Date.now() }];
+        
+        if (layerIndex === 0) {
+            this.explorationLogs = [{ msg: `进入了${this.currentDungeon.name} 第1层...`, type: 'system', time: Date.now() }];
+        } else {
+            this.explorationLogs = [{ msg: `进入了第${layerIndex + 1}层（理智继承：${this.sanity}）`, type: 'system', time: Date.now() }];
+        }
         this.renderLogs();
     }
 
@@ -635,7 +741,9 @@ class DS08Game {
                 this.markers += outcome.markers;
             }
             if (outcome.item) {
-                this.dungeonInv.push(outcome.item);
+                // 标记为副本内获得（死亡时会丢失）
+                const itemWithSource = { ...outcome.item, obtainedInDungeon: true, source: 'dungeon' };
+                this.dungeonInv.push(itemWithSource);
                 this.log(`获得了 ${outcome.item.name || '物品'}`, 'good');
             }
             
@@ -718,15 +826,7 @@ class DS08Game {
     }
 
     retreat() {
-        const config = this.currentDungeon.layers[this.currentLayer];
-        if (this.exploredSteps < config.steps) {
-            this.log('⚠️ 探索步数不足！', 'bad');
-            return;
-        }
-
-        if (confirm('确定要撤退吗？将返回大厅。')) {
-            this.showLayerSelect();
-        }
+        this.retreatAndSettle();
     }
 
     extract() {
@@ -745,10 +845,13 @@ class DS08Game {
             this.persistent.completedDungeons.push(this.currentDungeon.id);
         }
         
+        // 结算道具为金币
+        const { goldEarned, itemCount } = this.settleItems();
+        
         // 检查解锁
         if (this.currentDungeon.id === 'shadow') {
             // 检查是否获得了解锁物品
-            const hasScroll = this.dungeonInv.some(i => i.id === 'mystery_scroll');
+            const hasScroll = this.dungeonInv.some(i => i.id === 'mysteriousScroll');
             if (hasScroll && !this.persistent.unlockedDungeons.includes('gate')) {
                 this.persistent.unlockedDungeons.push('gate');
                 alert('🎉 解锁了新副本：幽暗之门！');
@@ -756,20 +859,63 @@ class DS08Game {
         }
         
         this.saveData();
-        alert(`🎉 通关了 ${this.currentDungeon.name}！`);
+        alert(`🎉 通关了 ${this.currentDungeon.name}！\n\n💰 道具结算：${itemCount} 件物品 → ${goldEarned} 金币`);
+        this.dungeonInv = []; // 清空背包
         this.showLobby();
     }
 
     quitLayer() {
-        if (confirm('确定要撤退吗？当前进度将丢失。')) {
+        if (confirm('确定要撤退吗？将返回大厅。')) {
             this.showLayerSelect();
         }
     }
 
+    // 撤退并结算
+    retreatAndSettle() {
+        const config = this.currentDungeon.layers[this.currentLayer];
+        if (this.exploredSteps < config.steps) {
+            this.log('⚠️ 探索步数不足！', 'bad');
+            return;
+        }
+
+        // 结算道具为金币
+        const { goldEarned, itemCount } = this.settleItems();
+        
+        if (confirm(`确定要撤退吗？\n\n💰 ${itemCount} 件物品将结算为 ${goldEarned} 金币`)) {
+            this.persistent.gold += goldEarned;
+            this.saveData();
+            this.dungeonInv = []; // 清空背包
+            this.showLobby();
+        }
+    }
+
+    // 结算道具为金币
+    settleItems() {
+        let goldEarned = 0;
+        let itemCount = 0;
+        
+        this.dungeonInv.forEach(item => {
+            if (item.value) {
+                goldEarned += Math.floor(item.value * 0.5); // 50%价格回收
+                itemCount++;
+            }
+        });
+        
+        this.persistent.gold += goldEarned;
+        return { goldEarned, itemCount };
+    }
+
     death() {
         this.persistent.stats.totalDeaths++;
+        
+        // 死亡只损失副本内获得的道具，保留金币
+        const lostItems = this.dungeonInv.filter(item => item.obtainedInDungeon).length;
+        const keptItems = this.dungeonInv.filter(item => !item.obtainedInDungeon);
+        
+        this.dungeonInv = keptItems; // 只保留商店购买的道具
+        
         this.saveData();
-        alert('💀 理智崩溃！\n\n你的精神无法承受这片黑暗，意识陷入了永恒的混沌...');
+        alert(`💀 理智崩溃！\n\n你的精神无法承受这片黑暗...\n🎒 损失了 ${lostItems} 件副本内获得的道具\n✅ 保留了商店购买的道具`);
         this.showLobby();
     }
 
