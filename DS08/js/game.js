@@ -553,6 +553,18 @@ class DS08Game {
         }
 
         console.log(`[DEBUG] 点击格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}`);
+        // 打印周围格子信息
+        console.log(`[DEBUG] 周围格子状态:`);
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const ny = y + dy, nx = x + dx;
+                if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
+                    const n = this.grid[ny][nx];
+                    console.log(`  (${nx},${ny}): 揭示=${n.isRevealed}, 类型=${n.roomType}, 数字=${n.number}`);
+                }
+            }
+        }
         // 左键直接揭露格子
         this.revealCell(x, y, 'left');
     }
