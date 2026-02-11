@@ -749,6 +749,51 @@ button.disabled {
     }
 }
 
+/* ===== 道具详情弹窗 ===== */
+
+.item-modal-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.item-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.item-big-icon {
+    font-size: 64px;
+    display: block;
+}
+
+.item-description {
+    background: var(--bg);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.item-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.item-actions button {
+    padding: 10px 30px;
+}
+
+#item-action-btn {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--bg);
+}
+
 /* ===== 商店界面 ===== */
 
 #shop {

@@ -452,6 +452,20 @@ class DS08Game {
                         <button onclick="game.closeStoryModal()">继续</button>
                     </div>
                 </div>
+                
+                <div id="item-modal" class="modal hidden">
+                    <div class="modal-content item-modal-content">
+                        <div class="item-header">
+                            <span id="item-icon" class="item-big-icon"></span>
+                            <h3 id="item-title"></h3>
+                        </div>
+                        <p id="item-desc" class="item-description"></p>
+                        <div class="item-actions">
+                            <button id="item-action-btn" class="primary">使用</button>
+                            <button onclick="game.closeItemModal()">取消</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
         
@@ -812,7 +826,130 @@ class DS08Game {
         const item = this.dungeonInv[idx];
         if (!item) return;
         
-        alert(`📦 ${item.name || '未知物品'}\n\n${item.desc || '没有描述'}\n\n${item.effect || ''}`);
+        // 显示道具详情弹窗
+        const modal = document.getElementById('item-modal');
+        const title = document.getElementById('item-title');
+        const icon = document.getElementById('item-icon');
+        const desc = document.getElementById('item-desc');
+        const actionBtn = document.getElementById('item-action-btn');
+        
+        title.textContent = item.name || '未知物品';
+        icon.textContent = item.icon || '📦';
+        desc.textContent = item.desc || '没有描述';
+        
+        // 根据道具类型设置按钮
+        if (item.type === 'functional') {
+            // 功能道具：显示使用按钮
+            actionBtn.textContent = '使用道具';
+            actionBtn.onclick = () => this.useItem(idx);
+            actionBtn.style.display = 'inline-block';
+        } else if (item.type === 'story') {
+            // 剧情道具：显示碎片剧情
+            const storyText = this.getItemStory(item.id);
+            desc.innerHTML = `${item.desc}<br><br><em style="color:#d4a574;">${storyText}</em>`;
+            actionBtn.textContent = '关闭';
+            actionBtn.onclick = () => this.closeItemModal();
+            actionBtn.style.display = 'inline-block';
+        } else {
+            actionBtn.style.display = 'none';
+        }
+        
+        modal.classList.remove('hidden');
+    }
+    
+    // 获取道具的碎片剧情
+    getItemStory(itemId) {
+        const stories = {
+            'oldKey': '钥匙上刻着古老的符文，你认出这是蛇人文明鼎盛时期的文字。传说只有被选中者才能用此钥匙打开蛇父神殿深处的密室，那里藏着蛇人最后的秘密...',
+            'mysteriousScroll': '卷轴上的文字仿佛有生命般蠕动，当你凝视它时，脑海中响起低沉的吟唱。这是阿卡洛语——蛇人的古语，记载着操控火焰的禁忌咒文...',
+            'amulet': '护身符散发着微弱的温热，当你握紧它时，能感觉到蛇人信徒的虔诚。这个护身符曾经属于一位蛇人祭司，它能让你在蛇人的领地中保持清醒...',
+            'slaveMap': '地图上标注的路线已经模糊不清，但你能辨认出几个关键的标记。这是当年逃亡的奴隶们用生命绘制的地图，上面标注着安全的通道和致命的陷阱...',
+            'lantern': '煤油灯的玻璃罩上有一道细微的裂痕，但灯光依然稳定。这盏灯曾经照亮过无数探险者的道路，在深渊中，光明是最珍贵的礼物...',
+            'sanityPotion': '药水瓶中的液体呈现出诡异的紫色，轻轻摇晃时会发出微弱的光芒。这是用深渊中的草药炼制的药剂，能暂时稳定心神...',
+            'detector': '探测器的指针不断颤动，仿佛能感受到地底深处的脉动。这是用蛇人科技改造的仪器，能探测到隐藏的危险...',
+            'markerPack': '标记器上刻着精细的刻度，每一根都经过精心制作。在深渊中，正确的标记意味着生与死的区别...'
+        };
+        return stories[itemId] || '这件物品似乎隐藏着更多秘密...';
+    }
+    
+    // 使用道具
+    useItem(idx) {
+        const item = this.dungeonInv[idx];
+        if (!item) return;
+        
+        let used = false;
+        
+        switch (item.effect) {
+            case 'sanity+20':
+                this.sanity = Math.min(100, this.sanity + 20);
+                this.log('使用了理智药水，理智+20', 'good');
+                used = true;
+                break;
+            case 'markers+2':
+                this.markers += 2;
+                this.log('使用了标记器套装，标记器+2', 'good');
+                used = true;
+                break;
+            case 'antiHallucination':
+                this.hallucinationMode = false;
+                this.log('使用了煤油灯，幻觉消退', 'good');
+                used = true;
+                break;
+            case 'reveal':
+                // 探测器：需要选择目标格子
+                this.closeItemModal();
+                this.startDetectorMode(idx);
+                return; // 不立即删除道具
+            default:
+                this.log('此道具无法直接使用', 'info');
+        }
+        
+        if (used) {
+            // 删除已使用的道具
+            this.dungeonInv.splice(idx, 1);
+            this.closeItemModal();
+            this.renderDungeon();
+        }
+    }
+    
+    // 探测器模式：选择要揭示的格子
+    startDetectorMode(itemIdx) {
+        this.log('点击任意格子使用探测器...', 'special');
+        this.detectorMode = true;
+        this.detectorItemIdx = itemIdx;
+    }
+    
+    // 使用探测器揭示格子
+    useDetector(x, y) {
+        const cell = this.grid[y][x];
+        if (!cell.isRevealed) {
+            cell.isRevealed = true;
+            this.exploredSteps++;
+            this.log(`探测器揭示了 (${x},${y}) 的内容`, 'good');
+            
+            // 删除探测器
+            this.dungeonInv.splice(this.detectorItemIdx, 1);
+            this.detectorMode = false;
+            this.detectorItemIdx = null;
+            
+            // 触发格子效果
+            if (cell.isTrap) {
+                this.log('💀 探测器触发了陷阱！', 'bad');
+                this.triggerTrap();
+            } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
+                this.triggerStoryWithChoice(cell);
+            } else if (cell.number === 0) {
+                this.autoExpand(x, y);
+            }
+            
+            this.renderDungeon();
+        }
+    }
+    
+    // 关闭道具弹窗
+    closeItemModal() {
+        const modal = document.getElementById('item-modal');
+        if (modal) modal.classList.add('hidden');
     }
 
     autoExpand(x, y) {
