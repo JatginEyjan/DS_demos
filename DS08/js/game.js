@@ -524,10 +524,12 @@ class DS08Game {
                     } else {
                         // 其他已揭示格子不处理点击
                         clickHandler = '';
+                        if (x === 3 && y === 2) console.log(`[DEBUG] 格子(3,2) isRevealed=true, roomType=${cell.roomType}, 无点击事件`);
                     }
                 } else {
                     // 未揭示的格子，正常点击处理
                     clickHandler = `onclick="game.handleLeftClick(${x}, ${y})"`;
+                    if (x === 3 && y === 2) console.log(`[DEBUG] 格子(3,2) isRevealed=false, 有点击事件`);
                 }
                 
                 html += `<div class="${className}" 
@@ -557,8 +559,12 @@ class DS08Game {
 
     revealCell(x, y, source) {
         const cell = this.grid[y][x];
-        if (cell.isRevealed) return;
+        if (cell.isRevealed) {
+            console.log(`[DEBUG] revealCell 跳过已揭示格子 (${x},${y})`);
+            return;
+        }
 
+        console.log(`[DEBUG] revealCell 揭示格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}`);
         cell.isRevealed = true;
         this.exploredSteps++;
         
@@ -980,10 +986,12 @@ class DS08Game {
                         neighbor.isRevealed = true;
                         this.exploredSteps++;
                         expandedCount++;
-                        console.log(`[DEBUG] autoExpand 揭示 (${nx},${ny})，数字:${neighbor.number}`);
+                        console.log(`[DEBUG] autoExpand 揭示 (${nx},${ny})，类型:${neighbor.roomType}，数字:${neighbor.number}`);
                         if (neighbor.number === 0) {
                             setTimeout(() => this.autoExpand(nx, ny), 50);
                         }
+                    } else if (!neighbor.isRevealed && (neighbor.isTrap || neighbor.roomType !== 'normal')) {
+                        console.log(`[DEBUG] autoExpand 跳过 (${nx},${ny})，类型:${neighbor.roomType}，isTrap:${neighbor.isTrap}`);
                     }
                 }
             }
