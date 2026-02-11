@@ -355,8 +355,15 @@ class DS08Game {
                             if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
                                 const neighbor = this.grid[ny][nx];
                                 if (neighbor.isTrap) trapCount++;
-                                if (neighbor.roomType === 'main') mainCount++;
-                                if (neighbor.roomType === 'sub') subCount++;
+                                // 主线和支线房间本身也算+1
+                                if (neighbor.roomType === 'main') {
+                                    mainCount++;
+                                    trapCount++; // 主线算1个陷阱当量
+                                }
+                                if (neighbor.roomType === 'sub') {
+                                    subCount++;
+                                    trapCount++; // 支线算1个陷阱当量
+                                }
                             }
                         }
                     }
@@ -499,7 +506,7 @@ class DS08Game {
                     } else if (cell.roomType === 'sub') {
                         className += ' sub-room';
                         content = cell.number < 0 ? `📜${cell.number}` : '📜0';
-                    } else if (cell.number > 0) {
+                    } else if (cell.number !== 0) {
                         content = cell.number;
                     }
                 } else if (cell.isMarked) {
