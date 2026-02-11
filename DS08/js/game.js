@@ -547,37 +547,17 @@ class DS08Game {
         if (this.state !== 'dungeon') return;
         
         const cell = this.grid[y][x];
-        if (cell.isRevealed) {
-            console.log(`[DEBUG] 点击已揭示格子 (${x},${y})，跳过`);
-            return;
-        }
+        if (cell.isRevealed) return;
 
-        console.log(`[DEBUG] 点击格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}`);
-        // 打印周围格子信息
-        console.log(`[DEBUG] 周围格子状态:`);
-        for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue;
-                const ny = y + dy, nx = x + dx;
-                if (ny >= 0 && ny < this.gridSize && nx >= 0 && nx < this.gridSize) {
-                    const n = this.grid[ny][nx];
-                    console.log(`  (${nx},${ny}): 揭示=${n.isRevealed}, 类型=${n.roomType}, 数字=${n.number}`);
-                }
-            }
-        }
-        // 左键直接揭露格子
         this.revealCell(x, y, 'left');
     }
 
     revealCell(x, y, source) {
         const cell = this.grid[y][x];
         if (cell.isRevealed) {
-            console.log(`[DEBUG] revealCell 跳过已揭示格子 (${x},${y})`);
             return;
         }
 
-        console.log(`[DEBUG] revealCell 揭示格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}，来源:${source}`);
-        console.trace(); // 打印调用栈
         cell.isRevealed = true;
         this.exploredSteps++;
         
@@ -987,8 +967,7 @@ class DS08Game {
     }
 
     autoExpand(x, y) {
-        console.log(`[DEBUG] autoExpand 从 (${x},${y}) 开始`);
-        let expandedCount = 0;
+        let expanded = [];
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 const ny = y + dy, nx = x + dx;
@@ -998,18 +977,14 @@ class DS08Game {
                     if (!neighbor.isRevealed && !neighbor.isMarked && !neighbor.isTrap && neighbor.roomType === 'normal') {
                         neighbor.isRevealed = true;
                         this.exploredSteps++;
-                        expandedCount++;
-                        console.log(`[DEBUG] autoExpand 揭示 (${nx},${ny})，类型:${neighbor.roomType}，数字:${neighbor.number}`);
+                        expanded.push({x: nx, y: ny, number: neighbor.number});
                         if (neighbor.number === 0) {
-                            setTimeout(() => this.autoExpand(nx, ny), 50);
+                            this.autoExpand(nx, ny);
                         }
-                    } else if (!neighbor.isRevealed && (neighbor.isTrap || neighbor.roomType !== 'normal')) {
-                        console.log(`[DEBUG] autoExpand 跳过 (${nx},${ny})，类型:${neighbor.roomType}，isTrap:${neighbor.isTrap}`);
                     }
                 }
             }
         }
-        console.log(`[DEBUG] autoExpand 从 (${x},${y}) 展开 ${expandedCount} 个格子`);
     }
 
     updateHallucination() {
