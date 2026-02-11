@@ -545,8 +545,12 @@ class DS08Game {
         if (this.state !== 'dungeon') return;
         
         const cell = this.grid[y][x];
-        if (cell.isRevealed) return;
+        if (cell.isRevealed) {
+            console.log(`[DEBUG] 点击已揭示格子 (${x},${y})，跳过`);
+            return;
+        }
 
+        console.log(`[DEBUG] 点击格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}`);
         // 左键直接揭露格子
         this.revealCell(x, y, 'left');
     }
@@ -964,6 +968,8 @@ class DS08Game {
     }
 
     autoExpand(x, y) {
+        console.log(`[DEBUG] autoExpand 从 (${x},${y}) 开始`);
+        let expandedCount = 0;
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 const ny = y + dy, nx = x + dx;
@@ -973,6 +979,8 @@ class DS08Game {
                     if (!neighbor.isRevealed && !neighbor.isMarked && !neighbor.isTrap && neighbor.roomType === 'normal') {
                         neighbor.isRevealed = true;
                         this.exploredSteps++;
+                        expandedCount++;
+                        console.log(`[DEBUG] autoExpand 揭示 (${nx},${ny})，数字:${neighbor.number}`);
                         if (neighbor.number === 0) {
                             setTimeout(() => this.autoExpand(nx, ny), 50);
                         }
@@ -980,6 +988,7 @@ class DS08Game {
                 }
             }
         }
+        console.log(`[DEBUG] autoExpand 从 (${x},${y}) 展开 ${expandedCount} 个格子`);
     }
 
     updateHallucination() {
