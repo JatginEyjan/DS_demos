@@ -564,7 +564,8 @@ class DS08Game {
             return;
         }
 
-        console.log(`[DEBUG] revealCell 揭示格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}`);
+        console.log(`[DEBUG] revealCell 揭示格子 (${x},${y})，类型:${cell.roomType}，数字:${cell.number}，来源:${source}`);
+        console.trace(); // 打印调用栈
         cell.isRevealed = true;
         this.exploredSteps++;
         
