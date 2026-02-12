@@ -835,6 +835,9 @@ class DS08Game {
         const text = document.getElementById('story-text');
         const resultDiv = document.getElementById('story-result');
         console.log('[STORY] DOM元素:', { modal: !!modal, title: !!title, text: !!text, resultDiv: !!resultDiv });
+        console.log('[STORY] outcome:', outcome);
+        console.log('[STORY] preText:', outcome.preText);
+        console.log('[STORY] resultText:', outcome.resultText);
         
         // 应用结果
         if (outcome.sanity) {
@@ -869,7 +872,7 @@ class DS08Game {
             </div>
         `;
         
-        resultDiv.innerHTML = `
+        const htmlContent = `
             <div class="story-sequence">
                 <div class="story-phase">
                     <h4>📖 行动后</h4>
@@ -883,6 +886,9 @@ class DS08Game {
             </div>
             <button onclick="game.closeStoryModal()">继续</button>
         `;
+        console.log('[STORY] 设置 HTML:', htmlContent.substring(0, 100));
+        resultDiv.innerHTML = htmlContent;
+        console.log('[STORY] HTML 已设置');
         
         // 如果是主线房，标记为可前往下一层
         if (cell.roomType === 'main') {
@@ -893,7 +899,8 @@ class DS08Game {
         }
         
         this.updateHallucination();
-        this.renderDungeon();
+        // 注意：这里不要调用 renderDungeon，否则会关闭弹窗
+        console.log('[STORY] 完成，不调用 renderDungeon');
     }
 
     goToNextLayer() {
