@@ -771,6 +771,7 @@ class DS08Game {
     
     // 显示骰子判定动画
     showDiceRoll(roll, threshold, isSuccess) {
+        console.log('[DICE] showDiceRoll 被调用', { roll, threshold, isSuccess });
         const modal = document.getElementById('story-modal');
         const title = document.getElementById('story-title');
         const text = document.getElementById('story-text');
@@ -804,9 +805,11 @@ class DS08Game {
             diceEl.style.transform = `rotate(${rolls * 36}deg)`;
             
             if (rolls >= maxRolls) {
+                console.log('[DICE] 动画完成，准备显示结果');
                 clearInterval(interval);
                 // 显示最终结果
                 setTimeout(() => {
+                    console.log('[DICE] 调用 showStoryResult');
                     this.showStoryResult();
                 }, 500);
             }
@@ -815,12 +818,23 @@ class DS08Game {
     
     // 显示剧情结果
     showStoryResult() {
+        console.log('[STORY] showStoryResult 被调用');
+        if (!this.pendingStoryResult) {
+            console.error('[STORY] pendingStoryResult 为空！');
+            return;
+        }
         const { cell, story, roll, threshold, isSuccess } = this.pendingStoryResult;
+        console.log('[STORY] 结果:', { roll, threshold, isSuccess });
         const outcome = isSuccess ? story.goodOutcome : story.badOutcome;
+        if (!outcome) {
+            console.error('[STORY] outcome 为空！');
+            return;
+        }
         const modal = document.getElementById('story-modal');
         const title = document.getElementById('story-title');
         const text = document.getElementById('story-text');
         const resultDiv = document.getElementById('story-result');
+        console.log('[STORY] DOM元素:', { modal: !!modal, title: !!title, text: !!text, resultDiv: !!resultDiv });
         
         // 应用结果
         if (outcome.sanity) {
