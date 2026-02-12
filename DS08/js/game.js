@@ -741,87 +741,66 @@ class DS08Game {
         let outcome = null;
         let roll = 0;
         
-        if (story.choices && story.choices[choiceIdx]) {
-            // 自定义选项
-            const choice = story.choices[choiceIdx];
-            outcome = choice.outcome;
-            
-            // 应用代价
-            if (choice.sanityCost) {
-                this.sanity -= choice.sanityCost;
-                this.log(`消耗了 ${choice.sanityCost} 点理智`, 'info');
-            }
-        } else {
-            // 默认选项
-            if (choiceIdx === 0) {
-                // 深入探索
-                const baseProb = usedMarker ? 70 : 30;
-                const sanityBonus = Math.floor(this.sanity / 10) * 5;
-                const threshold = baseProb + sanityBonus;
-                roll = Math.floor(Math.random() * 100) + 1;
-                const isSuccess = roll <= threshold;
-                
-                outcome = isSuccess ? story.goodOutcome : story.badOutcome;
-                
-                resultDiv.innerHTML = `
-                    <div class="dice-roll">🎲 d100: ${roll} / ${threshold}</div>
-                    <div class="outcome ${isSuccess ? 'good' : 'bad'}">
-                        <h4>${isSuccess ? '✨ 成功' : '💀 失败'}</h4>
-                        <p>${outcome.text}</p>
-                        <p class="reward">${outcome.reward}</p>
-                    </div>
-                    <button onclick="game.closeStoryModal()">继续</button>
-                `;
-            } else {
-                // 离开
-                resultDiv.innerHTML = `
-                    <div class="outcome">
-                        <h4>👋 离开</h4>
-                        <p>你选择了谨慎行事，没有深入探索。</p>
-                    </div>
-                    <button onclick="game.closeStoryModal()">继续</button>
-                `;
-                return;
-            }
-        }
-        
-        if (outcome) {
-            // 应用结果
-            if (outcome.sanity) {
-                this.sanity = Math.max(0, Math.min(100, this.sanity + outcome.sanity));
-            }
-            if (outcome.markers) {
-                this.markers += outcome.markers;
-            }
-            
-            // 新的道具发放逻辑：根据层数和房间类型
-            const rewardItem = this.getLayerRewardItem(cell.roomType);
-            if (rewardItem) {
-                if (rewardItem.id === 'markerBonus') {
-                    // 标记器+1直接增加
-                    this.markers += 1;
-                    this.log('获得了标记器+1', 'good');
-                    outcome.reward = `${outcome.reward || ''} 标记器+1`;
-                } else {
-                    // 标记为副本内获得（死亡时会丢失）
-                    const itemWithSource = { ...rewardItem, obtainedInDungeon: true, source: 'dungeon' };
-                    this.dungeonInv.push(itemWithSource);
-                    this.log(`获得了 ${rewardItem.name}`, 'good');
-                    // 更新outcome的reward显示
-                    outcome.reward = `${outcome.reward || ''} ${rewardItem.name}+1`;
-                }
-            }
-            
+        if (choiceIdx === 1) {
+            // 离开选项
             resultDiv.innerHTML = `
-                ${roll ? `<div class="dice-roll">🎲 d100: ${roll}</div>` : ''}
-                <div class="outcome good">
-                    <h4>✨ 结果</h4>
-                    <p>${outcome.text}</p>
-                    <p class="reward">${outcome.reward}</p>
+                <div class="outcome">
+                    <h4>👋 离开</h4>
+                    <p>你选择了谨慎行事，没有深入探索。</p>
                 </div>
                 <button onclick="game.closeStoryModal()">继续</button>
             `;
+            return;
         }
+        
+        // 深入探索选项
+        const baseProb = usedMarker ? 70 : 30;
+        const sanityBonus = Math.floor(this.sanity / 10) * 5;
+        const threshold = baseProb + sanityBonus;
+        roll = Math.floor(Math.random() * 100) + 1;
+        const isSuccess = roll <= threshold;
+        
+        outcome = isSuccess ? story.goodOutcome : story.badOutcome;
+        
+        // 应用结果
+        if (outcome.sanity) {
+            this.sanity = Math.max(0, Math.min(100, this.sanity + outcome.sanity));
+        }
+        if (outcome.markers) {
+            this.markers += outcome.markers;
+        }
+        
+        // 新的道具发放逻辑：根据层数和房间类型
+        const rewardItem = this.getLayerRewardItem(cell.roomType);
+        if (rewardItem) {
+            if (rewardItem.id === 'markerBonus') {
+                this.markers += 1;
+                this.log('获得了标记器+1', 'good');
+                outcome.reward = `${outcome.reward || ''} 标记器+1`;
+            } else {
+                const itemWithSource = { ...rewardItem, obtainedInDungeon: true, source: 'dungeon' };
+                this.dungeonInv.push(itemWithSource);
+                this.log(`获得了 ${rewardItem.name}`, 'good');
+                outcome.reward = `${outcome.reward || ''} ${rewardItem.name}+1`;
+            }
+        }
+        
+        // 新的显示结构：骰子结果 + 行动后剧情 + 结果 + 奖励
+        resultDiv.innerHTML = `
+            <div class="dice-roll">🎲 d100: ${roll} / ${threshold} — ${isSuccess ? '✨ 成功' : '💀 失败'}</div>
+            <div class="story-sequence">
+                <div class="story-phase">
+                    <h4>📖 行动后</h4>
+                    <p class="story-text">${outcome.preText || outcome.text}</p>
+                </div>
+                <div class="outcome ${isSuccess ? 'good' : 'bad'}">
+                    <h4>${isSuccess ? '✨ 结果' : '💀 后果'}</h4>
+                    <p>${outcome.resultText || outcome.text}</p>
+                    <p class="reward">${outcome.reward}</p>
+                </div>
+            </div>
+            <button onclick="game.closeStoryModal()">继续</button>
+        `;
         
         // 如果是主线房，标记为可前往下一层
         if (cell.roomType === 'main') {
@@ -1214,8 +1193,19 @@ class DS08Game {
                         id: 'shadow_l1_main_1',
                         title: '主线·地窖入口',
                         text: '推开老宅沉重的木门，穿过积灰的走廊来到地窖，潮湿的霉味混杂着泥土气息扑面而来。墙角的砖墙被破开一个可供人通行的大洞，洞壁残留着新鲜的挖掘痕迹，地面上一串男性足迹延伸进洞内，却在深处被碎石掩盖；墙壁上刻着模糊的18世纪船锚图案，那是当年奴隶贩子的隐秘标记。乔什的工具随意散落，隧道深处传来隐约的气流声，带着地底特有的阴冷，你知道，要找到乔什，就必须踏入这片未知的黑暗。',
-                        goodOutcome: { text: '你找到了一盏还能使用的煤油灯，照亮了前方的道路', reward: '理智+10，获得煤油灯', sanity: 10, item: { id: 'lantern', name: '煤油灯', icon: '🏮', type: 'functional', desc: '降低幻觉效果', effect: 'antiHallucination', value: 80 } },
-                        badOutcome: { text: '黑暗中有什么东西擦过你的肩膀，你猛地转身却什么也没看到...但那寒意真实存在', reward: '理智-15，幻觉模式持续时间+1回合', sanity: -15 }
+                        goodOutcome: {
+                            preText: '你握紧手电筒，小心翼翼地向隧道深处探索。脚步声在狭窄的空间里回荡，每走一步，霉味便更加浓烈。突然，你的脚踢到一个金属物体——那是一盏老式的煤油灯，灯芯尚存，玻璃罩完好无损。你试着摇了摇，里面还有半瓶煤油。',
+                            resultText: '你找到了一盏还能使用的煤油灯，照亮了前方的道路',
+                            reward: '理智+10，获得煤油灯',
+                            sanity: 10,
+                            item: { id: 'lantern', name: '煤油灯', icon: '🏮', type: 'functional', desc: '降低幻觉效果', effect: 'antiHallucination', value: 80 }
+                        },
+                        badOutcome: {
+                            preText: '你刚踏入隧道几步，黑暗中突然有什么冰凉的东西擦过你的肩膀。你猛地转身，手电筒的光芒扫过空荡荡的通道，却什么也没看到。但那刺骨的寒意真实存在，仿佛有什么无形的存在正贴在你的背后，低声呢喃着无法理解的语言。',
+                            resultText: '你感到理智在流逝，幻觉开始侵蚀你的意识',
+                            reward: '理智-15，幻觉模式持续时间+1回合',
+                            sanity: -15
+                        }
                     }
                 ],
                 sub: [

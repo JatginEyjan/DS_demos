@@ -710,6 +710,30 @@ button.disabled {
     font-weight: bold;
 }
 
+/* 剧情序列样式 */
+.story-sequence {
+    text-align: left;
+}
+
+.story-phase {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.story-phase h4 {
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.story-phase .story-text {
+    line-height: 1.8;
+    color: var(--text);
+}
+
 /* ===== 响应式 ===== */
 
 @media (max-width: 768px) {
