@@ -310,10 +310,32 @@ class DS08Game {
     
     // 显示副本前置剧情
     showIntroStory(story, callback) {
-        const modal = document.getElementById('story-modal');
+        // 检查弹窗元素是否存在，如果不存在则动态创建
+        let modal = document.getElementById('story-modal');
+        if (!modal) {
+            // 动态创建弹窗结构
+            const modalHtml = `
+                <div id="story-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3 id="story-title"></h3>
+                        <p id="story-text"></p>
+                        <div id="story-result"></div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            modal = document.getElementById('story-modal');
+        }
+        
         const title = document.getElementById('story-title');
         const text = document.getElementById('story-text');
         const resultDiv = document.getElementById('story-result');
+        
+        if (!title || !text || !resultDiv) {
+            console.error('[ERROR] 弹窗元素缺失，跳过剧情直接开始');
+            if (callback) callback();
+            return;
+        }
         
         title.textContent = story.title;
         text.innerHTML = `<div class="intro-story-text">${story.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
