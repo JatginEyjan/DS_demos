@@ -26,6 +26,67 @@ class DS08Game {
                 name: '岭下暗影',
                 theme: '蛇人/隧道/奴隶贸易',
                 unlocked: true,
+                introStory: {
+                    title: '📜 任务开始',
+                    text: '1925年，马萨诸塞州艾克斯哈姆。你是一位经验丰富的调查员，受雇于一位名叫乔什·文斯考特的男子。他的祖传老宅位于岭下镇，最近在进行装修时，工人意外发现了一面古老的砖墙，墙后隐藏着一条通往地底的隧道。
+
+乔什带着工具和好奇心独自进入探索，却在两天后音讯全无。只留下一段断断续续的电话留言："隧道...太深了...那些东西...它们还在..."
+
+你站在老宅门前，手持手电筒和仅有的几件装备。清晨的雾气笼罩着这座古老的小镇，远处传来猫头鹰的叫声。你知道，这不仅仅是一次简单的搜救任务——墙壁上的蛇形符文、账本中提到的"永恒生命"、还有那从未知深处传来的嘶吼声，都在警告着你即将面对的是什么。
+
+但乔什可能还活着，而你是他唯一的希望。',
+                    hint: '准备好了吗？深吸一口气，踏入这片未知的黑暗...'
+                },
+                endings: [
+                    {
+                        id: 'perfect',
+                        name: '🏆 完美结局：深渊之光',
+                        condition: (stats) => stats.sanity >= 80 && stats.itemsFound >= 5,
+                        text: '你不仅成功击败了斯西亚，还保持着惊人的理智。在蛇父神殿的废墟中，你发现了乔什——他还活着，虽然精神恍惚，但生命无碍。你们一起逃离了这片深渊。
+
+数月后，乔什康复了。他将老宅捐赠给了密斯卡托尼克大学作为研究基地，而你则成为了学院的荣誉研究员。那本神秘的卷轴被妥善保管，蛇人的秘密再次被尘封于地下。
+
+你时常会梦见那片黑暗，但你知道，光明终将战胜黑暗。',
+                        hint: '保持高理智(≥80)并收集5件以上道具'
+                    },
+                    {
+                        id: 'good',
+                        name: '✨ 好结局：生还者',
+                        condition: (stats) => stats.sanity >= 30,
+                        text: '经过一番苦战，你终于击败了斯西亚。虽然身心俱疲，理智濒临崩溃，但你活下来了。
+
+你在核心巢穴的角落里发现了乔什的遗骸——他已经死去多日，但脸上带着解脱的微笑。你带走了他的遗物，将他安葬在镇上的公墓。
+
+老宅被永久封闭，那条通往深渊的隧道被水泥封死。但你心里清楚，这只是暂时的安宁。蛇人的神祇仍在沉睡，等待下一个唤醒它的人...
+
+而你，已经做好了再次面对黑暗的准备。',
+                        hint: '保持理智≥30通关'
+                    },
+                    {
+                        id: 'bad',
+                        name: '💀 坏结局：深渊的囚徒',
+                        condition: (stats) => stats.sanity < 30 && stats.sanity > 0,
+                        text: '你击败了斯西亚，但代价是惨重的。你的理智已经支离破碎，眼前的世界开始扭曲变形。蛇人的低语在你脑海中回荡，伊格的名字不断被呼唤。
+
+你蹒跚地走出老宅，却发现自己已经无法适应正常的阳光。夜晚，你会梦游般走向隧道入口；白天，你会在纸上无意识画满蛇形符文。
+
+一个月后，你消失了。镇民们在隧道入口发现了你的手电筒，光束还亮着，指向黑暗深处。你成为了蛇父神殿的新一任看守者，永远徘徊在那片永恒的黑暗中...',
+                        hint: '理智低于30但仍通关'
+                    },
+                    {
+                        id: 'madness',
+                        name: '🌀 疯狂结局：蛇父的信徒',
+                        condition: (stats) => stats.sanity <= 0,
+                        text: '在核心巢穴的深处，你没有击败斯西亚——你加入了它。
+
+当理智归零的那一刻，你终于听懂了蛇人语言的真谛。伊格并非邪恶的神祇，它只是...孤独。斯西亚向你伸出手，你毫不犹豫地握住了它。
+
+你成为了蛇父神殿的新祭司，负责看守那永恒的火焰。乔什的骸骨被你用仪式安葬，你认为这是对他最好的归宿。
+
+偶尔，会有新的调查员闯入这片领地。你会微笑着迎接他们，就像斯西亚曾经迎接你一样。毕竟，伊格需要更多的信徒，而深渊...永远欢迎新的灵魂。',
+                        hint: '理智归零后通关（几乎不可能）'
+                    }
+                ],
                 layers: [
                     { size: 6, steps: 8, main: 1, sub: 2 },
                     { size: 9, steps: 15, main: 2, sub: 3 },
@@ -40,6 +101,22 @@ class DS08Game {
                 theme: '疗养院/罗伊格尔/旧印',
                 unlocked: false,
                 unlockItem: '神秘羊皮纸',
+                introStory: {
+                    title: '📜 新的威胁',
+                    text: '在你完成岭下暗影的探索后，密斯卡托尼克大学向你发来了新的委托。一张神秘的羊皮纸被送到你手中，上面记载着另一个更为恐怖的秘密——位于加州的斯通疗养院。
+
+那里曾是罗伊格尔的囚笼，而现在，门即将再次打开...',
+                    hint: '准备好面对更深层的恐惧了吗？'
+                },
+                endings: [
+                    {
+                        id: 'good',
+                        name: '✨ 结局：门扉紧闭',
+                        condition: () => true,
+                        text: '你成功封印了罗伊格尔，疗养院再次陷入沉寂。但你心里明白，这只是暂时的胜利。旧印的力量正在减弱，而门...总会再次打开。',
+                        hint: '通关即可'
+                    }
+                ],
                 layers: [
                     { size: 6, steps: 8, main: 1, sub: 3 },
                     { size: 10, steps: 15, main: 2, sub: 6 },
@@ -222,12 +299,54 @@ class DS08Game {
 
     // 从第1层开始副本
     startDungeonFromLayer1() {
-        this.currentLayer = 0;
-        this.sanity = 100;
-        this.startingSanity = 100;
-        this.markers = 3;
-        this.exploredSteps = 0;
-        this.startLayer(0);
+        // 显示前置剧情
+        const dungeon = this.currentDungeon;
+        if (dungeon.introStory) {
+            this.showIntroStory(dungeon.introStory, () => {
+                // 剧情结束后开始第一层
+                this.currentLayer = 0;
+                this.sanity = 100;
+                this.startingSanity = 100;
+                this.markers = 3;
+                this.exploredSteps = 0;
+                this.startLayer(0);
+            });
+        } else {
+            this.currentLayer = 0;
+            this.sanity = 100;
+            this.startingSanity = 100;
+            this.markers = 3;
+            this.exploredSteps = 0;
+            this.startLayer(0);
+        }
+    }
+    
+    // 显示副本前置剧情
+    showIntroStory(story, callback) {
+        const modal = document.getElementById('story-modal');
+        const title = document.getElementById('story-title');
+        const text = document.getElementById('story-text');
+        const resultDiv = document.getElementById('story-result');
+        
+        title.textContent = story.title;
+        text.innerHTML = `<div class="intro-story-text">${story.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
+        
+        resultDiv.innerHTML = `
+            <div class="intro-story-hint">${story.hint}</div>
+            <button onclick="game.closeIntroStory()">踏入深渊</button>
+        `;
+        
+        this.introStoryCallback = callback;
+        modal.classList.remove('hidden');
+    }
+    
+    // 关闭前置剧情
+    closeIntroStory() {
+        document.getElementById('story-modal').classList.add('hidden');
+        if (this.introStoryCallback) {
+            this.introStoryCallback();
+            this.introStoryCallback = null;
+        }
     }
 
     showLayerSelect() {
@@ -890,10 +1009,23 @@ class DS08Game {
         resultDiv.innerHTML = htmlContent;
         console.log('[STORY] HTML 已设置');
         
-        // 如果是主线房，标记为可前往下一层
+        // 如果是主线房
         if (cell.roomType === 'main') {
-            cell.canGoNext = true;
-            this.log(`🚪 主线剧情完成！出现前往下一层的入口`, 'special');
+            const isLastLayer = this.currentLayer >= this.currentDungeon.layers.length - 1;
+            if (isLastLayer) {
+                // 最后一层，显示结局门
+                cell.canGoNext = true;
+                cell.isEndingGate = true;
+                this.log(`🚪 BOSS战完成！通往结局的门已开启`, 'special');
+                // 修改按钮为结局门按钮
+                resultDiv.innerHTML += `
+                    <div class="ending-gate-hint">⚠️ 通往结局的门已开启</div>
+                    <button onclick="game.showEndingGate()" class="ending-gate-btn">🚪 前往结局结算</button>
+                `;
+            } else {
+                cell.canGoNext = true;
+                this.log(`🚪 主线剧情完成！出现前往下一层的入口`, 'special');
+            }
         } else if (cell.roomType === 'sub') {
             this.log(`✅ 支线剧情完成！`, 'info');
         }
@@ -901,6 +1033,120 @@ class DS08Game {
         this.updateHallucination();
         // 注意：这里不要调用 renderDungeon，否则会关闭弹窗
         console.log('[STORY] 完成，不调用 renderDungeon');
+    }
+    
+    // 显示结局门
+    showEndingGate() {
+        const modal = document.getElementById('story-modal');
+        const title = document.getElementById('story-title');
+        const text = document.getElementById('story-text');
+        const resultDiv = document.getElementById('story-result');
+        
+        title.textContent = '🚪 通往结局的门';
+        text.innerHTML = `
+            <div class="ending-gate-text">
+                <p>你站在核心巢穴的最深处，斯西亚的残骸仍在冒着青烟。</p>
+                <p>在你面前，一道石门缓缓升起，门后透出柔和的光芒。</p>
+                <p>这是离开这片深渊的通道，也是你命运的终点——或新的开始。</p>
+            </div>
+        `;
+        
+        resultDiv.innerHTML = `
+            <div class="ending-gate-choices">
+                <p class="ending-hint">你准备好面对自己的结局了吗？</p>
+                <button onclick="game.showEndingSettlement()" class="ending-btn primary">进入结局结算</button>
+                <button onclick="game.closeStoryModal()" class="ending-btn">继续探索</button>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    }
+    
+    // 显示结局结算
+    showEndingSettlement() {
+        const dungeon = this.currentDungeon;
+        const stats = {
+            sanity: this.sanity,
+            startingSanity: this.startingSanity,
+            itemsFound: this.dungeonInv.length,
+            layersCleared: this.currentLayer + 1,
+            dungeonId: dungeon.id
+        };
+        
+        // 根据条件判断结局
+        let ending = null;
+        if (dungeon.endings) {
+            // 按优先级检查结局条件
+            for (const e of dungeon.endings) {
+                if (e.condition(stats)) {
+                    ending = e;
+                    break;
+                }
+            }
+        }
+        
+        if (!ending) {
+            ending = {
+                name: '📜 普通结局：逃出生天',
+                text: '你成功逃离了这片深渊，带着满身的伤痕和无法磨灭的记忆。这段经历将成为你永远的秘密。',
+                hint: '标准通关'
+            };
+        }
+        
+        const modal = document.getElementById('story-modal');
+        const title = document.getElementById('story-title');
+        const text = document.getElementById('story-text');
+        const resultDiv = document.getElementById('story-result');
+        
+        title.textContent = ending.name;
+        text.innerHTML = `
+            <div class="ending-story">${ending.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>
+            <div class="ending-stats">
+                <h4>📊 本次探索统计</h4>
+                <p>剩余理智: ${this.sanity}/100</p>
+                <p>收集道具: ${this.dungeonInv.length} 件</p>
+                <p>通关层数: ${this.currentLayer + 1}/${dungeon.layers.length}</p>
+            </div>
+        `;
+        
+        resultDiv.innerHTML = `
+            <div class="ending-reward">
+                <h4>🎒 带出的道具</h4>
+                <div class="ending-items">
+                    ${this.dungeonInv.map(i => `<span class="ending-item">${i.icon} ${i.name}</span>`).join('') || '<span class="empty">无</span>'}
+                </div>
+            </div>
+            <button onclick="game.completeDungeonWithEnding()" class="ending-confirm-btn">确认并返回</button>
+        `;
+        
+        modal.classList.remove('hidden');
+    }
+    
+    // 完成副本（带结局）
+    completeDungeonWithEnding() {
+        // 记录通关
+        if (!this.persistent.completedDungeons.includes(this.currentDungeon.id)) {
+            this.persistent.completedDungeons.push(this.currentDungeon.id);
+        }
+        
+        // 将道具转移到仓库（全部带出）
+        let itemsSaved = 0;
+        for (const item of this.dungeonInv) {
+            this.persistent.vault.push({
+                ...item,
+                obtainedAt: Date.now()
+            });
+            itemsSaved++;
+        }
+        
+        // 清空副本背包
+        this.dungeonInv = [];
+        
+        this.saveData();
+        
+        document.getElementById('story-modal').classList.add('hidden');
+        alert(`🎉 ${this.currentDungeon.name} 通关完成！\n\n📦 ${itemsSaved} 件道具已存入仓库`);
+        this.showLobby();
     }
 
     goToNextLayer() {
@@ -1557,10 +1803,20 @@ class DS08Game {
                 main: [
                     {
                         id: 'shadow_l5_main_1',
-                        title: '主线·核心巢穴',
+                        title: '主线·核心巢穴 - 斯西亚·瑞斯',
                         text: '核心巢穴是整个地底的最深处，地面铺着皮质靠垫，一侧的温泉浴池冒着热气，另一侧的实验台上摆放着三本蛇人皮革卷轴。斯西亚·瑞斯正坐在卷轴前研究，它蛇形的身躯覆盖着银灰色鳞片，鳞片在荧光下泛着冷光，见到你闯入，眼中闪过冰冷的杀意，立刻召唤两只妖鬼助战。',
-                        goodOutcome: { text: '你趁斯西亚不备发动偷袭，占据了主动', reward: 'BOSS战优势，理智+20', sanity: 20 },
-                        badOutcome: { text: '斯西亚的迷身术让你动弹不得，只能眼睁睁看着妖鬼逼近...', reward: '理智-30，BOSS战劣势', sanity: -30 }
+                        goodOutcome: {
+                            preText: '就在斯西亚召唤妖鬼的瞬间，你注意到实验台上的火焰咒文卷轴还在燃烧。你迅速抓起卷轴，用阿卡洛语念出那段禁忌的咒语。金色的火焰从卷轴中喷涌而出，直接击中了斯西亚的胸口。蛇人祭司发出一声凄厉的惨叫，它的鳞片在高温下卷曲焦黑。两只妖鬼见势不妙，转身逃入黑暗。斯西亚挣扎着想要反击，但你的第二道咒文已经准备就绪...',
+                            resultText: '你成功击败了斯西亚·瑞斯，蛇人祭司的残骸倒在你脚下',
+                            reward: '理智+20，通往结局的门已开启',
+                            sanity: 20
+                        },
+                        badOutcome: {
+                            preText: '斯西亚举起双手，开始吟唱一段诡异的咒语。你感到四肢突然变得沉重，仿佛有无形的锁链束缚住了你的身体。你拼命挣扎，但无法移动分毫。斯西亚缓缓靠近，它分叉的舌头舔舐着空气，黄色的眼睛中闪烁着残忍的光芒。两只妖鬼从阴影中走出，它们的利爪在荧光下泛着寒光...',
+                            resultText: '你被斯西亚的迷身术控制，陷入了极度危险的境地',
+                            reward: '理智-30，但仍成功击败BOSS',
+                            sanity: -30
+                        }
                     }
                 ],
                 sub: [
