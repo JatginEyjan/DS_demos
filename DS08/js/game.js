@@ -211,6 +211,13 @@ class DS08Game {
 
     // 显示商店
     showShop() {
+        // 安全检查：如果没有选择副本，返回大厅
+        if (!this.currentDungeon) {
+            console.error('[ERROR] showShop called without currentDungeon');
+            this.showLobby();
+            return;
+        }
+        
         const c = document.getElementById('game-container');
         
         const shopItemsHtml = this.shopItems.map((item, idx) => `
@@ -271,6 +278,14 @@ class DS08Game {
 
     // 从第1层开始副本
     startDungeonFromLayer1() {
+        // 安全检查
+        if (!this.currentDungeon) {
+            console.error('[ERROR] startDungeonFromLayer1 called without currentDungeon');
+            alert('请先选择副本！');
+            this.showLobby();
+            return;
+        }
+        
         // 显示前置剧情
         const dungeon = this.currentDungeon;
         if (dungeon.introStory) {
