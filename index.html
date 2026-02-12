@@ -3,83 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS01 - 深渊扫雷</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta http-equiv="refresh" content="0; url=./DS08/index.html">
+    <title>DS08 - 幽暗编年史</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #c9b8a8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .loading {
+            font-size: 18px;
+        }
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        a {
+            color: #d4a574;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- 顶部状态栏 -->
-        <div id="status-bar">
-            <div class="stat">
-                <span class="label">理智</span>
-                <div class="bar-container">
-                    <div id="sanity-bar" class="bar"></div>
-                </div>
-                <span id="sanity-value">100</span>
-            </div>
-            <div class="stat">
-                <span class="label">负重</span>
-                <span id="weight-value">0/10</span>
-            </div>
-            <div class="stat">
-                <span class="label">深度</span>
-                <span id="depth-value">1</span>
-            </div>
-            <button id="extract-btn" class="hidden">紧急撤离</button>
-        </div>
-
-        <!-- 主游戏区 -->
-        <div id="main-area">
-            <!-- 扫雷网格 -->
-            <div id="minefield-container">
-                <div id="minefield"></div>
-            </div>
-
-            <!-- 侧边信息面板 -->
-            <div id="side-panel">
-                <div id="inventory">
-                    <h3>背包</h3>
-                    <div id="inventory-grid"></div>
-                </div>
-                <div id="log">
-                    <h3>探索日志</h3>
-                    <div id="log-content"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 底部控制区 -->
-        <div id="controls">
-            <div id="mode-toggle">
-                <button id="explore-mode" class="active">探索模式</button>
-                <button id="flag-mode">标记模式</button>
-            </div>
-            <div id="action-buttons">
-                <button id="scan-btn">扫描 (消耗理智)</button>
-                <button id="rest-btn">休息</button>
-            </div>
-        </div>
+    <div class="loading">
+        正在进入 DS08 幽暗编年史<br>
+        <small>如果未自动跳转，请 <a href="./DS08/index.html">点击这里</a></small>
     </div>
-
-    <!-- 事件弹窗 -->
-    <div id="event-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 id="event-title"></h2>
-            <p id="event-text"></p>
-            <div id="event-choices"></div>
-        </div>
-    </div>
-
-    <!-- 游戏结束/撤离弹窗 -->
-    <div id="end-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 id="end-title"></h2>
-            <p id="end-text"></p>
-            <div id="end-stats"></div>
-            <button id="restart-btn">再次潜入</button>
-        </div>
-    </div>
-
-    <script src="js/game.js"></script>
 </body>
 </html>
