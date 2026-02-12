@@ -753,14 +753,74 @@ class DS08Game {
             return;
         }
         
-        // 深入探索选项
+        // 深入探索选项 - 先显示骰子判定
         const baseProb = usedMarker ? 70 : 30;
         const sanityBonus = Math.floor(this.sanity / 10) * 5;
         const threshold = baseProb + sanityBonus;
         roll = Math.floor(Math.random() * 100) + 1;
         const isSuccess = roll <= threshold;
         
-        outcome = isSuccess ? story.goodOutcome : story.badOutcome;
+        // 保存结果供后续使用
+        this.pendingStoryResult = {
+            cell, story, roll, threshold, isSuccess, baseProb, sanityBonus
+        };
+        
+        // 显示骰子判定弹窗
+        this.showDiceRoll(roll, threshold, isSuccess);
+    }
+    
+    // 显示骰子判定动画
+    showDiceRoll(roll, threshold, isSuccess) {
+        const modal = document.getElementById('story-modal');
+        const title = document.getElementById('story-title');
+        const text = document.getElementById('story-text');
+        const resultDiv = document.getElementById('story-result');
+        
+        title.textContent = '🎲 命运判定';
+        text.innerHTML = `<p class="dice-hint">骰子正在滚动...</p>`;
+        
+        // 骰子动画HTML
+        resultDiv.innerHTML = `
+            <div class="dice-animation">
+                <div class="dice-container">
+                    <div class="dice" id="rolling-dice">🎲</div>
+                    <div class="dice-numbers" id="dice-numbers"></div>
+                </div>
+                <div class="dice-target">目标值: ${threshold}</div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+        
+        // 执行骰子动画
+        const diceEl = document.getElementById('rolling-dice');
+        const numbersEl = document.getElementById('dice-numbers');
+        let rolls = 0;
+        const maxRolls = 10;
+        const interval = setInterval(() => {
+            rolls++;
+            const randomNum = Math.floor(Math.random() * 100) + 1;
+            numbersEl.textContent = randomNum;
+            diceEl.style.transform = `rotate(${rolls * 36}deg)`;
+            
+            if (rolls >= maxRolls) {
+                clearInterval(interval);
+                // 显示最终结果
+                setTimeout(() => {
+                    this.showStoryResult();
+                }, 500);
+            }
+        }, 100);
+    }
+    
+    // 显示剧情结果
+    showStoryResult() {
+        const { cell, story, roll, threshold, isSuccess } = this.pendingStoryResult;
+        const outcome = isSuccess ? story.goodOutcome : story.badOutcome;
+        const modal = document.getElementById('story-modal');
+        const title = document.getElementById('story-title');
+        const text = document.getElementById('story-text');
+        const resultDiv = document.getElementById('story-result');
         
         // 应用结果
         if (outcome.sanity) {
@@ -785,9 +845,17 @@ class DS08Game {
             }
         }
         
-        // 新的显示结构：骰子结果 + 行动后剧情 + 结果 + 奖励
+        // 显示结果弹窗
+        title.textContent = isSuccess ? '✨ 判定成功' : '💀 判定失败';
+        text.innerHTML = `
+            <div class="dice-final">
+                <span class="dice-result ${isSuccess ? 'success' : 'fail'}">🎲 ${roll}</span>
+                <span class="dice-vs">/</span>
+                <span class="dice-target-val">${threshold}</span>
+            </div>
+        `;
+        
         resultDiv.innerHTML = `
-            <div class="dice-roll">🎲 d100: ${roll} / ${threshold} — ${isSuccess ? '✨ 成功' : '💀 失败'}</div>
             <div class="story-sequence">
                 <div class="story-phase">
                     <h4>📖 行动后</h4>

@@ -734,6 +734,86 @@ button.disabled {
     color: var(--text);
 }
 
+/* ===== 骰子判定动画 ===== */
+
+.dice-animation {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.dice-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+.dice {
+    font-size: 80px;
+    animation: dice-shake 0.5s ease-in-out infinite;
+    display: block;
+}
+
+@keyframes dice-shake {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+}
+
+.dice-numbers {
+    font-size: 48px;
+    font-weight: bold;
+    color: var(--accent);
+    margin-top: 15px;
+    font-family: monospace;
+    text-shadow: 0 0 10px var(--accent);
+}
+
+.dice-target {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+.dice-hint {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-bottom: 20px;
+}
+
+.dice-final {
+    text-align: center;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.dice-result {
+    font-size: 48px;
+    font-weight: bold;
+}
+
+.dice-result.success {
+    color: var(--success);
+    text-shadow: 0 0 20px var(--success);
+}
+
+.dice-result.fail {
+    color: var(--danger);
+    text-shadow: 0 0 20px var(--danger);
+}
+
+.dice-vs {
+    font-size: 24px;
+    color: var(--text-secondary);
+    margin: 0 15px;
+}
+
+.dice-target-val {
+    font-size: 32px;
+    color: var(--warning);
+}
+
 /* ===== 响应式 ===== */
 
 @media (max-width: 768px) {
