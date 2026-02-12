@@ -981,6 +981,130 @@ button.disabled {
     color: var(--bg);
 }
 
+/* ===== 规则说明样式 ===== */
+
+.rules-modal {
+    z-index: 2000;
+}
+
+.rules-content {
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.rules-content h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--accent);
+}
+
+.rules-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.rules-section h3 {
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-size: 18px;
+    border-bottom: 1px solid var(--accent);
+    padding-bottom: 5px;
+}
+
+.rule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.rule-item.good {
+    border-left: 3px solid var(--success);
+}
+
+.rule-item.bad {
+    border-left: 3px solid var(--danger);
+}
+
+.rule-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.rule-text {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.rule-text .highlight {
+    color: var(--warning);
+    font-weight: bold;
+}
+
+.rule-benefits {
+    margin-top: 8px;
+    margin-left: 20px;
+    font-size: 14px;
+}
+
+.rule-benefits li {
+    margin: 4px 0;
+}
+
+.rule-example {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(74, 144, 217, 0.1);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.rule-example .math {
+    color: var(--accent);
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.rules-section ul {
+    margin-left: 20px;
+}
+
+.rules-section li {
+    margin: 8px 0;
+    line-height: 1.6;
+}
+
+.rules-section .danger {
+    color: var(--danger);
+    font-weight: bold;
+}
+
+.rules-footer {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rules-btn {
+    margin-left: 10px;
+    background: rgba(139, 92, 246, 0.3);
+    border: 1px solid var(--accent);
+    color: var(--text);
+}
+
+.header-left {
+    display: flex;
+    gap: 10px;
+}
+
 /* ===== 响应式 ===== */
 
 @media (max-width: 768px) {

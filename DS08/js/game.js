@@ -395,10 +395,113 @@ class DS08Game {
         
         if (layerIndex === 0) {
             this.explorationLogs = [{ msg: `进入了${this.currentDungeon.name} 第1层...`, type: 'system', time: Date.now() }];
+            // 第一层自动显示规则说明
+            setTimeout(() => this.showRules(), 500);
         } else {
             this.explorationLogs = [{ msg: `进入了第${layerIndex + 1}层（理智继承：${this.sanity}）`, type: 'system', time: Date.now() }];
         }
         this.renderLogs();
+    }
+    
+    // 显示规则说明
+    showRules() {
+        const modalHtml = `
+            <div id="rules-modal" class="modal rules-modal">
+                <div class="modal-content rules-content">
+                    <h2>📖 游戏规则说明</h2>
+                    
+                    <div class="rules-section">
+                        <h3>🎯 基础目标</h3>
+                        <p>探索地图，揭示格子，找到主线剧情房并击败BOSS，最终逃离深渊。</p>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🔢 数字计数规则</h3>
+                        <div class="rule-item">
+                            <span class="rule-icon">💀</span>
+                            <span class="rule-text"><strong>陷阱</strong> - 每个陷阱计数 +1</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon">🕯️</span>
+                            <span class="rule-text"><strong>主线房间</strong> - 计数 +1，且数字 <span class="highlight">×10</span></span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon">📜</span>
+                            <span class="rule-text"><strong>支线房间</strong> - 计数 +1，且数字 <span class="highlight">×(-1)</span>（变负数）</span>
+                        </div>
+                        <div class="rule-example">
+                            <strong>示例：</strong>周围有2个陷阱+1个主线房 = <span class="math">(2+1) × 10 = 30</span>
+                        </div>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🚩 标记器使用（右键点击）</h3>
+                        <div class="rule-item good">
+                            <span class="rule-icon">✅</span>
+                            <span class="rule-text"><strong>成功标记</strong>（陷阱/主线/支线）</span>
+                            <ul class="rule-benefits">
+                                <li>🧠 恢复 5 点理智</li>
+                                <li>🎯 剧情判定成功率 +20%</li>
+                                <li>💎 标记器返还（不消耗）</li>
+                            </ul>
+                        </div>
+                        <div class="rule-item bad">
+                            <span class="rule-icon">❌</span>
+                            <span class="rule-text"><strong>错误标记</strong>（普通空地）</span>
+                            <ul class="rule-benefits">
+                                <li>🚩 消耗 1 个标记器</li>
+                                <li>💔 无额外奖励</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🧠 理智值系统</h3>
+                        <ul>
+                            <li>触发陷阱：<strong>-25 理智</strong></li>
+                            <li>理智 < 30：<span class="danger">进入幻觉模式</span>（数字可能显示错误）</li>
+                            <li>理智 = 0：<span class="danger">立即死亡</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🎒 道具说明</h3>
+                        <div class="rule-item">
+                            <span class="rule-icon">🧪</span>
+                            <span class="rule-text"><strong>理智药水</strong> - 恢复 20 理智</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon">🔍</span>
+                            <span class="rule-text"><strong>探测器</strong> - 揭示任意1格</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon">🏮</span>
+                            <span class="rule-text"><strong>煤油灯</strong> - 退出幻觉模式</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon">🚩</span>
+                            <span class="rule-text"><strong>标记器套装</strong> - 获得 2 个标记器</span>
+                        </div>
+                    </div>
+                    
+                    <div class="rules-footer">
+                        <button onclick="game.closeRules()" class="primary">我知道了</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 如果已存在则先移除
+        const existingModal = document.getElementById('rules-modal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    // 关闭规则说明
+    closeRules() {
+        const modal = document.getElementById('rules-modal');
+        if (modal) modal.remove();
     }
 
     createGrid(size) {
@@ -518,7 +621,10 @@ class DS08Game {
         c.innerHTML = `
             <div id="dungeon" class="${this.hallucinationMode ? 'hallucination' : ''}">
                 <header>
-                    <button onclick="game.quitLayer()">⬅️ 撤退</button>
+                    <div class="header-left">
+                        <button onclick="game.quitLayer()">⬅️ 撤退</button>
+                        <button onclick="game.showRules()" class="rules-btn">📖 规则说明</button>
+                    </div>
                     <div class="dungeon-info">
                         <span class="dungeon-name">${this.currentDungeon.name} ${this.currentLayer + 1}层</span>
                         <span class="steps">步数: ${this.exploredSteps}/${config.steps}</span>
