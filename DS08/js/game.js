@@ -62,11 +62,46 @@ class DS08Game {
                     }
                 ],
                 layers: [
-                    { size: 6, steps: 8, main: 1, sub: 2 },
-                    { size: 9, steps: 15, main: 2, sub: 3 },
-                    { size: 10, steps: 20, main: 2, sub: 4 },
-                    { size: 15, steps: 35, main: 3, sub: 6 },
-                    { size: 16, steps: 50, main: 3, sub: 8 }
+                    {
+                        size: 6, steps: 8, main: 1, sub: 2,
+                        layerName: '老宅地窖',
+                        layerStory: {
+                            title: '🏚️ 老宅地窖',
+                            text: '你踏入了文斯考特老宅的地窖，潮湿的空气中弥漫着霉味与泥土的气息。砖墙被破开的大洞像一张漆黑的嘴，通往未知的深渊。手电筒的光芒在洞壁上摇曳，映出18世纪奴隶贩子留下的船锚标记。这里曾是走私者的秘密通道，如今成了通往地狱的入口。你深吸一口气，迈出了第一步。'
+                        }
+                    },
+                    {
+                        size: 9, steps: 15, main: 2, sub: 3,
+                        layerName: '隧道遗迹',
+                        layerStory: {
+                            title: '🚇 隧道遗迹',
+                            text: '穿过地窖，你进入了真正的隧道遗迹。这里的空气更加沉闷，石壁上布满了潮湿的青苔和奇怪的抓痕。地面上散落着锈蚀的锁链和破碎的骨骼——有些是动物的，有些则明显属于人类。远处传来滴水的声音，在寂静中被无限放大。你意识到，这里曾经发生过可怕的事情，而那些制造恐怖的东西...可能还在。'
+                        }
+                    },
+                    {
+                        size: 10, steps: 20, main: 2, sub: 4,
+                        layerName: '蛇人先民遗迹',
+                        layerStory: {
+                            title: '🐍 蛇人先民遗迹',
+                            text: '隧道突然变得宽阔，你来到了一个巨大的地下洞穴。这里的岩壁上刻满了扭曲的符文和蛇形图案，散发着微弱的荧光。空气中弥漫着一种甜腻的香气，让你的头有些发晕。你注意到地面上有奇怪的划痕，像是某种巨大的爬行动物拖拽身体留下的痕迹。这里曾是蛇人文明的领地，而你...是一个闯入者。'
+                        }
+                    },
+                    {
+                        size: 15, steps: 35, main: 3, sub: 6,
+                        layerName: '蛇人领地核心',
+                        layerStory: {
+                            title: '👑 蛇人领地核心',
+                            text: '你已经深入到了蛇人领地的核心区域。这里的洞穴被精心雕琢，墙壁上镶嵌着发光的 crystal，照亮了周围令人不安的景象。你看到了退化的人类奴隶在照料奇怪的真菌群落，看到了祭祀用的石坛上还残留着干涸的血迹。远处传来低沉的吟唱声，那是蛇人的祭祀正在举行某种古老的仪式。你感到无数双眼睛在黑暗中注视着你。'
+                        }
+                    },
+                    {
+                        size: 16, steps: 50, main: 3, sub: 8,
+                        layerName: '蛇人核心巢穴',
+                        layerStory: {
+                            title: '🔥 蛇人核心巢穴',
+                            text: '你站在了深渊的最深处——蛇人核心巢穴。这里的温度异常温暖，空气中弥漫着硫磺和麝香的味道。巨大的天然石柱被雕刻成盘卷巨蛇的形态，那是蛇人神祇伊格的象征。在巢穴的中央，蛇人祭司斯西亚·瑞斯正等着你。它银灰色的鳞片在荧光下闪烁着冷光，分叉的舌头不断探出，似乎在品尝你的恐惧。这是最后的战场，也是你命运的转折点。'
+                        }
+                    }
                 ]
             },
             gate: {
@@ -386,6 +421,11 @@ class DS08Game {
         this.hallucinationMode = false;
         this.explorationLogs = []; // 重置日志
         
+        // 如果有层叙事，先显示叙事
+        if (config.layerStory) {
+            this.showLayerStory(config.layerStory, layerIndex);
+        }
+        
         this.createGrid(config.size);
         this.placeRooms(config.main, config.sub);
         this.placeTraps(Math.floor(config.size * config.size * 0.15));
@@ -502,6 +542,38 @@ class DS08Game {
     closeRules() {
         const modal = document.getElementById('rules-modal');
         if (modal) modal.remove();
+    }
+    
+    // 显示层叙事
+    showLayerStory(story, layerIndex) {
+        const modalHtml = `
+            <div id="layer-story-modal" class="modal layer-story-modal">
+                <div class="modal-content layer-story-content">
+                    <h2>${story.title}</h2>
+                    <div class="layer-story-text">${story.text}</div>
+                    <div class="layer-story-footer">
+                        <button onclick="game.closeLayerStory(${layerIndex})" class="primary">继续探索</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 如果已存在则先移除
+        const existingModal = document.getElementById('layer-story-modal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    // 关闭层叙事
+    closeLayerStory(layerIndex) {
+        const modal = document.getElementById('layer-story-modal');
+        if (modal) modal.remove();
+        
+        // 如果是第一层，显示规则说明
+        if (layerIndex === 0) {
+            setTimeout(() => this.showRules(), 300);
+        }
     }
 
     createGrid(size) {
@@ -626,7 +698,7 @@ class DS08Game {
                         <button onclick="game.showRules()" class="rules-btn">📖 规则说明</button>
                     </div>
                     <div class="dungeon-info">
-                        <span class="dungeon-name">${this.currentDungeon.name} ${this.currentLayer + 1}层</span>
+                        <span class="dungeon-name">${config.layerName || this.currentDungeon.name}（第${this.currentLayer + 1}层）</span>
                         <span class="steps">步数: ${this.exploredSteps}/${config.steps}</span>
                     </div>
                     <div class="resources">

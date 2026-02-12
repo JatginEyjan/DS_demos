@@ -977,6 +977,43 @@ button.disabled {
     padding: 15px;
     font-size: 18px;
     background: var(--success);
+}
+
+/* ===== 层叙事弹窗样式 ===== */
+
+.layer-story-modal {
+    z-index: 1500;
+}
+
+.layer-story-content {
+    max-width: 550px;
+    text-align: center;
+}
+
+.layer-story-content h2 {
+    color: var(--accent);
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.layer-story-text {
+    line-height: 2;
+    text-align: left;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.layer-story-footer {
+    text-align: center;
+}
+
+.layer-story-footer button {
+    padding: 12px 40px;
+    font-size: 18px;
+}
     border-color: var(--success);
     color: var(--bg);
 }
