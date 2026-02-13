@@ -353,10 +353,56 @@ class DS09Game {
     }
     
     triggerRoomEvent(cell) {
-        // 简化版房间事件
         const isMain = cell.roomType === 'main';
-        this.log(`${isMain ? '🎯 发现重要房间！' : '📍 发现隐藏区域'}`);
-        this.lootValue += isMain ? 100 : 50;
+        const roomName = isMain ? '重要房间' : '隐藏区域';
+        const sanityChange = isMain ? -10 : -5;
+        const lootBonus = isMain ? 100 : 50;
+        
+        // 显示剧情弹窗
+        this.showRoomEventModal(isMain, roomName, sanityChange, lootBonus);
+    }
+    
+    showRoomEventModal(isMain, roomName, sanityChange, lootBonus) {
+        // 随机剧情文本
+        const mainStories = [
+            '你推开腐朽的门，发现了一个古老的祭坛。墙上刻满了你无法理解的符文，空气中弥漫着腐朽和香料混合的气味。祭坛上放着一些物品...',
+            '这是一个被遗弃的密室，地面上的灰尘显示这里已经很久没有人来过。角落里有一个破旧的箱子，你小心翼翼地打开它...',
+            '你进入了一个宽阔的洞窟，头顶的钟乳石滴着水。在火光的照耀下，你看到墙壁上画着某种生物的壁画，那生物有着蛇一般的身体和人的面孔...'
+        ];
+        const subStories = [
+            '你发现了一条狭窄的通道，墙壁上有人用指甲刻下的痕迹。那是求救信号，还是某种警告？你在角落发现了一些遗留物...',
+            '这是一个储藏室，里面堆满了腐朽的木箱。你撬开其中一个，发现了一些还能使用的物品...',
+            '你推开隐藏的暗门，发现了一个小空间。这里曾是某人的藏身处，留下了一些生存物资...'
+        ];
+        
+        const storyText = isMain ? mainStories[Math.floor(Math.random() * mainStories.length)] : subStories[Math.floor(Math.random() * subStories.length)];
+        
+        const modal = document.createElement('div');
+        modal.id = 'room-event-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content room-event-content">
+                <h3>${isMain ? '🎯' : '📍'} 发现${roomName}</h3>
+                <div class="story-text">${storyText}</div>
+                <div class="event-effects">
+                    <p>🧠 理智 ${sanityChange > 0 ? '+' : ''}${sanityChange}</p>
+                    <p>💰 收获 +${lootBonus}</p>
+                </div>
+                <button onclick="game.closeRoomEventModal(${sanityChange}, ${lootBonus})">继续探索</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    closeRoomEventModal(sanityChange, lootBonus) {
+        // 应用数值变化
+        this.sanity = Math.max(0, this.sanity + sanityChange);
+        this.lootValue += lootBonus;
+        
+        const modal = document.getElementById('room-event-modal');
+        if (modal) modal.remove();
+        
+        this.renderDungeon();
     }
     
     // ===== 撤离选择 =====
@@ -404,8 +450,23 @@ class DS09Game {
         const modal = document.getElementById('extraction-modal');
         if (modal) modal.remove();
         
-        this.log('⚠️ 你选择继续深入...收益翻倍！');
-        this.renderDungeon();
+        // 检查是否是最后一层
+        const isLastLayer = this.currentLayer >= this.currentDungeon.layers.length - 1;
+        
+        if (isLastLayer) {
+            // 最后一层，触发结局
+            this.log('⚠️ 你选择继续深入...发现最终区域！');
+            alert(`🏁 你已到达最深处！\n💰 最终收获: ${this.lootValue}\n\n你成功完成了探索！`);
+            this.persistent.gold += this.lootValue;
+            this.persistent.completedRuns++;
+            this.saveData();
+            this.showLobby();
+        } else {
+            // 前往下一层
+            this.log('⚠️ 你选择继续深入...前往下一层！');
+            alert(`⚔️ 收益翻倍！前往第 ${this.currentLayer + 2} 层...`);
+            this.startLayer(this.currentLayer + 1);
+        }
     }
     
     // ===== 工具函数 =====

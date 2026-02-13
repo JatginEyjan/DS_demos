@@ -321,6 +321,44 @@ body {
     margin-bottom: 10px;
 }
 
+/* ===== 房间事件弹窗 ===== */
+
+.room-event-content {
+    border-color: var(--accent);
+    text-align: left;
+}
+
+.room-event-content h3 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.story-text {
+    line-height: 1.8;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 15px;
+}
+
+.event-effects {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.event-effects p {
+    margin: 5px 0;
+    font-weight: bold;
+}
+
+.room-event-content button {
+    width: 100%;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 600px) {
     .cell {
