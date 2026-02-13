@@ -443,7 +443,7 @@ class DS08Game {
         this.renderLogs();
     }
     
-    // 显示规则说明
+    // 显示规则说明 - DS09新版
     showRules() {
         const modalHtml = `
             <div id="rules-modal" class="modal rules-modal">
@@ -452,76 +452,67 @@ class DS08Game {
                     
                     <div class="rules-section">
                         <h3>🎯 基础目标</h3>
-                        <p>探索地图，揭示格子，找到主线剧情房并击败BOSS，最终逃离深渊。</p>
+                        <p>探索地牢，揭示安全区域，找到剧情房推进故事，达成步数要求后撤离。</p>
                     </div>
                     
                     <div class="rules-section">
-                        <h3>🔢 数字计数规则</h3>
+                        <h3>🎨 揭示后的视觉语言</h3>
                         <div class="rule-item">
-                            <span class="rule-icon">💀</span>
-                            <span class="rule-text"><strong>陷阱</strong> - 每个陷阱计数 +1</span>
+                            <span class="rule-icon empty">⬜</span>
+                            <span class="rule-text"><strong>空地</strong> - 无边框，仅底色表示风险</span>
                         </div>
                         <div class="rule-item">
-                            <span class="rule-icon">🕯️</span>
-                            <span class="rule-text"><strong>主线房间</strong> - 计数 +1，且数字 <span class="highlight">×10</span></span>
+                            <span class="rule-icon safe">🟢</span>
+                            <span class="rule-text"><strong>安全</strong> - 0威胁，会连锁揭示周围</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon yellow">🟡</span>
+                            <span class="rule-text"><strong>不安</strong> - 1-2个威胁 nearby</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon red">🔴</span>
+                            <span class="rule-text"><strong>危险</strong> - 3+个威胁 nearby</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon eye">👁️</span>
+                            <span class="rule-text"><strong>注视</strong> - 附近有剧情房（不确定位置）</span>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-icon story">📜</span>
+                            <span class="rule-text"><strong>剧情房</strong> - 有边框+纯色底板（踩到触发事件）</span>
+                        </div>
+                    </div>
+                    
+                    <div class="rules-section">
+                        <h3>🚩 标记器使用（右键点击未揭示格子）</h3>
+                        <p class="rule-desc">标记器可以<strong>安全揭示</strong>一个格子，但只能使用一次。</p>
+                        <div class="rule-item good">
+                            <span class="rule-icon">💀</span>
+                            <span class="rule-text"><strong>标记陷阱</strong> → 标记器返还，理智+5，安全通过</span>
                         </div>
                         <div class="rule-item">
                             <span class="rule-icon">📜</span>
-                            <span class="rule-text"><strong>支线房间</strong> - 计数 +1，且数字 <span class="highlight">×(-1)</span>（变负数）</span>
-                        </div>
-                        <div class="rule-example">
-                            <strong>示例：</strong>周围有2个陷阱+1个主线房 = <span class="math">(2+1) × 10 = 30</span>
-                        </div>
-                    </div>
-                    
-                    <div class="rules-section">
-                        <h3>🚩 标记器使用（右键点击）</h3>
-                        <div class="rule-item good">
-                            <span class="rule-icon">✅</span>
-                            <span class="rule-text"><strong>成功标记</strong>（陷阱/主线/支线）</span>
-                            <ul class="rule-benefits">
-                                <li>🧠 恢复 5 点理智</li>
-                                <li>🎯 剧情判定成功率 +20%</li>
-                                <li>💎 标记器返还（不消耗）</li>
-                            </ul>
+                            <span class="rule-text"><strong>标记剧情房</strong> → 触发剧情，70%基础好走向</span>
                         </div>
                         <div class="rule-item bad">
-                            <span class="rule-icon">❌</span>
-                            <span class="rule-text"><strong>错误标记</strong>（普通空地）</span>
-                            <ul class="rule-benefits">
-                                <li>🚩 消耗 1 个标记器</li>
-                                <li>💔 无额外奖励</li>
-                            </ul>
+                            <span class="rule-icon">⬜</span>
+                            <span class="rule-text"><strong>标记空地</strong> → 消耗标记器，仅揭示格子</span>
                         </div>
                     </div>
                     
                     <div class="rules-section">
-                        <h3>🧠 理智值系统</h3>
+                        <h3>🧠 理智与幻觉</h3>
                         <ul>
-                            <li>触发陷阱：<strong>-25 理智</strong></li>
-                            <li>理智 < 30：<span class="danger">进入幻觉模式</span>（数字可能显示错误）</li>
-                            <li>理智 = 0：<span class="danger">立即死亡</span></li>
+                            <li>踩到陷阱：<strong>-15~25 理智</strong></li>
+                            <li>剧情事件：根据结果±理智</li>
+                            <li>理智 < 30：<span class="danger">进入幻觉</span>（看到的底色可能是错误的）</li>
+                            <li>理智 = 0：<span class="danger">精神崩溃，游戏结束</span></li>
                         </ul>
                     </div>
                     
                     <div class="rules-section">
-                        <h3>🎒 道具说明</h3>
-                        <div class="rule-item">
-                            <span class="rule-icon">🧪</span>
-                            <span class="rule-text"><strong>理智药水</strong> - 恢复 20 理智</span>
-                        </div>
-                        <div class="rule-item">
-                            <span class="rule-icon">🔍</span>
-                            <span class="rule-text"><strong>探测器</strong> - 揭示任意1格</span>
-                        </div>
-                        <div class="rule-item">
-                            <span class="rule-icon">🏮</span>
-                            <span class="rule-text"><strong>煤油灯</strong> - 退出幻觉模式</span>
-                        </div>
-                        <div class="rule-item">
-                            <span class="rule-icon">🚩</span>
-                            <span class="rule-text"><strong>标记器套装</strong> - 获得 2 个标记器</span>
-                        </div>
+                        <h3>🚪 撤离机制</h3>
+                        <p>探索达到指定步数后，可以安全撤离进入下一层。继续探索可获得更多收益，但风险也更大。</p>
                     </div>
                     
                     <div class="rules-footer">
@@ -971,6 +962,9 @@ class DS08Game {
         const cell = this.grid[y][x];
         if (cell.isRevealed) return;
 
+        // 先显示标记动画
+        await this.showMarkerAnimation(x, y);
+        
         cell.isRevealed = true;
         this.exploredSteps++;
 
@@ -978,25 +972,68 @@ class DS08Game {
             // 正确标记陷阱，返还标记器+奖励
             this.markers++;
             this.sanity = Math.min(100, this.sanity + 5);
-            this.log(`✅ 标记陷阱成功！标记器返还，理智+5`, 'good');
-            // 陷阱不触发，安全通过
+            this.showMarkerResult('success', '标记成功！', 
+                '你标记了一个陷阱，安全避开！\n🚩 标记器返还\n🧠 理智 +5');
             this.updateHallucination();
             this.renderDungeon();
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-            // 标记剧情房，70%基础好走向
-            this.log(`发现了${cell.roomType==='main'?'主线':'支线'}剧情房`, 'info');
-            this.triggerStoryWithChoice(cell, true); // true表示使用标记器触发
+            // 标记剧情房
+            const roomType = cell.roomType === 'main' ? '主线' : '支线';
+            this.showMarkerResult('story', '发现剧情房！', 
+                `你标记了一个${roomType}剧情房！\n🎯 判定成功率 +20%`);
+            this.triggerStoryWithChoice(cell, true);
             this.updateHallucination();
-            // 不调用renderDungeon，保持弹窗打开
         } else {
-            // 普通房间
-            this.log('❌ 标记错误，标记器已消耗', 'bad');
+            // 普通房间 - 标记器消耗
+            this.showMarkerResult('waste', '标记了空地', 
+                '这里什么都没有...\n🚩 标记器已消耗');
             if (cell.threatCount === 0) {
                 await this.autoExpand(x, y);
             }
             this.updateHallucination();
             this.renderDungeon();
         }
+    }
+    
+    // 标记动画
+    async showMarkerAnimation(x, y) {
+        const cellEl = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+        if (cellEl) {
+            cellEl.classList.add('marking');
+            await this.delay(400);
+            cellEl.classList.remove('marking');
+        }
+    }
+    
+    // 标记结果弹窗
+    showMarkerResult(type, title, message) {
+        const icons = {
+            success: '✅',
+            story: '📜',
+            waste: '⬜'
+        };
+        const colors = {
+            success: '#4ad94a',
+            story: '#8b5cf6',
+            waste: '#d9a04a'
+        };
+        
+        const modal = document.createElement('div');
+        modal.className = 'marker-result-modal';
+        modal.innerHTML = `
+            <div class="marker-result-content" style="border-color: ${colors[type]}">
+                <div class="marker-result-icon" style="color: ${colors[type]}">${icons[type]}</div>
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <button onclick="this.parentElement.parentElement.remove()">继续</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // 2秒后自动关闭
+        setTimeout(() => {
+            if (modal.parentElement) modal.remove();
+        }, 2000);
     }
 
     triggerTrap() {
