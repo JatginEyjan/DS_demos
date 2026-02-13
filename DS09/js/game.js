@@ -23,11 +23,11 @@ class DS09Game {
                 id: 'shadow',
                 name: '岭下暗影',
                 layers: [
-                    { size: 6, traps: 3, storyRooms: 2, extractions: 1 },
-                    { size: 9, traps: 6, storyRooms: 3, extractions: 1 },
-                    { size: 10, traps: 8, storyRooms: 4, extractions: 2 },
-                    { size: 12, traps: 12, storyRooms: 5, extractions: 2 },
-                    { size: 14, traps: 15, storyRooms: 6, extractions: 1 }
+                    { size: 6, traps: 3, storyRooms: 2, stepsRequired: 8 },
+                    { size: 9, traps: 6, storyRooms: 3, stepsRequired: 15 },
+                    { size: 10, traps: 8, storyRooms: 4, stepsRequired: 20 },
+                    { size: 12, traps: 12, storyRooms: 5, stepsRequired: 30 },
+                    { size: 14, traps: 15, storyRooms: 6, stepsRequired: 40 }
                 ]
             }
         };
@@ -77,13 +77,13 @@ class DS09Game {
         this.sanity = 100;
         this.markers = 3;
         this.lootValue = 0;
-        this.foundExtraction = false;
+        this.exploredSteps = 0;
+        this.stepsRequired = config.stepsRequired;
         this.state = 'dungeon';
         
         this.createGrid();
         this.placeTraps(config.traps);
         this.placeStoryRooms(config.storyRooms);
-        this.placeExtractionPoints(config.extractions);
         this.calcThreatNumbers();
         
         this.renderDungeon();
@@ -98,10 +98,9 @@ class DS09Game {
                 isMarked: false,
                 isTrap: false,
                 isStoryRoom: false,
-                storyType: null, // 'main' or 'sub'
-                hasExtraction: false,
-                threatCount: 0,  // 周围雷数
-                hasStoryNearby: false  // 周围是否有剧情房
+                storyType: null,
+                threatCount: 0,
+                hasStoryNearby: false
             }))
         );
     }
@@ -113,7 +112,7 @@ class DS09Game {
             const x = Math.floor(Math.random() * this.gridSize);
             const y = Math.floor(Math.random() * this.gridSize);
             const cell = this.grid[y][x];
-            if (!cell.isTrap && !cell.isStoryRoom && !cell.hasExtraction) {
+            if (!cell.isTrap && !cell.isStoryRoom) {
                 cell.isTrap = true;
                 placed++;
             }
@@ -127,28 +126,10 @@ class DS09Game {
             const x = Math.floor(Math.random() * this.gridSize);
             const y = Math.floor(Math.random() * this.gridSize);
             const cell = this.grid[y][x];
-            if (!cell.isTrap && !cell.isStoryRoom && !cell.hasExtraction) {
+            if (!cell.isTrap && !cell.isStoryRoom) {
                 cell.isStoryRoom = true;
                 cell.storyType = Math.random() < 0.4 ? 'main' : 'sub';
                 placed++;
-            }
-        }
-    }
-    
-    // ===== 放置撤离点 =====
-    placeExtractionPoints(count) {
-        this.extractionPoints = [];
-        for (let i = 0; i < count; i++) {
-            let placed = false;
-            while (!placed) {
-                const x = Math.floor(Math.random() * this.gridSize);
-                const y = Math.floor(Math.random() * this.gridSize);
-                const cell = this.grid[y][x];
-                if (!cell.isTrap && !cell.isStoryRoom && !cell.hasExtraction) {
-                    cell.hasExtraction = true;
-                    this.extractionPoints.push({x, y});
-                    placed = true;
-                }
             }
         }
     }
@@ -192,7 +173,10 @@ class DS09Game {
             <div id="dungeon">
                 <header>
                     <button onclick="game.quitToLobby()">⬅️ 放弃</button>
-                    <span>第 ${this.currentLayer + 1} 层 | 💰 ${this.lootValue} | 🧠 ${this.sanity}</span>
+                    <span>第 ${this.currentLayer + 1} 层 | 🦶 ${this.exploredSteps}/${this.stepsRequired} | 💰 ${this.lootValue} | 🧠 ${this.sanity}</span>
+                    ${this.exploredSteps >= this.stepsRequired ? `
+                        <button onclick="game.showExtractChoice()" class="extract-btn">🚪 撤离</button>
+                    ` : ''}
                 </header>
                 <div class="legend">
                     <span class="default">⬜ 安全</span>
@@ -200,17 +184,12 @@ class DS09Game {
                     <span class="red">🔴 3+威胁</span>
                     <span>|</span>
                     <span>📜 附近有剧情</span>
-                    <span>🚪 撤离点</span>
+                    <span>|</span>
+                    <span>探索${this.stepsRequired}步后可撤离</span>
                 </div>
                 <div id="minefield" style="grid-template-columns: repeat(${this.gridSize}, 40px);">
                     ${this.renderGridCells()}
                 </div>
-                ${this.foundExtraction ? `
-                    <div class="extraction-alert">
-                        🚪 发现撤离点！
-                        <button onclick="game.showExtractionChoice()">选择行动</button>
-                    </div>
-                ` : ''}
             </div>
         `;
     }
@@ -234,9 +213,6 @@ class DS09Game {
                         // 已揭示的剧情房
                         className += ' story-room';
                         content = cell.storyType === 'main' ? '🎯' : '📍';
-                    } else if (cell.hasExtraction) {
-                        className += ' extraction';
-                        content = '🚪';
                     } else {
                         // 普通空地 - 根据威胁数显示底色
                         if (cell.threatCount === 0) {
@@ -274,30 +250,32 @@ class DS09Game {
         if (this.state !== 'dungeon') return;
         const cell = this.grid[y][x];
         if (cell.isRevealed) return;
-        
+
         // 揭示当前格子
         cell.isRevealed = true;
-        
+
+        // 增加探索步数（只有首次揭示且不是陷阱/剧情房才算）
+        if (!cell.isTrap && !cell.isStoryRoom) {
+            this.exploredSteps++;
+        }
+
         // 检查踩到雷
         if (cell.isTrap) {
             this.triggerTrap(cell);
         } else if (cell.isStoryRoom) {
             this.triggerStoryRoom(cell);
-        } else if (cell.hasExtraction) {
-            this.foundExtraction = true;
-            this.log('🚪 发现撤离点！');
         }
-        
+
         // 0威胁自动连锁揭示
         if (!cell.isTrap && !cell.isStoryRoom && cell.threatCount === 0) {
             this.autoReveal(x, y);
         }
-        
+
         // 搜刮价值
         if (!cell.isTrap) {
             this.lootValue += 5 + Math.floor(Math.random() * 10);
         }
-        
+
         this.renderDungeon();
     }
     
@@ -347,39 +325,37 @@ class DS09Game {
     }
     
     // ===== 撤离选择 =====
-    showExtractionChoice() {
+    showExtractChoice() {
+        const canExtract = this.exploredSteps >= this.stepsRequired;
+        if (!canExtract) {
+            alert(`还需要探索 ${this.stepsRequired - this.exploredSteps} 步才能撤离`);
+            return;
+        }
+
         const choice = confirm(
-            `🚪 撤离点\n\n` +
+            `🚪 撤离\n\n` +
             `💰 当前收获: ${this.lootValue}\n\n` +
-            `【确定】立即撤离 - 安全带走全部\n` +
-            `【取消】继续深入 - 前往下一层，收益翻倍但风险更大`
+            `【确定】立即撤离 - 安全带走全部，进入下一层\n` +
+            `【取消】继续探索 - 但无法进入下一层，风险更大`
         );
-        
+
         if (choice) {
-            // 撤离
-            alert(`✅ 安全撤离！\n💰 获得 ${this.lootValue} 金币`);
-            this.showLobby();
-        } else {
-            // 继续
-            this.continueExploring();
+            this.extractLayer();
         }
     }
-    
-    continueExploring() {
-        this.lootValue *= 2;
-        this.foundExtraction = false;
-        
+
+    extractLayer() {
         const isLastLayer = this.currentLayer >= this.currentDungeon.layers.length - 1;
-        
+
         if (isLastLayer) {
             alert(`🏁 通关！\n💰 最终收获: ${this.lootValue}\n\n你完成了所有层级的探索！`);
             this.showLobby();
         } else {
-            alert(`⚔️ 前往第 ${this.currentLayer + 2} 层...`);
+            alert(`✅ 撤离成功！\n💰 获得 ${this.lootValue} 金币\n\n前往第 ${this.currentLayer + 2} 层...`);
             this.startLayer(this.currentLayer + 1);
         }
     }
-    
+
     // ===== 工具函数 =====
     log(msg) {
         console.log(`[DS09] ${msg}`);
