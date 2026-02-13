@@ -269,11 +269,14 @@ class DS09Game {
                     </div>
                 </header>
                 <div class="threat-legend">
-                    <span>🟢 安全</span>
-                    <span>🟡 不安</span>
-                    <span>🔴 危险</span>
-                    <span>👁️ 异常</span>
-                    <span>📜 回声</span>
+                    <span class="legend-threat">🟢 安全</span>
+                    <span class="legend-threat">🟡 不安</span>
+                    <span class="legend-threat">🔴 危险</span>
+                    <span class="legend-divider">|</span>
+                    <span class="legend-opp">· 普通</span>
+                    <span class="legend-opp">👁️ 异常</span>
+                    <span class="legend-opp">📜 回声</span>
+                    <span class="legend-divider">|</span>
                     <span>🚪 撤离点</span>
                 </div>
                 <div id="minefield" style="grid-template-columns: repeat(${this.gridSize}, 40px);">
@@ -296,26 +299,41 @@ class DS09Game {
                 const cell = this.grid[y][x];
                 let className = 'cell';
                 let content = '';
+                let threatIcon = '';
+                
+                // 威胁等级（通过底色/边框显示）
+                const threat = this.threatLevels[cell.threatLevel];
+                className += ` threat-${cell.threatLevel}`;
+                threatIcon = threat.icon;
                 
                 if (cell.isRevealed) {
                     className += ' revealed';
-                    const threat = this.threatLevels[cell.threatLevel];
-                    className += ` threat-${cell.threatLevel}`;
                     
                     if (cell.hasExtraction) {
+                        // 撤离点：显示撤离图标
                         content = '🚪';
+                    } else if (cell.roomType !== 'normal') {
+                        // 已揭示的特殊房间：显示房间类型
+                        content = cell.roomType === 'main' ? '🎯' : '📍';
                     } else {
-                        content = threat.icon;
+                        // 普通揭示格子：显示威胁等级图标
+                        content = threatIcon;
                     }
                 } else {
+                    // 未揭示格子：显示机遇符号
                     const opp = this.opportunityTypes[cell.opportunity];
                     content = opp.icon;
-                    if (cell.opportunity !== 'none') {
-                        className += ` opportunity-${cell.opportunity}`;
-                    }
+                    
+                    // 双重提示：机遇图标 + 威胁底色
+                    // 图标显示机遇，底色显示威胁
                 }
                 
-                html += `<div class="${className}" onclick="game.handleCellClick(${x},${y})">${content}</div>`;
+                // 添加数据属性用于调试
+                html += `<div class="${className}" 
+                              data-x="${x}" data-y="${y}"
+                              data-threat="${cell.threatLevel}"
+                              data-opp="${cell.opportunity}"
+                              onclick="game.handleCellClick(${x},${y})">${content}</div>`;
             }
         }
         return html;

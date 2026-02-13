@@ -140,12 +140,27 @@ body {
 .threat-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 12px;
     padding: 15px;
     background: rgba(0,0,0,0.3);
     border-radius: 8px;
     margin-bottom: 15px;
-    font-size: 14px;
+    font-size: 13px;
+    align-items: center;
+}
+
+.threat-legend .legend-threat {
+    color: var(--text);
+    font-weight: bold;
+}
+
+.threat-legend .legend-opp {
+    color: var(--accent-light);
+}
+
+.threat-legend .legend-divider {
+    color: var(--text-secondary);
+    opacity: 0.5;
 }
 
 /* ===== 网格样式 ===== */
@@ -159,8 +174,7 @@ body {
 .cell {
     width: 40px;
     height: 40px;
-    background: #2a2a35;
-    border: 1px solid #3a3a45;
+    border: 2px solid;
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -168,54 +182,104 @@ body {
     font-size: 18px;
     cursor: pointer;
     transition: all 0.2s;
+    position: relative;
 }
 
 .cell:hover {
-    background: #3a3a45;
     transform: scale(1.05);
+    filter: brightness(1.2);
 }
 
 .cell.revealed {
     cursor: default;
 }
 
-/* 威胁等级颜色 */
+/* ===== 威胁等级底色系统 ===== */
+/* 双重信息：底色=威胁，图标=机遇 */
+
 .cell.threat-safe {
-    background: rgba(74, 222, 128, 0.2);
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15), rgba(74, 222, 128, 0.05));
     border-color: var(--safe);
+    box-shadow: inset 0 0 10px rgba(74, 222, 128, 0.1);
 }
 
 .cell.threat-unease {
-    background: rgba(251, 191, 36, 0.2);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
     border-color: var(--unease);
+    box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.15);
 }
 
 .cell.threat-danger {
-    background: rgba(248, 113, 113, 0.2);
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.25), rgba(248, 113, 113, 0.05));
     border-color: var(--danger);
+    box-shadow: inset 0 0 20px rgba(248, 113, 113, 0.2), 0 0 8px var(--danger);
     animation: danger-pulse 2s infinite;
 }
 
 @keyframes danger-pulse {
-    0%, 100% { box-shadow: 0 0 5px var(--danger); }
-    50% { box-shadow: 0 0 15px var(--danger); }
+    0%, 100% { box-shadow: inset 0 0 20px rgba(248, 113, 113, 0.2), 0 0 8px var(--danger); }
+    50% { box-shadow: inset 0 0 30px rgba(248, 113, 113, 0.3), 0 0 15px var(--danger); }
 }
 
-/* 机遇符号高亮 */
+/* 揭示后的威胁显示 */
+.cell.revealed.threat-safe {
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.1));
+}
+
+.cell.revealed.threat-unease {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.35), rgba(251, 191, 36, 0.1));
+}
+
+.cell.revealed.threat-danger {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(248, 113, 113, 0.15));
+}
+
+/* ===== 机遇符号高亮（叠加在威胁底色上） ===== */
 .cell.opportunity-anomaly {
-    border-color: var(--anomaly);
-    box-shadow: 0 0 10px rgba(192, 132, 252, 0.3);
+    /* 异常：紫色外发光 */
+    box-shadow: 0 0 12px rgba(192, 132, 252, 0.5), inset 0 0 10px rgba(192, 132, 252, 0.1);
 }
 
 .cell.opportunity-echo {
-    border-color: var(--echo);
-    box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
+    /* 回声：粉色强发光 + 脉动 */
+    box-shadow: 0 0 20px rgba(244, 114, 182, 0.6), inset 0 0 15px rgba(244, 114, 182, 0.15);
     animation: echo-glow 1.5s infinite;
 }
 
 @keyframes echo-glow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(244, 114, 182, 0.6), inset 0 0 15px rgba(244, 114, 182, 0.15);
+    }
+    50% { 
+        opacity: 0.85;
+        box-shadow: 0 0 30px rgba(244, 114, 182, 0.8), inset 0 0 20px rgba(244, 114, 182, 0.2);
+    }
+}
+
+/* 未揭示格子的机遇符号样式 */
+.cell:not(.revealed).opportunity-anomaly::after,
+.cell:not(.revealed).opportunity-echo::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--anomaly);
+    box-shadow: 0 0 5px var(--anomaly);
+}
+
+.cell:not(.revealed).opportunity-echo::after {
+    background: var(--echo);
+    box-shadow: 0 0 8px var(--echo);
+    animation: dot-pulse 1s infinite;
+}
+
+@keyframes dot-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
 }
 
 /* ===== 弹窗样式 ===== */
