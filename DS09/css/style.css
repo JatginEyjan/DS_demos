@@ -2,21 +2,13 @@
     --bg: #0f0f13;
     --bg-light: #1a1a24;
     --text: #e0e0e0;
-    --text-secondary: #888;
-    --accent: #8b5cf6;
-    --accent-light: #a78bfa;
     --safe: #4ade80;
-    --unease: #fbbf24;
-    --danger: #f87171;
-    --anomaly: #c084fc;
-    --echo: #f472b6;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --accent: #8b5cf6;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -26,34 +18,19 @@ body {
 }
 
 #game-container {
-    max-width: 900px;
+    max-width: 700px;
     margin: 0 auto;
     padding: 20px;
 }
 
-/* ===== 大厅样式 ===== */
+/* ===== 大厅 ===== */
 #lobby {
     text-align: center;
 }
 
-#lobby header {
-    margin-bottom: 30px;
-}
-
 #lobby h1 {
     color: var(--accent);
-    margin-bottom: 10px;
-}
-
-#lobby .stats {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    font-size: 18px;
-}
-
-.dungeon-selection {
-    margin: 30px 0;
+    margin-bottom: 20px;
 }
 
 .dungeon-card {
@@ -62,43 +39,24 @@ body {
     border-radius: 12px;
     padding: 30px;
     cursor: pointer;
-    transition: all 0.3s;
+    margin: 20px auto;
     max-width: 400px;
-    margin: 0 auto;
 }
 
 .dungeon-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-3px);
     box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
-}
-
-.dungeon-card h3 {
-    color: var(--accent);
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-.dungeon-card .status {
-    color: var(--safe);
-    margin-top: 15px;
 }
 
 .rules-hint {
     background: var(--bg-light);
-    border-radius: 12px;
-    padding: 25px;
-    margin-top: 30px;
-    text-align: left;
-}
-
-.rules-hint h3 {
-    color: var(--accent);
-    margin-bottom: 15px;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
 }
 
 .rules-hint p {
-    margin: 10px 0;
-    line-height: 1.6;
+    margin: 8px 0;
 }
 
 /* ===== 副本界面 ===== */
@@ -113,60 +71,36 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
-    flex-wrap: wrap;
-    gap: 10px;
 }
 
 #dungeon header button {
     background: transparent;
-    border: 1px solid var(--text-secondary);
+    border: 1px solid #555;
     color: var(--text);
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
 }
 
-.dungeon-info {
-    display: flex;
-    gap: 20px;
-}
-
-.resources {
-    display: flex;
-    gap: 15px;
-    font-size: 18px;
-}
-
-.threat-legend {
+.legend {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    padding: 15px;
+    padding: 12px;
     background: rgba(0,0,0,0.3);
     border-radius: 8px;
     margin-bottom: 15px;
     font-size: 13px;
-    align-items: center;
 }
 
-.threat-legend .legend-threat {
-    color: var(--text);
-    font-weight: bold;
-}
+.legend .default { color: #888; }
+.legend .yellow { color: var(--yellow); }
+.legend .red { color: var(--red); }
 
-.threat-legend .legend-opp {
-    color: var(--accent-light);
-}
-
-.threat-legend .legend-divider {
-    color: var(--text-secondary);
-    opacity: 0.5;
-}
-
-/* ===== 网格样式 ===== */
+/* ===== 网格 ===== */
 #minefield {
     display: grid;
-    gap: 4px;
+    gap: 3px;
     justify-content: center;
     margin: 20px 0;
 }
@@ -174,312 +108,106 @@ body {
 .cell {
     width: 40px;
     height: 40px;
-    border: 2px solid;
+    border: 2px solid #3a3a45;
     border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
+    transition: all 0.15s;
+    background: #2a2a35;
 }
 
 .cell:hover {
-    transform: scale(1.05);
     filter: brightness(1.2);
+    transform: scale(1.05);
 }
 
-.cell.revealed {
-    cursor: default;
-}
-
-/* ===== 未揭示格子 ===== */
+/* 未揭示 */
 .cell.unrevealed {
-    background: linear-gradient(135deg, #2a2a35, #252530);
-    border-color: #3a3a45;
+    background: linear-gradient(145deg, #2a2a35, #252530);
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.cell.unrevealed:hover {
-    background: linear-gradient(135deg, #3a3a45, #353540);
-    border-color: #4a4a55;
+.cell.marked {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: var(--yellow);
 }
 
-/* ===== 威胁提示（周围格子揭示后显示） ===== */
-.cell.has-hint {
-    position: relative;
+/* 已揭示 - 安全区 */
+.cell.revealed.safe {
+    background: linear-gradient(145deg, rgba(74, 222, 128, 0.15), rgba(74, 222, 128, 0.05));
+    border-color: rgba(74, 222, 128, 0.3);
 }
 
-.cell.has-hint .threat-hint {
-    font-size: 12px;
-    opacity: 0.7;
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
+/* 已揭示 - 黄区（1-2威胁） */
+.cell.revealed.yellow-zone {
+    background: linear-gradient(145deg, rgba(251, 191, 36, 0.25), rgba(251, 191, 36, 0.1));
+    border-color: var(--yellow);
+    box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.2);
 }
 
-.cell.has-hint.threat-safe {
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.08), transparent);
-    border-color: rgba(74, 222, 128, 0.4);
+/* 已揭示 - 红区（3+威胁） */
+.cell.revealed.red-zone {
+    background: linear-gradient(145deg, rgba(248, 113, 113, 0.3), rgba(248, 113, 113, 0.1));
+    border-color: var(--red);
+    box-shadow: inset 0 0 15px rgba(248, 113, 113, 0.3);
+    animation: red-pulse 2s infinite;
 }
 
-.cell.has-hint.threat-unease {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent);
-    border-color: rgba(251, 191, 36, 0.5);
+@keyframes red-pulse {
+    0%, 100% { box-shadow: inset 0 0 15px rgba(248, 113, 113, 0.3); }
+    50% { box-shadow: inset 0 0 25px rgba(248, 113, 113, 0.5); }
 }
 
-.cell.has-hint.threat-danger {
-    background: linear-gradient(135deg, rgba(248, 113, 113, 0.12), transparent);
-    border-color: rgba(248, 113, 113, 0.6);
+/* 已触发的陷阱 */
+.cell.revealed.triggered-trap {
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+    border-color: #333;
 }
 
-/* ===== 揭示后的威胁等级显示 ===== */
-.cell.revealed.threat-safe {
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.25), rgba(74, 222, 128, 0.1));
+/* 剧情房 */
+.cell.revealed.story-room {
+    background: linear-gradient(145deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.15));
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+/* 撤离点 */
+.cell.revealed.extraction {
+    background: linear-gradient(145deg, rgba(74, 222, 128, 0.4), rgba(74, 222, 128, 0.2));
     border-color: var(--safe);
-    box-shadow: inset 0 0 15px rgba(74, 222, 128, 0.15);
+    animation: extraction-glow 1.5s infinite;
 }
 
-.cell.revealed.threat-unease {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 191, 36, 0.1));
-    border-color: var(--unease);
-    box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.2);
+@keyframes extraction-glow {
+    0%, 100% { box-shadow: 0 0 10px var(--safe); }
+    50% { box-shadow: 0 0 20px var(--safe), 0 0 30px var(--safe); }
 }
 
-.cell.revealed.threat-danger {
-    background: linear-gradient(135deg, rgba(248, 113, 113, 0.35), rgba(248, 113, 113, 0.15));
-    border-color: var(--danger);
-    box-shadow: inset 0 0 25px rgba(248, 113, 113, 0.25), 0 0 10px var(--danger);
-    animation: danger-pulse 2s infinite;
-}
-
-@keyframes danger-pulse {
-    0%, 100% { box-shadow: inset 0 0 25px rgba(248, 113, 113, 0.25), 0 0 10px var(--danger); }
-    50% { box-shadow: inset 0 0 35px rgba(248, 113, 113, 0.35), 0 0 15px var(--danger); }
-}
-
-@keyframes danger-pulse {
-    0%, 100% { box-shadow: inset 0 0 20px rgba(248, 113, 113, 0.2), 0 0 8px var(--danger); }
-    50% { box-shadow: inset 0 0 30px rgba(248, 113, 113, 0.3), 0 0 15px var(--danger); }
-}
-
-/* 揭示后的威胁显示 */
-.cell.revealed.threat-safe {
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.1));
-}
-
-.cell.revealed.threat-unease {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.35), rgba(251, 191, 36, 0.1));
-}
-
-.cell.revealed.threat-danger {
-    background: linear-gradient(135deg, rgba(248, 113, 113, 0.4), rgba(248, 113, 113, 0.15));
-}
-
-/* ===== 机遇符号高亮（叠加在威胁底色上） ===== */
-.cell.opportunity-anomaly {
-    /* 异常：紫色外发光 */
-    box-shadow: 0 0 12px rgba(192, 132, 252, 0.5), inset 0 0 10px rgba(192, 132, 252, 0.1);
-}
-
-.cell.opportunity-echo {
-    /* 回声：粉色强发光 + 脉动 */
-    box-shadow: 0 0 20px rgba(244, 114, 182, 0.6), inset 0 0 15px rgba(244, 114, 182, 0.15);
-    animation: echo-glow 1.5s infinite;
-}
-
-@keyframes echo-glow {
-    0%, 100% { 
-        opacity: 1;
-        box-shadow: 0 0 20px rgba(244, 114, 182, 0.6), inset 0 0 15px rgba(244, 114, 182, 0.15);
-    }
-    50% { 
-        opacity: 0.85;
-        box-shadow: 0 0 30px rgba(244, 114, 182, 0.8), inset 0 0 20px rgba(244, 114, 182, 0.2);
-    }
-}
-
-/* 未揭示格子的机遇符号样式 */
-.cell:not(.revealed).opportunity-anomaly::after,
-.cell:not(.revealed).opportunity-echo::after {
-    content: '';
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--anomaly);
-    box-shadow: 0 0 5px var(--anomaly);
-}
-
-.cell:not(.revealed).opportunity-echo::after {
-    background: var(--echo);
-    box-shadow: 0 0 8px var(--echo);
-    animation: dot-pulse 1s infinite;
-}
-
-@keyframes dot-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.3); opacity: 0.7; }
-}
-
-/* ===== 弹窗样式 ===== */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: var(--bg-light);
-    border: 2px solid var(--accent);
-    border-radius: 12px;
-    padding: 30px;
-    max-width: 400px;
-    width: 90%;
-    text-align: center;
-}
-
-.modal-content h3 {
-    color: var(--accent);
-    margin-bottom: 15px;
-}
-
-.modal-content button {
-    margin-top: 20px;
-    padding: 12px 30px;
-    background: var(--accent);
-    border: none;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-.modal-content button.primary {
-    background: var(--safe);
-    color: var(--bg);
-}
-
-/* 遭遇弹窗 */
-.encounter-content {
-    border-color: var(--danger);
-}
-
-.encounter-content h3 {
-    color: var(--danger);
-}
-
-.sanity-loss {
-    color: var(--danger);
-    font-size: 20px;
-    font-weight: bold;
-    margin: 15px 0;
-}
-
-/* 撤离选择 */
-.extraction-choices {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.extraction-choices button {
-    margin: 0;
-    padding: 15px;
-}
-
-.extraction-choices button small {
-    display: block;
-    margin-top: 5px;
-    font-size: 12px;
-    opacity: 0.8;
-}
-
-/* 撤离通知 */
-.extraction-notice {
+/* 撤离提示 */
+.extraction-alert {
     background: rgba(74, 222, 128, 0.2);
     border: 2px solid var(--safe);
     border-radius: 8px;
     padding: 15px;
-    margin-top: 20px;
+    margin-top: 15px;
     text-align: center;
-    animation: extraction-pulse 1.5s infinite;
 }
 
-@keyframes extraction-pulse {
-    0%, 100% { box-shadow: 0 0 5px var(--safe); }
-    50% { box-shadow: 0 0 20px var(--safe); }
-}
-
-.extraction-notice p {
-    font-size: 18px;
-    color: var(--safe);
-    margin-bottom: 10px;
-}
-
-/* ===== 房间事件弹窗 ===== */
-
-.room-event-content {
-    border-color: var(--accent);
-    text-align: left;
-}
-
-.room-event-content h3 {
-    text-align: center;
-    margin-bottom: 15px;
-}
-
-.story-text {
-    line-height: 1.8;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    margin-bottom: 15px;
-    font-size: 15px;
-}
-
-.event-effects {
-    background: rgba(139, 92, 246, 0.1);
-    border: 1px solid var(--accent);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 15px;
-}
-
-.event-effects p {
-    margin: 5px 0;
+.extraction-alert button {
+    margin-left: 15px;
+    padding: 8px 20px;
+    background: var(--safe);
+    border: none;
+    color: #000;
+    border-radius: 6px;
+    cursor: pointer;
     font-weight: bold;
 }
 
-.room-event-content button {
-    width: 100%;
-}
-
-/* ===== 响应式 ===== */
+/* 响应式 */
 @media (max-width: 600px) {
-    .cell {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
-    }
-    
-    #minefield {
-        gap: 2px;
-    }
-    
-    .threat-legend {
-        font-size: 12px;
-        gap: 10px;
-    }
+    .cell { width: 32px; height: 32px; font-size: 14px; }
 }
