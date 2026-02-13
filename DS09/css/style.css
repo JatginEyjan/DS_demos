@@ -194,26 +194,69 @@ body {
     cursor: default;
 }
 
-/* ===== 威胁等级底色系统 ===== */
-/* 双重信息：底色=威胁，图标=机遇 */
+/* ===== 未揭示格子 ===== */
+.cell.unrevealed {
+    background: linear-gradient(135deg, #2a2a35, #252530);
+    border-color: #3a3a45;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
 
-.cell.threat-safe {
-    background: linear-gradient(135deg, rgba(74, 222, 128, 0.15), rgba(74, 222, 128, 0.05));
+.cell.unrevealed:hover {
+    background: linear-gradient(135deg, #3a3a45, #353540);
+    border-color: #4a4a55;
+}
+
+/* ===== 威胁提示（周围格子揭示后显示） ===== */
+.cell.has-hint {
+    position: relative;
+}
+
+.cell.has-hint .threat-hint {
+    font-size: 12px;
+    opacity: 0.7;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+}
+
+.cell.has-hint.threat-safe {
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.08), transparent);
+    border-color: rgba(74, 222, 128, 0.4);
+}
+
+.cell.has-hint.threat-unease {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), transparent);
+    border-color: rgba(251, 191, 36, 0.5);
+}
+
+.cell.has-hint.threat-danger {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.12), transparent);
+    border-color: rgba(248, 113, 113, 0.6);
+}
+
+/* ===== 揭示后的威胁等级显示 ===== */
+.cell.revealed.threat-safe {
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.25), rgba(74, 222, 128, 0.1));
     border-color: var(--safe);
-    box-shadow: inset 0 0 10px rgba(74, 222, 128, 0.1);
+    box-shadow: inset 0 0 15px rgba(74, 222, 128, 0.15);
 }
 
-.cell.threat-unease {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.05));
+.cell.revealed.threat-unease {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 191, 36, 0.1));
     border-color: var(--unease);
-    box-shadow: inset 0 0 15px rgba(251, 191, 36, 0.15);
+    box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.2);
 }
 
-.cell.threat-danger {
-    background: linear-gradient(135deg, rgba(248, 113, 113, 0.25), rgba(248, 113, 113, 0.05));
+.cell.revealed.threat-danger {
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.35), rgba(248, 113, 113, 0.15));
     border-color: var(--danger);
-    box-shadow: inset 0 0 20px rgba(248, 113, 113, 0.2), 0 0 8px var(--danger);
+    box-shadow: inset 0 0 25px rgba(248, 113, 113, 0.25), 0 0 10px var(--danger);
     animation: danger-pulse 2s infinite;
+}
+
+@keyframes danger-pulse {
+    0%, 100% { box-shadow: inset 0 0 25px rgba(248, 113, 113, 0.25), 0 0 10px var(--danger); }
+    50% { box-shadow: inset 0 0 35px rgba(248, 113, 113, 0.35), 0 0 15px var(--danger); }
 }
 
 @keyframes danger-pulse {

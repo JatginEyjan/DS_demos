@@ -150,9 +150,10 @@ class DS09Game {
                 x, y,
                 isRevealed: false,
                 isMarked: false,
-                threatLevel: 'safe', // safe, unease, danger
-                opportunity: 'none', // none, anomaly, echo
-                roomType: 'normal', // normal, main, sub
+                hasThreatHint: false, // 是否有周围格子的威胁提示
+                threatLevel: 'safe',
+                opportunity: 'none',
+                roomType: 'normal',
                 hasExtraction: false
             }))
         );
@@ -273,11 +274,9 @@ class DS09Game {
                     <span class="legend-threat">🟡 不安</span>
                     <span class="legend-threat">🔴 危险</span>
                     <span class="legend-divider">|</span>
-                    <span class="legend-opp">· 普通</span>
-                    <span class="legend-opp">👁️ 异常</span>
-                    <span class="legend-opp">📜 回声</span>
-                    <span class="legend-divider">|</span>
                     <span>🚪 撤离点</span>
+                    <span class="legend-divider">|</span>
+                    <span class="legend-hint">提示：揭示格子后，周围格子会显示威胁暗示</span>
                 </div>
                 <div id="minefield" style="grid-template-columns: repeat(${this.gridSize}, 40px);">
                     ${this.renderGridCells()}
@@ -299,41 +298,37 @@ class DS09Game {
                 const cell = this.grid[y][x];
                 let className = 'cell';
                 let content = '';
-                let threatIcon = '';
-                
-                // 威胁等级（通过底色/边框显示）
-                const threat = this.threatLevels[cell.threatLevel];
-                className += ` threat-${cell.threatLevel}`;
-                threatIcon = threat.icon;
                 
                 if (cell.isRevealed) {
                     className += ' revealed';
+                    const threat = this.threatLevels[cell.threatLevel];
+                    className += ` threat-${cell.threatLevel}`;
                     
                     if (cell.hasExtraction) {
-                        // 撤离点：显示撤离图标
                         content = '🚪';
                     } else if (cell.roomType !== 'normal') {
-                        // 已揭示的特殊房间：显示房间类型
                         content = cell.roomType === 'main' ? '🎯' : '📍';
                     } else {
-                        // 普通揭示格子：显示威胁等级图标
-                        content = threatIcon;
+                        content = threat.icon;
                     }
                 } else {
-                    // 未揭示格子：显示机遇符号
-                    const opp = this.opportunityTypes[cell.opportunity];
-                    content = opp.icon;
-                    
-                    // 双重提示：机遇图标 + 威胁底色
-                    // 图标显示机遇，底色显示威胁
+                    // 未揭示格子
+                    if (cell.isMarked) {
+                        content = '🚩';
+                        className += ' marked';
+                    } else if (cell.hasThreatHint) {
+                        // 有周围提示：显示小威胁图标
+                        const threat = this.threatLevels[cell.threatLevel];
+                        content = `<span class="threat-hint">${threat.icon}</span>`;
+                        className += ` has-hint threat-${cell.threatLevel}`;
+                    } else {
+                        // 完全未知
+                        content = '';
+                        className += ' unrevealed';
+                    }
                 }
                 
-                // 添加数据属性用于调试
-                html += `<div class="${className}" 
-                              data-x="${x}" data-y="${y}"
-                              data-threat="${cell.threatLevel}"
-                              data-opp="${cell.opportunity}"
-                              onclick="game.handleCellClick(${x},${y})">${content}</div>`;
+                html += `<div class="${className}" onclick="game.handleCellClick(${x},${y})">${content}</div>`;
             }
         }
         return html;
@@ -345,8 +340,11 @@ class DS09Game {
         const cell = this.grid[y][x];
         if (cell.isRevealed) return;
         
-        // 揭示格子
+        // 揭示当前格子
         cell.isRevealed = true;
+        
+        // 给周围未揭示格子提供威胁感知信息
+        this.revealThreatHint(x, y);
         
         // 检查是否是撤离点
         if (cell.hasExtraction) {
@@ -359,7 +357,7 @@ class DS09Game {
             this.triggerEncounter();
         }
         
-        // 检查房间类型
+        // 检查房间类型（触发事件）
         if (cell.roomType !== 'normal') {
             this.triggerRoomEvent(cell);
         }
@@ -368,6 +366,27 @@ class DS09Game {
         this.lootValue += 10 + Math.floor(Math.random() * 20);
         
         this.renderDungeon();
+    }
+    
+    // 揭示威胁提示（类似扫雷数字）
+    revealThreatHint(centerX, centerY) {
+        // 检查周围8格
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                
+                const nx = centerX + dx;
+                const ny = centerY + dy;
+                
+                if (nx >= 0 && nx < this.gridSize && ny >= 0 && ny < this.gridSize) {
+                    const neighbor = this.grid[ny][nx];
+                    if (!neighbor.isRevealed) {
+                        // 给周围格子添加"感知"标记，显示威胁等级
+                        neighbor.hasThreatHint = true;
+                    }
+                }
+            }
+        }
     }
     
     triggerRoomEvent(cell) {
