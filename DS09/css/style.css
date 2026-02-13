@@ -458,6 +458,40 @@ button.disabled {
     animation: shake 0.3s;
 }
 
+/* 规避的陷阱 - 置灰+打叉效果 */
+.cell.trap-avoided {
+    background: linear-gradient(135deg, #3a3a45, #2a2a35);
+    border: 2px solid #555;
+    position: relative;
+}
+
+.cell.trap-avoided::after {
+    content: '❌';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    opacity: 0.6;
+}
+
+.cell.trap-avoided .cell-content {
+    opacity: 0.3;
+    filter: grayscale(100%);
+}
+
+/* 已触发的剧情房 - 置灰 */
+.cell.story-room-triggered {
+    background: linear-gradient(135deg, #3a3a45, #2a2a35) !important;
+    border: 2px solid #555 !important;
+    opacity: 0.6;
+}
+
+.cell.story-room-triggered .cell-content {
+    filter: grayscale(100%);
+    opacity: 0.5;
+}
+
 .cell.main-room {
     background: rgba(217, 74, 74, 0.2);
     border-color: var(--main-room);
@@ -1225,6 +1259,92 @@ button.disabled {
 .header-left {
     display: flex;
     gap: 10px;
+}
+
+/* ===== 探测器动画 ===== */
+
+.cell.detecting {
+    animation: detector-scan 0.6s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.cell.detecting::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(74, 144, 217, 0.6), transparent);
+    animation: scan-line 0.6s ease-out;
+}
+
+@keyframes detector-scan {
+    0% { box-shadow: 0 0 0 rgba(74, 144, 217, 0); }
+    50% { box-shadow: 0 0 30px rgba(74, 144, 217, 0.8), inset 0 0 20px rgba(74, 144, 217, 0.4); }
+    100% { box-shadow: 0 0 0 rgba(74, 144, 217, 0); }
+}
+
+@keyframes scan-line {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.detector-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fade-in 0.2s;
+}
+
+.detector-result-content {
+    background: var(--bg-light);
+    border: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 25px 35px;
+    text-align: center;
+    max-width: 300px;
+    animation: pop-in 0.3s ease-out;
+}
+
+.detector-result-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.detector-result-content h3 {
+    margin-bottom: 10px;
+    font-size: 20px;
+    color: var(--accent);
+}
+
+.detector-result-content p {
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.detector-result-content button {
+    background: var(--bg-lighter);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 25px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.detector-result-content button:hover {
+    background: var(--accent);
+    border-color: var(--accent);
 }
 
 /* ===== 精神扫描反馈 ===== */

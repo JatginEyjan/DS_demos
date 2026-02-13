@@ -786,17 +786,28 @@ class DS08Game {
                     className += ' revealed';
                     
                     if (cell.isTrap) {
-                        // 陷阱
-                        className += ' trap';
-                        content = '💀';
+                        // 陷阱 - 区分直接触发和规避
+                        if (cell.avoided) {
+                            className += ' trap-avoided';
+                            content = '<span class="cell-content">💀</span>';
+                        } else {
+                            className += ' trap';
+                            content = '💀';
+                        }
                     } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
                         // 剧情房 - 纯色底板 + 📜图标
-                        className += ' story-room';
-                        if (cell.canGoNext && cell.roomType === 'main' && this.currentLayer < this.currentDungeon.layers.length - 1) {
-                            content = '<span class="cell-content">🚪</span>';
-                            className += ' next-layer';
-                        } else {
+                        if (cell.triggered) {
+                            // 已触发 - 置灰
+                            className += ' story-room-triggered';
                             content = '<span class="cell-content">📜</span>';
+                        } else {
+                            className += ' story-room';
+                            if (cell.canGoNext && cell.roomType === 'main' && this.currentLayer < this.currentDungeon.layers.length - 1) {
+                                content = '<span class="cell-content">🚪</span>';
+                                className += ' next-layer';
+                            } else {
+                                content = '<span class="cell-content">📜</span>';
+                            }
                         }
                     } else {
                         // 普通空地 - 显示风险底色
@@ -969,7 +980,8 @@ class DS08Game {
         this.exploredSteps++;
 
         if (cell.isTrap) {
-            // 扫描到陷阱，精神力回流+奖励
+            // 扫描到陷阱，精神力回流+奖励，标记为规避
+            cell.avoided = true;
             this.markers++;
             this.sanity = Math.min(100, this.sanity + 5);
             this.showScanResult('success', '精神扫描成功！', 
@@ -1266,6 +1278,9 @@ class DS08Game {
         resultDiv.innerHTML = htmlContent;
         console.log('[STORY] HTML 已设置');
         
+        // 标记剧情房为已触发（置灰）
+        cell.triggered = true;
+        
         // 如果是主线房
         if (cell.roomType === 'main') {
             const isLastLayer = this.currentLayer >= this.currentDungeon.layers.length - 1;
@@ -1499,10 +1514,10 @@ class DS08Game {
                 used = true;
                 break;
             case 'reveal':
-                // 探测器：需要选择目标格子
+                // 探测器：随机揭示一个未揭示格子
                 this.closeItemModal();
-                this.startDetectorMode(idx);
-                return; // 不立即删除道具
+                this.useDetectorRandom(idx);
+                return;
             default:
                 this.log('此道具无法直接使用', 'info');
         }
@@ -1515,38 +1530,87 @@ class DS08Game {
         }
     }
     
-    // 探测器模式：选择要揭示的格子
-    startDetectorMode(itemIdx) {
-        this.log('点击任意格子使用探测器...', 'special');
-        this.detectorMode = true;
-        this.detectorItemIdx = itemIdx;
+    // 探测器：随机揭示一个未揭示格子
+    async useDetectorRandom(itemIdx) {
+        // 找到所有未揭示的格子
+        const unrevealedCells = [];
+        for (let y = 0; y < this.gridSize; y++) {
+            for (let x = 0; x < this.gridSize; x++) {
+                const cell = this.grid[y][x];
+                if (!cell.isRevealed) {
+                    unrevealedCells.push({x, y, cell});
+                }
+            }
+        }
+        
+        if (unrevealedCells.length === 0) {
+            this.log('没有可揭示的格子', 'info');
+            return;
+        }
+        
+        // 随机选择一个
+        const randomIdx = Math.floor(Math.random() * unrevealedCells.length);
+        const {x, y, cell} = unrevealedCells[randomIdx];
+        
+        // 显示探测器动画
+        await this.showDetectorAnimation(x, y);
+        
+        // 揭示格子
+        cell.isRevealed = true;
+        this.exploredSteps++;
+        
+        // 删除探测器
+        this.dungeonInv.splice(itemIdx, 1);
+        
+        // 根据格子类型处理
+        if (cell.isTrap) {
+            // 成功规避陷阱
+            cell.avoided = true; // 标记为已规避
+            this.log('🔍 探测器成功规避了一个陷阱！', 'good');
+            this.showDetectorResult('avoided', '陷阱规避', '探测器提前发现了陷阱，你安全地绕开了它。');
+        } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
+            // 触发剧情
+            this.log('🔍 探测器发现了一个剧情房！', 'special');
+            this.triggerStoryWithChoice(cell);
+        } else {
+            // 普通空地
+            this.log(`🔍 探测器揭示了 (${x},${y})`, 'good');
+            if (cell.threatCount === 0) {
+                await this.autoExpand(x, y);
+            }
+        }
+        
+        this.renderDungeon();
     }
     
-    // 使用探测器揭示格子
-    useDetector(x, y) {
-        const cell = this.grid[y][x];
-        if (!cell.isRevealed) {
-            cell.isRevealed = true;
-            this.exploredSteps++;
-            this.log(`探测器揭示了 (${x},${y}) 的内容`, 'good');
-            
-            // 删除探测器
-            this.dungeonInv.splice(this.detectorItemIdx, 1);
-            this.detectorMode = false;
-            this.detectorItemIdx = null;
-            
-            // 触发格子效果
-            if (cell.isTrap) {
-                this.log('💀 探测器触发了陷阱！', 'bad');
-                this.triggerTrap();
-            } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-                this.triggerStoryWithChoice(cell);
-            } else if (cell.number === 0) {
-                this.autoExpand(x, y);
-            }
-            
-            this.renderDungeon();
+    // 探测器动画
+    async showDetectorAnimation(x, y) {
+        // 创建扫描线动画
+        const cellEl = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+        if (cellEl) {
+            cellEl.classList.add('detecting');
+            await this.delay(600);
+            cellEl.classList.remove('detecting');
         }
+    }
+    
+    // 探测器结果弹窗
+    showDetectorResult(type, title, message) {
+        const modal = document.createElement('div');
+        modal.className = 'detector-result-modal';
+        modal.innerHTML = `
+            <div class="detector-result-content">
+                <div class="detector-result-icon">🔍</div>
+                <h3>${title}</h3>
+                <p>${message}</p>
+                <button onclick="this.parentElement.parentElement.remove()">继续</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        setTimeout(() => {
+            if (modal.parentElement) modal.remove();
+        }, 2000);
     }
     
     // 关闭道具弹窗
