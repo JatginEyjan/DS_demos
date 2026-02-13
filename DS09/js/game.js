@@ -737,9 +737,14 @@ class DS08Game {
                 </div>
                 
                 <div class="legend">
-                    <span>🔢 数字=周围陷阱</span>
-                    <span>🔟×10=主线剧情</span>
-                    <span>➖负数=支线剧情</span>
+                    <span class="threat-safe">🟢 安全(0)</span>
+                    <span class="threat-yellow">🟡 不安(1-2)</span>
+                    <span class="threat-red">🔴 危险(3+)</span>
+                    <span>|</span>
+                    <span>👁️ 附近有剧情</span>
+                    <span>📜 剧情房</span>
+                    <span>|</span>
+                    <span>🚪 可撤离</span>
                 </div>
                 
                 <footer>
@@ -794,13 +799,13 @@ class DS08Game {
                         className += ' trap';
                         content = '💀';
                     } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-                        // 剧情房
-                        className += cell.roomType === 'main' ? ' main-room' : ' sub-room';
+                        // 剧情房 - 纯色底板 + 📜图标
+                        className += ' story-room';
                         if (cell.canGoNext && cell.roomType === 'main' && this.currentLayer < this.currentDungeon.layers.length - 1) {
-                            content = '🚪';
+                            content = '<span class="cell-content">🚪</span>';
                             className += ' next-layer';
                         } else {
-                            content = cell.roomType === 'main' ? '🕯️' : '📜';
+                            content = '<span class="cell-content">📜</span>';
                         }
                     } else {
                         // 普通空地 - 显示风险底色
@@ -815,9 +820,9 @@ class DS08Game {
                         
                         className += ` threat-${threatLevel}`;
                         
-                        // 揭示后显示提示icon（周围有剧情房则显示📜）
+                        // 揭示后显示提示icon（周围有剧情房则显示👁️）
                         if (cell.hasStoryNearby) {
-                            content = '📜';
+                            content = '<span class="hint-eye">👁️</span>';
                         } else {
                             content = '';
                         }

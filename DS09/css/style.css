@@ -702,6 +702,44 @@ button.disabled {
     50% { box-shadow: inset 0 0 30px rgba(248, 113, 113, 0.5); }
 }
 
+/* DS09: 👁️ 空地剧情提示 - 小尺寸+闪烁 */
+.cell.threat-safe .cell-content,
+.cell.threat-yellow .cell-content,
+.cell.threat-red .cell-content {
+    font-size: 14px;
+}
+
+.cell:has(.hint-eye) {
+    position: relative;
+}
+
+.cell .hint-eye {
+    font-size: 12px;
+    animation: eye-blink 2s infinite;
+    opacity: 0.8;
+}
+
+@keyframes eye-blink {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* DS09: 📜 剧情房纯色底板 */
+.cell.story-room {
+    background: linear-gradient(135deg, #6b4c9a, #4a3a6a) !important;
+    border-color: #8b6cf6 !important;
+    box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.4), 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+.cell.story-room .cell-content {
+    font-size: 20px;
+}
+
+/* DS09: 图例样式 */
+.legend .threat-safe { color: var(--safe); }
+.legend .threat-yellow { color: var(--warning); }
+.legend .threat-red { color: var(--danger); }
+
 @keyframes pulse-glow {
     0%, 100% { 
         box-shadow: 0 0 5px var(--accent); 
