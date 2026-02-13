@@ -1,0 +1,340 @@
+:root {
+    --bg: #0f0f13;
+    --bg-light: #1a1a24;
+    --text: #e0e0e0;
+    --text-secondary: #888;
+    --accent: #8b5cf6;
+    --accent-light: #a78bfa;
+    --safe: #4ade80;
+    --unease: #fbbf24;
+    --danger: #f87171;
+    --anomaly: #c084fc;
+    --echo: #f472b6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+#game-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ===== 大厅样式 ===== */
+#lobby {
+    text-align: center;
+}
+
+#lobby header {
+    margin-bottom: 30px;
+}
+
+#lobby h1 {
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+#lobby .stats {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 18px;
+}
+
+.dungeon-selection {
+    margin: 30px 0;
+}
+
+.dungeon-card {
+    background: var(--bg-light);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 30px;
+    cursor: pointer;
+    transition: all 0.3s;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.dungeon-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+}
+
+.dungeon-card h3 {
+    color: var(--accent);
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.dungeon-card .status {
+    color: var(--safe);
+    margin-top: 15px;
+}
+
+.rules-hint {
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 30px;
+    text-align: left;
+}
+
+.rules-hint h3 {
+    color: var(--accent);
+    margin-bottom: 15px;
+}
+
+.rules-hint p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+/* ===== 副本界面 ===== */
+#dungeon {
+    background: var(--bg-light);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+#dungeon header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#dungeon header button {
+    background: transparent;
+    border: 1px solid var(--text-secondary);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.dungeon-info {
+    display: flex;
+    gap: 20px;
+}
+
+.resources {
+    display: flex;
+    gap: 15px;
+    font-size: 18px;
+}
+
+.threat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* ===== 网格样式 ===== */
+#minefield {
+    display: grid;
+    gap: 4px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.cell {
+    width: 40px;
+    height: 40px;
+    background: #2a2a35;
+    border: 1px solid #3a3a45;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cell:hover {
+    background: #3a3a45;
+    transform: scale(1.05);
+}
+
+.cell.revealed {
+    cursor: default;
+}
+
+/* 威胁等级颜色 */
+.cell.threat-safe {
+    background: rgba(74, 222, 128, 0.2);
+    border-color: var(--safe);
+}
+
+.cell.threat-unease {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: var(--unease);
+}
+
+.cell.threat-danger {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: var(--danger);
+    animation: danger-pulse 2s infinite;
+}
+
+@keyframes danger-pulse {
+    0%, 100% { box-shadow: 0 0 5px var(--danger); }
+    50% { box-shadow: 0 0 15px var(--danger); }
+}
+
+/* 机遇符号高亮 */
+.cell.opportunity-anomaly {
+    border-color: var(--anomaly);
+    box-shadow: 0 0 10px rgba(192, 132, 252, 0.3);
+}
+
+.cell.opportunity-echo {
+    border-color: var(--echo);
+    box-shadow: 0 0 15px rgba(244, 114, 182, 0.4);
+    animation: echo-glow 1.5s infinite;
+}
+
+@keyframes echo-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ===== 弹窗样式 ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--bg-light);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+}
+
+.modal-content h3 {
+    color: var(--accent);
+    margin-bottom: 15px;
+}
+
+.modal-content button {
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: var(--accent);
+    border: none;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.modal-content button.primary {
+    background: var(--safe);
+    color: var(--bg);
+}
+
+/* 遭遇弹窗 */
+.encounter-content {
+    border-color: var(--danger);
+}
+
+.encounter-content h3 {
+    color: var(--danger);
+}
+
+.sanity-loss {
+    color: var(--danger);
+    font-size: 20px;
+    font-weight: bold;
+    margin: 15px 0;
+}
+
+/* 撤离选择 */
+.extraction-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.extraction-choices button {
+    margin: 0;
+    padding: 15px;
+}
+
+.extraction-choices button small {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* 撤离通知 */
+.extraction-notice {
+    background: rgba(74, 222, 128, 0.2);
+    border: 2px solid var(--safe);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    text-align: center;
+    animation: extraction-pulse 1.5s infinite;
+}
+
+@keyframes extraction-pulse {
+    0%, 100% { box-shadow: 0 0 5px var(--safe); }
+    50% { box-shadow: 0 0 20px var(--safe); }
+}
+
+.extraction-notice p {
+    font-size: 18px;
+    color: var(--safe);
+    margin-bottom: 10px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 600px) {
+    .cell {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    
+    #minefield {
+        gap: 2px;
+    }
+    
+    .threat-legend {
+        font-size: 12px;
+        gap: 10px;
+    }
+}
