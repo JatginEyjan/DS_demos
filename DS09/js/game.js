@@ -10,7 +10,7 @@ class DS08Game {
             // 功能向道具
             sanityPotion: { id: 'sanityPotion', name: '理智药水', icon: '🧪', type: 'functional', desc: '恢复20点理智值', effect: 'sanity+20', value: 50 },
             detector: { id: 'detector', name: '探测器', icon: '🔍', type: 'functional', desc: '揭示任意1格内容', effect: 'reveal', value: 100 },
-            markerPack: { id: 'markerPack', name: '标记器套装', icon: '🚩', type: 'functional', desc: '获得2个额外标记器', effect: 'markers+2', value: 30 },
+            markerPack: { id: 'markerPack', name: '灵能水晶', icon: '💠', type: 'functional', desc: '恢复2点精神力', effect: 'scans+2', value: 30 },
             lantern: { id: 'lantern', name: '煤油灯', icon: '🏮', type: 'functional', desc: '降低幻觉效果30秒', effect: 'antiHallucination', value: 80 },
             // 剧情向道具
             oldKey: { id: 'oldKey', name: '古老钥匙', icon: '🗝️', type: 'story', desc: '用于开启隐藏的密室', value: 200 },
@@ -414,7 +414,7 @@ class DS08Game {
         } else {
             // 继承上一层理智值，其他状态重置
             this.sanity = Math.max(0, this.sanity); // 确保不变成负数
-            this.markers = 3; // 标记器每层重置
+            this.markers = 3; // 精神力每层重置
             this.exploredSteps = 0;
         }
         
@@ -484,19 +484,19 @@ class DS08Game {
                     </div>
                     
                     <div class="rules-section">
-                        <h3>🚩 标记器使用（右键点击未揭示格子）</h3>
-                        <p class="rule-desc">标记器可以<strong>安全揭示</strong>一个格子，但只能使用一次。</p>
+                        <h3>💠 精神扫描（右键点击未揭示格子）</h3>
+                        <p class="rule-desc">集中精神力<strong>窥视一个格子的真相</strong>，每次消耗1点精神力。</p>
                         <div class="rule-item good">
                             <span class="rule-icon">💀</span>
-                            <span class="rule-text"><strong>标记陷阱</strong> → 标记器返还，理智+5，安全通过</span>
+                            <span class="rule-text"><strong>扫描到陷阱</strong> → 精神力回流，理智+5，安全避开</span>
                         </div>
                         <div class="rule-item">
                             <span class="rule-icon">📜</span>
-                            <span class="rule-text"><strong>标记剧情房</strong> → 触发剧情，70%基础好走向</span>
+                            <span class="rule-text"><strong>扫描到剧情房</strong> → 触发剧情，70%基础好走向</span>
                         </div>
                         <div class="rule-item bad">
                             <span class="rule-icon">⬜</span>
-                            <span class="rule-text"><strong>标记空地</strong> → 消耗标记器，仅揭示格子</span>
+                            <span class="rule-text"><strong>扫描到空地</strong> → 精神力耗尽，仅揭示格子</span>
                         </div>
                     </div>
                     
@@ -685,7 +685,7 @@ class DS08Game {
                 <header>
                     <div class="header-left">
                         <button onclick="game.quitLayer()">⬅️ 撤退</button>
-                        <button onclick="game.showRules()" class="rules-btn">📖 规则说明</button>
+                        <button onclick="game.showRules()" class="rules-btn">💠 精神扫描</button>
                     </div>
                     <div class="dungeon-info">
                         <span class="dungeon-name">${config.layerName || this.currentDungeon.name}（第${this.currentLayer + 1}层）</span>
@@ -699,7 +699,7 @@ class DS08Game {
                             </div>
                             <span class="sanity-value">${this.sanity}</span>
                         </div>
-                        <span class="markers">🚩 ${this.markers}</span>
+                        <span class="markers">💠 ${this.markers}</span>
                     </div>
                 </header>
                 
@@ -820,7 +820,7 @@ class DS08Game {
                     }
                 } else if (cell.isMarked) {
                     className += ' marked';
-                    content = '🚩';
+                    content = '💠';
                 }
 
                 // 点击事件处理
@@ -944,17 +944,17 @@ class DS08Game {
         if (cell.isRevealed) return;
 
         if (this.markers <= 0) {
-            this.log('⚠️ 标记器不足！', 'bad');
+            this.log('⚠️ 精神力不足！', 'bad');
             return;
         }
 
-        // 消耗标记器
+        // 消耗精神力
         this.markers--;
         cell.isMarked = true;
         
-        this.log('使用了标记器 🚩', 'info');
+        this.log('使用了精神力 💠', 'info');
 
-        // 右键也揭露格子，但有标记器加成
+        // 右键也揭露格子，但有精神力加成
         this.revealCellWithMarker(x, y);
     }
 
@@ -963,30 +963,30 @@ class DS08Game {
         if (cell.isRevealed) return;
 
         // 先显示标记动画
-        await this.showMarkerAnimation(x, y);
+        await this.showScanAnimation(x, y);
         
         cell.isRevealed = true;
         this.exploredSteps++;
 
         if (cell.isTrap) {
-            // 正确标记陷阱，返还标记器+奖励
+            // 扫描到陷阱，精神力回流+奖励
             this.markers++;
             this.sanity = Math.min(100, this.sanity + 5);
-            this.showMarkerResult('success', '标记成功！', 
-                '你标记了一个陷阱，安全避开！\n🚩 标记器返还\n🧠 理智 +5');
+            this.showScanResult('success', '精神扫描成功！', 
+                '你的精神力感知到了陷阱！\n💠 精神力回流\n🧠 理智 +5');
             this.updateHallucination();
             this.renderDungeon();
         } else if (cell.roomType === 'main' || cell.roomType === 'sub') {
-            // 标记剧情房
+            // 扫描到剧情房
             const roomType = cell.roomType === 'main' ? '主线' : '支线';
-            this.showMarkerResult('story', '发现剧情房！', 
-                `你标记了一个${roomType}剧情房！\n🎯 判定成功率 +20%`);
+            this.showScanResult('story', '感知到剧情房！', 
+                `你的精神力发现了${roomType}剧情房！\n🎯 判定成功率 +20%`);
             this.triggerStoryWithChoice(cell, true);
             this.updateHallucination();
         } else {
-            // 普通房间 - 标记器消耗
-            this.showMarkerResult('waste', '标记了空地', 
-                '这里什么都没有...\n🚩 标记器已消耗');
+            // 扫描到空地 - 精神力消耗
+            this.showScanResult('waste', '精神扫描完成', 
+                '这里没有异常...\n💠 精神力已消耗');
             if (cell.threatCount === 0) {
                 await this.autoExpand(x, y);
             }
@@ -995,8 +995,8 @@ class DS08Game {
         }
     }
     
-    // 标记动画
-    async showMarkerAnimation(x, y) {
+    // 精神扫描动画
+    async showScanAnimation(x, y) {
         const cellEl = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
         if (cellEl) {
             cellEl.classList.add('marking');
@@ -1005,8 +1005,8 @@ class DS08Game {
         }
     }
     
-    // 标记结果弹窗
-    showMarkerResult(type, title, message) {
+    // 精神扫描结果弹窗
+    showScanResult(type, title, message) {
         const icons = {
             success: '✅',
             story: '📜',
@@ -1019,10 +1019,10 @@ class DS08Game {
         };
         
         const modal = document.createElement('div');
-        modal.className = 'marker-result-modal';
+        modal.className = 'scan-result-modal';
         modal.innerHTML = `
-            <div class="marker-result-content" style="border-color: ${colors[type]}">
-                <div class="marker-result-icon" style="color: ${colors[type]}">${icons[type]}</div>
+            <div class="scan-result-content" style="border-color: ${colors[type]}">
+                <div class="scan-result-icon" style="color: ${colors[type]}">${icons[type]}</div>
                 <h3>${title}</h3>
                 <p>${message}</p>
                 <button onclick="this.parentElement.parentElement.remove()">继续</button>
@@ -1228,8 +1228,8 @@ class DS08Game {
         if (rewardItem) {
             if (rewardItem.id === 'markerBonus') {
                 this.markers += 1;
-                this.log('获得了标记器+1', 'good');
-                outcome.reward = `${outcome.reward || ''} 标记器+1`;
+                this.log('获得了精神力+1', 'good');
+                outcome.reward = `${outcome.reward || ''} 精神力+1`;
             } else {
                 const itemWithSource = { ...rewardItem, obtainedInDungeon: true, source: 'dungeon' };
                 this.dungeonInv.push(itemWithSource);
@@ -1470,7 +1470,7 @@ class DS08Game {
             'lantern': '煤油灯的玻璃罩上有一道细微的裂痕，但灯光依然稳定。这盏灯曾经照亮过无数探险者的道路，在深渊中，光明是最珍贵的礼物...',
             'sanityPotion': '药水瓶中的液体呈现出诡异的紫色，轻轻摇晃时会发出微弱的光芒。这是用深渊中的草药炼制的药剂，能暂时稳定心神...',
             'detector': '探测器的指针不断颤动，仿佛能感受到地底深处的脉动。这是用蛇人科技改造的仪器，能探测到隐藏的危险...',
-            'markerPack': '标记器上刻着精细的刻度，每一根都经过精心制作。在深渊中，正确的标记意味着生与死的区别...'
+            'markerPack': '精神力上刻着精细的刻度，每一根都经过精心制作。在深渊中，正确的标记意味着生与死的区别...'
         };
         return stories[itemId] || '这件物品似乎隐藏着更多秘密...';
     }
@@ -1490,7 +1490,7 @@ class DS08Game {
                 break;
             case 'markers+2':
                 this.markers += 2;
-                this.log('使用了标记器套装，标记器+2', 'good');
+                this.log('使用了精神力套装，精神力+2', 'good');
                 used = true;
                 break;
             case 'antiHallucination':
@@ -1725,12 +1725,12 @@ class DS08Game {
         // 第1层（低风险）
         if (layer === 0) {
             if (roomType === 'sub' && rand < 0.5) {
-                // 支线50%给煤油灯或标记器+1
+                // 支线50%给煤油灯或精神力+1
                 if (rand < 0.25) {
                     return { id: 'lantern', name: '煤油灯', icon: '🏮', type: 'functional', desc: '降低幻觉效果30秒', effect: 'antiHallucination', value: 80 };
                 } else {
-                    // 标记器+1，返回特殊标记
-                    return { id: 'markerBonus', name: '标记器+1', icon: '🚩', type: 'bonus', effect: 'markers+1', value: 0 };
+                    // 精神力+1，返回特殊标记
+                    return { id: 'markerBonus', name: '精神力+1', icon: '💠', type: 'bonus', effect: 'markers+1', value: 0 };
                 }
             }
             return null; // 主线不给道具
@@ -1761,8 +1761,8 @@ class DS08Game {
         // 第4层（高风险）
         if (layer === 3) {
             if (roomType === 'main') {
-                // 主线给标记器套装
-                return { id: 'markerPack', name: '标记器套装', icon: '🚩', type: 'functional', desc: '获得2个额外标记器', effect: 'markers+2', value: 30 };
+                // 主线给精神力套装
+                return { id: 'markerPack', name: '精神力套装', icon: '💠', type: 'functional', desc: '获得2个额外精神力', effect: 'markers+2', value: 30 };
             } else if (roomType === 'sub' && rand < 0.2) {
                 // 支线20%给古老钥匙
                 return { id: 'oldKey', name: '古老钥匙', icon: '🗝️', type: 'story', desc: '用于开启隐藏的密室', value: 200 };
@@ -1831,7 +1831,7 @@ class DS08Game {
                         goodOutcome: {
                             preText: '你将信件翻到背面，发现上面用粗糙的炭笔线条画着一幅简易地图。地图标注了从地窖到隧道深处的路径，其中一段用虚线标记为"安全通道"，旁边还画着一个箭头指向一扇隐蔽的门。你仔细辨认那些模糊的标记，将路线牢牢记在心中。',
                             resultText: '信件背面画着简易地图，标记了安全通道',
-                            reward: '标记器+1，理智+5',
+                            reward: '精神力+1，理智+5',
                             sanity: 5,
                             markers: 1
                         },
@@ -1914,7 +1914,7 @@ class DS08Game {
                         badOutcome: {
                             preText: '你正要将护身符收好，它突然在你手中变得滚烫，仿佛刚从熔炉中取出。剧烈的灼痛让你忍不住松开了手，看着那枚十字架坠入深渊。就在它消失在黑暗中时，一声刺耳的尖啸从下方传来，那声音充满了愤怒与恶意，仿佛你放弃了一件能够保护自己的圣物，让潜伏的黑暗生物欣喜若狂。',
                             resultText: '护身符突然变得滚烫，你手一松它坠入深渊，伴随着一声刺耳的尖啸...',
-                            reward: '理智-10，标记器-1',
+                            reward: '理智-10，精神力-1',
                             sanity: -10,
                             markers: -1
                         }
@@ -1926,7 +1926,7 @@ class DS08Game {
                         goodOutcome: {
                             preText: '你小心地翻动泛黄的纸页，在日记边缘发现了一些粗糙的炭笔画。那是某种生物的简笔示意图，用箭头标注了几个关键部位——眼睛、颈部、腹部。旁边还有一行小字："怕火，怕光，攻击前先闭眼。"这些珍贵的情报让你对即将面对的敌人有了更多了解，也增加了一分生存的希望。',
                             resultText: '日记边缘画着怪物的弱点示意图',
-                            reward: '获得敌人情报，标记器+1',
+                            reward: '获得敌人情报，精神力+1',
                             markers: 1
                         },
                         badOutcome: {
@@ -2002,7 +2002,7 @@ class DS08Game {
                         goodOutcome: {
                             preText: '你小心地用布包裹住那枚蛇人牙齿，将它从青铜管碎片中取出。这枚牙齿足有三寸长，呈现出一种诡异的象牙白色，表面的纹理像是某种天然的符文。尽管散发着淡淡的腥味，但你意识到这是珍贵的战利品——蛇人的牙齿可以作为武器的镶嵌材料，让你的攻击附带致命的毒素。',
                             resultText: '牙齿可以作为武器镶嵌材料，攻击附带毒素伤害',
-                            reward: '获得强化材料，标记器+1',
+                            reward: '获得强化材料，精神力+1',
                             markers: 1
                         },
                         badOutcome: {
@@ -2034,7 +2034,7 @@ class DS08Game {
                         id: 'shadow_l4_main_1',
                         title: '主线·真菌种植场',
                         text: '巨大的洞穴中，怪异的真菌长得比人还高，空气弥漫着温暖潮湿的雾气，每十分钟便会从洞顶的孔洞中喷涌一次。两名身形畸形、浑身多毛的生物正在照料真菌，它们看起来像苍白的猿猴，手臂远长于常人，见到你时停下动作，用巨大的眼睛好奇地注视着，没有立刻发动攻击。地面上，一些真菌的伞盖散发着微弱的荧光，照亮了周围散落的奴隶契约碎片。',
-                        goodOutcome: { text: '退化人对你产生好奇，允许你安全通过', reward: '理智+10，获得标记器套装', sanity: 10, item: { id: 'markerPack', name: '标记器套装', icon: '🚩', type: 'functional', desc: '获得2个额外标记器', effect: 'markers+2', value: 30 } },
+                        goodOutcome: { text: '退化人对你产生好奇，允许你安全通过', reward: '理智+10，获得精神力套装', sanity: 10, item: { id: 'markerPack', name: '精神力套装', icon: '💠', type: 'functional', desc: '获得2个额外精神力', effect: 'markers+2', value: 30 } },
                         badOutcome: { text: '退化人突然狂暴，发出刺耳的尖叫，更多同类从黑暗中涌出...', reward: '理智-20，遭遇围攻', sanity: -20 }
                     },
                     {
@@ -2087,7 +2087,7 @@ class DS08Game {
                         id: 'shadow_l5_sub_1',
                         title: '支线·皮革卷轴',
                         text: '实验台上的三本蛇人皮革卷轴散发着古老的气息，上面用阿卡姆语记载着"阿卡洛语·火焰咒文"。',
-                        goodOutcome: { text: '你学会了火焰咒文，对蛇人特攻', reward: '获得技能，标记器+2', markers: 2 },
+                        goodOutcome: { text: '你学会了火焰咒文，对蛇人特攻', reward: '获得技能，精神力+2', markers: 2 },
                         badOutcome: { text: '阅读时你心智受到冲击，几乎陷入疯狂...', reward: '理智-25', sanity: -25 }
                     }
                 ]
