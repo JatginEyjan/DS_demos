@@ -442,59 +442,73 @@ const game = {
         switch(action) {
             case 'picklock':
                 this.handleSkillCheck('侦查', 40, `尝试开锁`, () => {
-                    this.log('成功', '宝箱打开了！获得古老钥匙 + 10金币');
+                    this.log('✓ 成功', '咔嗒一声，宝箱打开了！');
+                    this.log('🎁 获得', '古老钥匙 ×1、金币 ×10');
                     room.objects = room.objects.filter(o => o.id !== 'chest');
                     this.clearSelection();
                 }, () => {
-                    this.log('失败', '开锁失败，宝箱卡住了');
+                    this.log('✗ 失败', '锁芯卡住了，宝箱无法打开');
                 });
                 break;
             case 'break':
                 this.handleSkillCheck('力量', 35, `尝试破坏宝箱`, () => {
-                    this.log('成功', '宝箱被破坏！获得5金币');
+                    this.log('✓ 成功', '砰！宝箱被砸开了，但有些东西损坏了');
+                    this.log('🎁 获得', '金币 ×5');
                     room.objects = room.objects.filter(o => o.id !== 'chest');
                     this.clearSelection();
                 }, () => {
-                    this.log('失败', '破坏失败，宝箱太坚固了');
+                    this.log('✗ 失败', '宝箱太坚固了，你的攻击毫无作用');
                 });
                 break;
             case 'disarm':
                 this.handleSkillCheck('侦查', 45, `尝试解除陷阱`, () => {
-                    this.log('成功', '陷阱被安全解除了');
+                    this.log('✓ 成功', '你小心地解除了陷阱机制，安全了！');
                     room.objects = room.objects.filter(o => o.id !== 'trap');
                     this.clearSelection();
                 }, () => {
-                    this.log('失败', '触发陷阱！HP-15');
+                    this.log('💥 触发', '糟糕！你触发了陷阱！');
                     this.takeDamage(15);
                 });
                 break;
             case 'avoid':
-                this.handleSkillCheck('侦查', 30, `尝试避开陷阱`, () => {
-                    this.log('成功', '成功避开陷阱');
+                this.handleSkillCheck('侦查', 30, `尝试绕过陷阱`, () => {
+                    this.log('✓ 成功', '你悄悄地从陷阱旁边绕了过去');
                 }, () => {
-                    this.log('失败', '触发陷阱！HP-10');
+                    this.log('💥 触发', '不小心踩到了触发器！');
                     this.takeDamage(10);
                 });
                 break;
             case 'disrupt':
                 this.handleSkillCheck('神秘学', 50, `尝试干扰仪式`, () => {
-                    this.log('成功', '仪式受到干扰！Boss被削弱');
+                    this.log('✓ 成功', '你的神秘学知识干扰了仪式进行！');
                     const boss = room.objects.find(o => o.type === 'boss');
                     if (boss) {
                         boss.hp -= 20;
-                        this.log('战斗', '邪教主教 HP-20');
+                        this.log('⚔️ 效果', `邪教主教受到反噬，HP-20！剩余 ${Math.max(0, boss.hp)}/${boss.maxHp}`);
                     }
                 }, () => {
-                    this.log('失败', '干扰失败，SAN-10');
+                    this.log('💀 反噬', '神秘能量反噬了你的精神！');
                     this.takeSanityDamage(10);
                 });
                 break;
             case 'observe':
-                this.handleSkillCheck('侦查', 30, `观察${target.name}`, () => {
-                    this.log('成功', `观察到${target.name}的详细信息`);
-                }, () => {
-                    this.log('失败', '观察失败');
-                });
+                const diff = 30;
+                const per = this.getSkill('侦查');
+                this.log('行动', `仔细观察 ${target.name} (侦查 ${per} vs 难度 ${diff})`);
+                const result = this.skillCheck(per, diff);
+                this.log('检定', `掷骰: ${result.roll}`);
+                if (result.success) {
+                    if (target.type === 'enemy' || target.type === 'boss') {
+                        this.log('✓ 发现', `${target.name} 的弱点在左侧！下次攻击+10伤害`);
+                        this.log('ℹ️ 信息', `当前状态: HP ${target.hp}/${target.maxHp}`);
+                    } else if (target.type === 'hazard') {
+                        this.log('✓ 发现', `这是一个压力触发式陷阱，可以从侧面绕过`);
+                    } else {
+                        this.log('✓ 发现', `${target.name} 看起来可以被打开`);
+                    }
+                } else {
+                    this.log('✗ 无果', '你没有发现任何有用的信息');
+                }
                 break;
         }
         
@@ -504,15 +518,27 @@ const game = {
         }
     },
     
-    // 处理技能检定
+    // 处理技能检定 - 带详细反馈
     handleSkillCheck(skillName, difficulty, actionDesc, onSuccess, onFail) {
-        this.log('行动', actionDesc);
-        const result = this.skillCheck(this.getSkill(skillName), difficulty);
+        const skillValue = this.getSkill(skillName);
+        this.log('行动', `${actionDesc} (需要 ≤${difficulty}, 技能 ${skillValue})`);
+        
+        const result = this.skillCheck(skillValue, difficulty);
+        this.log('检定', `掷骰: ${result.roll} → ${result.success ? '成功' : '失败'}`);
+        
         if (result.success) {
-            if (result.critical) this.log('大成功', '完美的执行！');
+            if (result.critical) {
+                this.log('⭐ 大成功', '完美的执行！效果翻倍！');
+            } else {
+                this.log('✓ 成功', '行动顺利完成');
+            }
             onSuccess();
         } else {
-            if (result.fumble) this.log('大失败', '糟糕的结果！');
+            if (result.fumble) {
+                this.log('💀 大失败', '灾难性的失误！');
+            } else {
+                this.log('✗ 失败', '行动未能达成目标');
+            }
             onFail();
         }
     },
@@ -532,21 +558,31 @@ const game = {
         
         if (!this.consumeTurns(1)) return;
         
-        const result = this.skillCheck(this.getSkill('力量'), target.type === 'boss' ? 50 : 40);
+        const str = this.getSkill('力量');
+        const difficulty = target.type === 'boss' ? 50 : 40;
+        
+        this.log('行动', `攻击 ${target.name} (力量 ${str} vs 难度 ${difficulty})`);
+        
+        const result = this.skillCheck(str, difficulty);
+        this.log('检定', `掷骰: ${result.roll} → ${result.success ? '命中！' : '未命中！'}`);
         
         if (result.success) {
             const dmg = result.critical ? 35 : 25;
             target.hp -= dmg;
-            this.log('战斗', `对${target.name}造成${dmg}伤害！`);
+            this.log('⚔️ 命中', `造成 ${dmg} 点伤害！${target.name} 剩余 HP: ${Math.max(0, target.hp)}/${target.maxHp}`);
             
             if (target.hp <= 0) {
-                this.log('胜利', `${target.name}被击败了！`);
+                this.log('🏆 击败', `${target.name} 被彻底消灭了！`);
                 this.clearSelection();
             }
         } else {
             const dmg = result.fumble ? 15 : 8;
             this.takeDamage(dmg);
-            this.log('战斗', `攻击失败，受到${dmg}反击伤害！`);
+            if (result.fumble) {
+                this.log('💀 大失败', `攻击失误！受到 ${dmg} 点反击伤害！`);
+            } else {
+                this.log('🛡️ 未命中', `攻击被闪避，受到 ${dmg} 点反击伤害`);
+            }
         }
         
         this.checkCombatEnd();
@@ -557,17 +593,24 @@ const game = {
         if (!this.consumeTurns(1)) return;
         
         const target = this.state.selectedTarget;
+        const per = this.getSkill('侦查');
         const difficulty = target && target.type === 'boss' ? 45 : 35;
         
-        const result = this.skillCheck(this.getSkill('侦查'), difficulty);
+        this.log('行动', `观察 ${target ? target.name : '周围环境'} (侦查 ${per} vs 难度 ${difficulty})`);
+        
+        const result = this.skillCheck(per, difficulty);
+        this.log('检定', `掷骰: ${result.roll} → ${result.success ? '发现线索！' : '未发现异常'}`);
+        
         if (result.success) {
             if (target && (target.type === 'enemy' || target.type === 'boss')) {
-                this.log('侦查', `发现了${target.name}的弱点！下次攻击+10伤害`);
+                this.log('✓ 侦查', `发现 ${target.name} 的弱点！下次攻击+10伤害，当前 HP: ${target.hp}/${target.maxHp}`);
+            } else if (target) {
+                this.log('✓ 侦查', `发现 ${target.name} 的隐藏细节`);
             } else {
-                this.log('侦查', '发现了重要线索');
+                this.log('✓ 侦查', '发现了房间中的重要线索');
             }
         } else {
-            this.log('侦查', '观察失败');
+            this.log('✗ 侦查', '观察失败，没有发现有用信息');
         }
     },
     
@@ -809,18 +852,34 @@ const game = {
     
     // 工具函数
     consumeTurns(n) {
+        const oldTurn = this.state.turn;
         this.state.turn += n;
         
+        // 显示回合消耗
+        this.log('⏱️ 时间', `消耗 ${n} 回合 (${oldTurn} → ${this.state.turn}/${this.state.maxTurns})`);
+        
+        // 更新状态栏
+        this.updateStatus();
+        
+        // 检查警觉度变化
         const newAlert = Math.floor(this.state.turn / 10);
         if (newAlert > this.state.alertLevel) {
             this.state.alertLevel = newAlert;
-            this.log('警告', `警觉度提升至${newAlert}！敌人更强了！`);
+            this.log('⚠️ 警告', `警觉度提升至 ${newAlert}！敌人变得更强了！`);
         }
         
+        // 检查回合耗尽
         if (this.state.turn >= this.state.maxTurns) {
             this.gameOver('回合耗尽，黑暗吞噬了一切...');
             return false;
         }
+        
+        // 每10回合提示剩余
+        if (this.state.turn % 10 === 0 && this.state.turn > 0) {
+            const remaining = this.state.maxTurns - this.state.turn;
+            this.log('⏱️ 提醒', `剩余 ${remaining} 回合，请抓紧时间`);
+        }
+        
         return true;
     },
     
@@ -838,9 +897,22 @@ const game = {
     },
     
     takeDamage(n) {
-        this.investigator.hp -= n;
+        const oldHp = this.investigator.hp;
+        this.investigator.hp = Math.max(0, this.investigator.hp - n);
+        this.log('💔 伤害', `HP ${oldHp} → ${this.investigator.hp} (-${n})`);
+        this.updateStatus();
         if (this.investigator.hp <= 0) {
             this.gameOver('HP归零，调查员牺牲了...');
+        }
+    },
+    
+    takeSanityDamage(n) {
+        const oldSan = this.investigator.sanity;
+        this.investigator.sanity = Math.max(0, this.investigator.sanity - n);
+        this.log('🌀 理智', `SAN ${oldSan} → ${this.investigator.sanity} (-${n})`);
+        this.updateStatus();
+        if (this.investigator.sanity <= 0) {
+            this.gameOver('SAN归零，调查员陷入疯狂...');
         }
     },
     
@@ -859,8 +931,25 @@ const game = {
     log(type, msg) {
         const panel = document.getElementById('logPanel');
         const entry = document.createElement('div');
-        entry.className = `log-entry ${type === '战斗' || type === '失败' ? 'failure' : type === '胜利' || type === '奖励' ? 'success' : 'system'}`;
-        entry.textContent = `[${this.state.turn}] ${msg}`;
+        
+        // 根据类型设置CSS类
+        let className = 'system';
+        if (type.includes('成功') || type.includes('胜利') || type === '🏆 击败' || type === '✓ 成功') {
+            className = 'success';
+        } else if (type.includes('失败') || type.includes('伤害') || type === '💀 大失败' || type === '✗ 失败' || type === '🛡️ 未命中' || type === '💥 触发') {
+            className = 'failure';
+        } else if (type.includes('理智') || type === '💀 反噬') {
+            className = 'sanity';
+        } else if (type.includes('战斗') || type === '⚔️ 命中' || type === '⚔️ 效果') {
+            className = 'combat';
+        } else if (type.includes('获得') || type === '🎁 获得' || type.includes('奖励')) {
+            className = 'reward';
+        } else if (type.includes('伤害') || type === '伤害') {
+            className = 'damage';
+        }
+        
+        entry.className = `log-entry ${className}`;
+        entry.textContent = `[${this.state.turn}] ${type}: ${msg}`;
         panel.appendChild(entry);
         panel.scrollTop = panel.scrollHeight;
     },
