@@ -304,8 +304,17 @@ const game = {
                 break;
             case 'ambush_fight':
                 this.log('事件', '伏击战开始！');
+                // 创建伏击敌人并进入战斗
+                const node = this.getCurrentNode();
+                node.inCombat = true;
+                node.cleared = false;
                 // 创建伏击敌人
-                break;
+                node.ambushEnemies = [
+                    { id: 'ambush1', name: '伏击者', type: 'enemy', hp: 40, maxHp: 40, damage: 10, fearAttack: { name: '恐吓', sanDamage: 8 } },
+                    { id: 'ambush2', name: '伏击者', type: 'enemy', hp: 40, maxHp: 40, damage: 10, fearAttack: { name: '恐吓', sanDamage: 8 } }
+                ];
+                this.renderAmbushCombat();
+                return;
         }
         
         if (action !== 'ambush_fight') {
@@ -428,7 +437,258 @@ const game = {
         
         return objects;
     },
-    
+
+    // 渲染伏击战斗
+    renderAmbushCombat() {
+        const content = document.getElementById('mainContent');
+        document.getElementById('sceneTitle').textContent = '伏击战！';
+        document.getElementById('sceneSubtitle').textContent = '敌人从阴影中现身';
+
+        const node = this.getCurrentNode();
+        const enemies = node.ambushEnemies || [];
+
+        let html = '<div class="combat-view">';
+
+        // 双人调查员状态（战斗位置）
+        html += '<div class="team-battle-row">';
+        this.team.forEach((inv, idx) => {
+            if (inv.hp > 0) {
+                const isSelected = this.state.selectedInvestigator === idx;
+                const selectedClass = isSelected ? 'selected' : '';
+                const sanityState = this.getSanityState(inv.sanity);
+                html += `
+                    <div class="investigator-battle-card ${selectedClass}" onclick="game.selectInvestigator(${idx})">
+                        <div class="inv-icon">${idx === 0 ? '👤' : '👥'}</div>
+                        <div class="inv-name">${inv.name}</div>
+                        <div class="inv-status">[${sanityState.name}]</div>
+                        <div class="inv-hp">HP: ${inv.hp}/${inv.maxHp}</div>
+                        <div class="inv-san">SAN: ${inv.sanity}</div>
+                        ${inv.affliction ? `<div class="inv-affliction">💔 ${inv.affliction}</div>` : ''}
+                        ${inv.virtue ? `<div class="inv-virtue">✨ ${inv.virtue}</div>` : ''}
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="investigator-battle-card dead">
+                        <div class="inv-icon">💀</div>
+                        <div class="inv-name">${inv.name}</div>
+                        <div class="inv-status">[阵亡]</div>
+                    </div>
+                `;
+            }
+        });
+        html += '</div>';
+
+        // VS 分隔
+        html += '<div class="vs-divider">⚔️ VS ⚔️</div>';
+
+        // 伏击敌人
+        if (enemies.length > 0) {
+            html += '<div class="enemies-row">';
+            enemies.forEach((enemy, idx) => {
+                const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === enemy.id;
+                const selectedClass = isSelected ? 'selected' : '';
+                html += `
+                    <div class="enemy-card ${selectedClass}" onclick="game.selectAmbushTarget(${idx})">
+                        <div class="enemy-icon">👹</div>
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-hp-bar"><div style="width:${(enemy.hp/enemy.maxHp)*100}%"></div></div>
+                        <div class="enemy-hp-text">${enemy.hp}/${enemy.maxHp}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        content.innerHTML = html;
+
+        document.getElementById('actionPanel').style.display = 'block';
+        this.updateAmbushActions();
+        this.updateMinimap();
+    },
+
+    // 选择伏击目标
+    selectAmbushTarget(idx) {
+        const node = this.getCurrentNode();
+        const enemy = node.ambushEnemies[idx];
+        if (enemy) {
+            this.state.selectedTarget = enemy;
+            this.log('系统', `选中目标: ${enemy.name}`);
+            this.renderAmbushCombat();
+        }
+    },
+
+    // 更新伏击战斗行动
+    updateAmbushActions() {
+        const panel = document.getElementById('actionButtons');
+        panel.innerHTML = '';
+
+        const invIdx = this.state.selectedInvestigator;
+        const inv = this.team[invIdx];
+
+        if (!inv || inv.hp <= 0) {
+            panel.innerHTML = '<div class="action-hint">该调查员无法行动</div>';
+            return;
+        }
+
+        const target = this.state.selectedTarget;
+
+        if (target) {
+            panel.innerHTML += `
+                <button class="action-btn" onclick="game.ambushAttack()">⚔️ 攻击</button>
+                <button class="action-btn" onclick="game.ambushObserve()">👁️ 观察</button>
+            `;
+            panel.innerHTML += `<button class="action-btn" onclick="game.clearAmbushSelection()">❌ 取消选择</button>`;
+        } else {
+            panel.innerHTML += `<div class="action-hint">选择敌人后执行行动</div>`;
+        }
+
+        if (inv.inventory.sedative > 0) {
+            panel.innerHTML += `<button class="action-btn rest" onclick="game.useSedative()">💊 镇静剂</button>`;
+        }
+
+        panel.innerHTML += `<button class="action-btn" onclick="game.endAmbushRound()">⏭️ 结束回合</button>`;
+    },
+
+    // 伏击攻击
+    ambushAttack() {
+        const inv = this.team[this.state.selectedInvestigator];
+        const target = this.state.selectedTarget;
+        const node = this.getCurrentNode();
+
+        if (!target || target.hp <= 0) {
+            this.log('系统', '请选择一个敌人');
+            return;
+        }
+
+        const str = inv.skills.力量;
+        this.log(`${inv.name}`, `攻击 ${target.name} (力量 ${str})`);
+
+        const result = this.skillCheck(str, 40);
+        this.log('检定', `掷骰: ${result.roll}`);
+
+        let damage = 20;
+        if (inv.virtue === '英勇') damage = Math.floor(damage * 1.3);
+        if (inv.affliction === '绝望') damage = Math.floor(damage * 0.7);
+
+        if (result.success) {
+            if (result.critical) damage = Math.floor(damage * 1.5);
+            target.hp -= damage;
+            this.log('⚔️ 命中', `造成 ${damage} 伤害！剩余 ${Math.max(0, target.hp)}/${target.maxHp}`);
+
+            if (target.hp <= 0) {
+                this.log('🏆 击败', `${target.name} 被消灭了！`);
+                this.clearAmbushSelection();
+            }
+        } else {
+            this.log('🛡️ 未命中', '攻击被闪避');
+        }
+
+        this.ambushEnemyTurn();
+    },
+
+    // 伏击观察
+    ambushObserve() {
+        const inv = this.team[this.state.selectedInvestigator];
+        const target = this.state.selectedTarget;
+
+        const per = inv.skills.侦查;
+        this.log(`${inv.name}`, `观察敌人 (侦查 ${per})`);
+
+        const result = this.skillCheck(per, 35);
+        this.log('检定', `掷骰: ${result.roll}`);
+
+        if (result.success) {
+            this.log('✓ 发现', '发现了敌人的弱点！下次攻击+10伤害');
+        } else {
+            this.log('✗ 无果', '观察失败');
+        }
+    },
+
+    // 伏击敌人回合
+    ambushEnemyTurn() {
+        const node = this.getCurrentNode();
+        const enemies = node.ambushEnemies.filter(e => e.hp > 0);
+
+        if (enemies.length === 0) {
+            this.log('系统', '伏击战胜利！');
+            node.cleared = true;
+            node.inCombat = false;
+            this.showRouteView();
+            return;
+        }
+
+        const heroicInv = this.team.find(i => i.virtue === '英勇' && i.hp > 0);
+
+        enemies.forEach(enemy => {
+            let target;
+            if (heroicInv) {
+                target = heroicInv;
+            } else {
+                const alive = this.team.filter(i => i.hp > 0);
+                target = alive[Math.floor(Math.random() * alive.length)];
+            }
+
+            if (!target) return;
+
+            const dmg = enemy.damage;
+            target.hp -= dmg;
+            this.log('💀 敌人', `${enemy.name} 攻击 ${target.name}，造成 ${dmg} 伤害！`);
+
+            if (enemy.fearAttack) {
+                this.addSanity(target, enemy.fearAttack.sanDamage);
+                this.log('恐惧', `${target.name} SAN+${enemy.fearAttack.sanDamage}`);
+
+                this.team.forEach(teammate => {
+                    if (teammate.id !== target.id && teammate.hp > 0) {
+                        this.addSanity(teammate, 5);
+                        this.log('压力', `${teammate.name} 看到战友受伤，SAN+5`);
+                    }
+                });
+            }
+
+            if (target.hp <= 0) {
+                target.hp = 0;
+                this.log('💀 阵亡', `${target.name} 倒下了...`);
+
+                const alive = this.team.filter(i => i.hp > 0);
+                if (alive.length === 0) {
+                    this.gameOver('全队阵亡...');
+                    return;
+                }
+
+                const nextInv = alive[0];
+                this.state.selectedInvestigator = nextInv.id;
+                this.log('系统', `${nextInv.name} 独自继续战斗！`);
+            }
+        });
+
+        this.updateStatus();
+        this.renderAmbushCombat();
+    },
+
+    // 结束伏击回合
+    endAmbushRound() {
+        const node = this.getCurrentNode();
+        const enemies = node.ambushEnemies.filter(e => e.hp > 0);
+
+        if (enemies.length === 0) {
+            this.log('系统', '伏击战胜利！');
+            node.cleared = true;
+            node.inCombat = false;
+            this.showRouteView();
+        } else {
+            this.ambushEnemyTurn();
+        }
+    },
+
+    // 清除伏击选择
+    clearAmbushSelection() {
+        this.state.selectedTarget = null;
+        this.renderAmbushCombat();
+    },
+
     // 进入房间战斗
     enterRoomCombat(roomId) {
         const node = this.getCurrentNode();
