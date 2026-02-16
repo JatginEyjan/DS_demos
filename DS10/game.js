@@ -134,8 +134,9 @@ const game = {
     
     init() {
         this.initRooms();
-        this.log('系统', 'DS10 v4 - 双人调查员模式启动');
-        this.log('系统', '选择2名调查员组成小队');
+        this.log('系统', '=== DS10 v4 已加载 ===');
+        this.log('系统', '双人小队 + SAN压力系统 + 随机事件');
+        this.log('系统', '选择2名不同职业组成小队');
     },
     
     initRooms() {
@@ -1032,15 +1033,33 @@ const game = {
         const nodeIndex = this.routeGrid.findIndex(n => n.id === nodeId);
         if (nodeIndex === -1) return;
         
+        // 消耗1回合
+        this.state.turn++;
+        
         this.state.currentRoute = nodeIndex;
         const node = this.getCurrentNode();
+        const isFirstVisit = !node.visited;
         node.visited = true;
         
-        this.log('移动', `到达 ${node.name}`);
+        this.log('移动', `消耗1回合 → 到达 ${node.name}`);
+        
+        // 首次进入房间增加SAN压力
+        if (isFirstVisit && (node.type === 'room' || node.type === 'boss')) {
+            this.log('压力', '进入未知区域，SAN+5');
+            this.addSanityToAll(5);
+        }
+        
+        // 更新状态栏显示回合
+        this.updateStatus();
         
         // 移动后可能触发随机事件
         if (node.type === 'encounter') {
-            this.triggerRandomEvent();
+            if (!node.eventTriggered) {
+                node.eventTriggered = true;
+                this.triggerRandomEvent();
+            } else {
+                this.showRouteView();
+            }
         } else {
             this.updateMainView();
         }
