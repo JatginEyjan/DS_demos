@@ -490,6 +490,69 @@
             padding: 10px;
         }
         
+        /* 房间内容区域 */
+        .room-content-section {
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid #2a2a3a;
+            padding-bottom: 6px;
+        }
+        
+        .empty-room {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding: 30px 20px;
+        }
+        
+        .target-info {
+            background: #2a2a3a;
+            border: 2px solid #3a3a4a;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .target-name {
+            color: #e94560;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .target-desc {
+            color: #888;
+            font-size: 11px;
+        }
+        
+        .action-hint {
+            color: #888;
+            font-size: 11px;
+            text-align: center;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px dashed #3a3a4a;
+            border-radius: 4px;
+        }
+        
+        /* 选中状态 */
+        .enemy-card.selected, .object-card.selected {
+            border-color: #e94560;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+            transform: scale(1.05);
+        }
+        
         .enemies-row {
             display: flex;
             gap: 8px;

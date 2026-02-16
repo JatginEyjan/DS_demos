@@ -210,9 +210,15 @@ const game = {
         this.updateMinimap();
     },
     
-    // 判断是否可以访问（相邻且已访问节点的邻居）
+    // 判断是否可以访问（基于连接关系或相邻）
     canAccess(from, to) {
-        // 简单规则：x相邻或y相邻且在同一层
+        // 检查是否有直接连接
+        const hasConnection = this.connections.some(([a, b]) => {
+            return (a === from.id && b === to.id) || (b === from.id && a === to.id);
+        });
+        if (hasConnection) return true;
+        
+        // 备用规则：x相邻或y相邻
         const dx = Math.abs(to.x - from.x);
         const dy = Math.abs(to.y - from.y);
         return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
@@ -265,86 +271,264 @@ const game = {
         return objects;
     },
     
-    // 渲染战斗画面
+    // 渲染战斗画面 - 新版：房间内容 + 交互选项分离
     renderCombat(room) {
         const content = document.getElementById('mainContent');
-        document.getElementById('sceneTitle').textContent = room.name + ' - 战斗中';
-        document.getElementById('sceneSubtitle').textContent = `回合 ${this.state.turn}`;
+        document.getElementById('sceneTitle').textContent = room.name;
+        document.getElementById('sceneSubtitle').textContent = `回合 ${this.state.turn} - 选择目标进行交互`;
         
         let html = '<div class="combat-view">';
         
-        // 敌人列表
-        const enemies = room.objects.filter(o => o.type === 'enemy' || o.type === 'boss');
-        if (enemies.length > 0) {
-            html += '<div class="enemies-row">';
-            enemies.forEach((enemy, idx) => {
-                if (enemy.hp > 0) {
+        // 房间内容区域
+        html += '<div class="room-content-section">';
+        html += '<div class="section-title">📍 房间内容</div>';
+        
+        const aliveEnemies = room.objects.filter(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
+        const interactables = room.objects.filter(o => o.type !== 'enemy' && o.type !== 'boss');
+        
+        if (aliveEnemies.length === 0 && interactables.length === 0) {
+            // 空房间
+            html += '<div class="empty-room">🏚️ 空房间 - 没有任何东西</div>';
+        } else {
+            // 敌人列表
+            if (aliveEnemies.length > 0) {
+                html += '<div class="enemies-row">';
+                aliveEnemies.forEach((enemy, idx) => {
+                    const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === enemy.id;
+                    const selectedClass = isSelected ? 'selected' : '';
                     html += `
-                        <div class="enemy-card" onclick="game.selectCombatTarget(${idx})">
+                        <div class="enemy-card ${selectedClass}" onclick="game.selectTarget('${enemy.id}')">
                             <div class="enemy-icon">${enemy.type === 'boss' ? '☠️' : '👹'}</div>
                             <div class="enemy-name">${enemy.name}</div>
                             <div class="enemy-hp-bar"><div style="width:${(enemy.hp/enemy.maxHp)*100}%"></div></div>
                             <div class="enemy-hp-text">${enemy.hp}/${enemy.maxHp}</div>
                         </div>
                     `;
-                }
-            });
+                });
+                html += '</div>';
+            }
+            
+            // 可交互对象
+            if (interactables.length > 0) {
+                html += '<div class="objects-row">';
+                interactables.forEach(obj => {
+                    const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === obj.id;
+                    const selectedClass = isSelected ? 'selected' : '';
+                    const icon = obj.type === 'hazard' ? '⚠️' : '📦';
+                    html += `
+                        <div class="object-card ${selectedClass}" onclick="game.selectTarget('${obj.id}')">
+                            <div class="object-icon">${icon}</div>
+                            <div class="object-name">${obj.name}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+        }
+        
+        html += '</div>'; // end room-content-section
+        
+        // 选中目标信息
+        if (this.state.selectedTarget) {
+            const target = this.state.selectedTarget;
+            html += '<div class="target-info">';
+            html += `<div class="target-name">🎯 选中: ${target.name}</div>`;
+            if (target.type === 'enemy' || target.type === 'boss') {
+                html += `<div class="target-desc">HP: ${target.hp}/${target.maxHp} | 类型: ${target.type === 'boss' ? 'Boss' : '敌人'}</div>`;
+            } else {
+                html += `<div class="target-desc">类型: ${target.type === 'hazard' ? '危险' : '物品'}</div>`;
+            }
             html += '</div>';
         }
         
-        // 环境对象
-        const objects = room.objects.filter(o => o.type !== 'enemy' && o.type !== 'boss');
-        if (objects.length > 0) {
-            html += '<div class="objects-row">';
-            objects.forEach(obj => {
-                html += `
-                    <div class="object-card" onclick="game.interactObject('${obj.id}')">
-                        <div class="object-icon">📦</div>
-                        <div class="object-name">${obj.name}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-        
-        html += '</div>';
+        html += '</div>'; // end combat-view
         content.innerHTML = html;
         
-        // 显示行动面板
+        // 显示行动面板（根据选中目标动态更新）
         document.getElementById('actionPanel').style.display = 'block';
         this.updateCombatActions();
         this.updateMinimap();
     },
     
-    // 更新战斗行动
+    // 选择目标
+    selectTarget(targetId) {
+        const room = this.rooms[this.getCurrentNode().roomId];
+        const target = room.objects.find(o => o.id === targetId);
+        if (target) {
+            this.state.selectedTarget = target;
+            this.log('系统', `选中目标: ${target.name}`);
+            this.renderCombat(room);
+        }
+    },
+    
+    // 更新战斗行动 - 根据选中目标显示不同选项
     updateCombatActions() {
         const panel = document.getElementById('actionButtons');
         panel.innerHTML = '';
         
         const room = this.rooms[this.getCurrentNode().roomId];
-        const hasEnemies = room.objects.some(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
+        const target = this.state.selectedTarget;
         
-        if (hasEnemies) {
+        if (target) {
+            // 根据目标类型显示不同操作
+            if (target.type === 'enemy' || target.type === 'boss') {
+                panel.innerHTML += `
+                    <button class="action-btn" onclick="game.combatAttack()">⚔️ 攻击</button>
+                    <button class="action-btn" onclick="game.combatObserve()">👁️ 观察敌人</button>
+                `;
+            } else if (target.type === 'object') {
+                // 物体交互选项
+                if (target.id === 'chest') {
+                    panel.innerHTML += `
+                        <button class="action-btn" onclick="game.interactWithTarget('picklock')">🔓 开锁 (侦查)</button>
+                        <button class="action-btn" onclick="game.interactWithTarget('break')">💥 破坏 (力量)</button>
+                        <button class="action-btn" onclick="game.interactWithTarget('observe')">👁️ 观察 (侦查)</button>
+                    `;
+                } else if (target.id === 'ritual') {
+                    panel.innerHTML += `
+                        <button class="action-btn" onclick="game.interactWithTarget('disrupt')">✨ 神秘学干扰</button>
+                        <button class="action-btn" onclick="game.interactWithTarget('observe')">👁️ 观察</button>
+                    `;
+                }
+            } else if (target.type === 'hazard') {
+                panel.innerHTML += `
+                    <button class="action-btn" onclick="game.interactWithTarget('disarm')">🛠️ 解除 (侦查)</button>
+                    <button class="action-btn" onclick="game.interactWithTarget('avoid')">🚶 避开 (侦查-10)</button>
+                    <button class="action-btn" onclick="game.interactWithTarget('observe')">👁️ 观察</button>
+                `;
+            }
+            
             panel.innerHTML += `
-                <button class="action-btn" onclick="game.combatAttack()">⚔️ 攻击</button>
-                <button class="action-btn" onclick="game.combatObserve()">👁️ 观察弱点</button>
+                <button class="action-btn" onclick="game.clearSelection()">❌ 取消选择</button>
             `;
         } else {
+            // 没有选择目标时显示通用选项
+            const hasEnemies = room.objects.some(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
+            const hasInteractables = room.objects.some(o => o.type !== 'enemy' && o.type !== 'boss');
+            
+            if (!hasEnemies && !hasInteractables) {
+                // 空房间
+                panel.innerHTML += `
+                    <button class="action-btn" onclick="game.finishRoom()">✓ 离开房间</button>
+                `;
+            } else {
+                panel.innerHTML += `
+                    <div class="action-hint">👆 先点击上方房间内容选择目标</div>
+                `;
+            }
+            
             panel.innerHTML += `
-                <button class="action-btn" onclick="game.finishRoom()">✓ 完成探索</button>
+                <button class="action-btn" onclick="game.retreatFromRoom()">🏃 撤退</button>
             `;
         }
-        
-        panel.innerHTML += `
-            <button class="action-btn" onclick="game.retreatFromRoom()">🏃 撤退</button>
-        `;
     },
     
-    // 战斗攻击
-    combatAttack() {
+    // 清除选择
+    clearSelection() {
+        this.state.selectedTarget = null;
         const room = this.rooms[this.getCurrentNode().roomId];
-        const target = room.objects.find(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
+        this.renderCombat(room);
+    },
+    
+    // 与选中目标交互
+    interactWithTarget(action) {
+        const target = this.state.selectedTarget;
         if (!target) return;
+        
+        if (!this.consumeTurns(1)) return;
+        
+        const room = this.rooms[this.getCurrentNode().roomId];
+        
+        switch(action) {
+            case 'picklock':
+                this.handleSkillCheck('侦查', 40, `尝试开锁`, () => {
+                    this.log('成功', '宝箱打开了！获得古老钥匙 + 10金币');
+                    room.objects = room.objects.filter(o => o.id !== 'chest');
+                    this.clearSelection();
+                }, () => {
+                    this.log('失败', '开锁失败，宝箱卡住了');
+                });
+                break;
+            case 'break':
+                this.handleSkillCheck('力量', 35, `尝试破坏宝箱`, () => {
+                    this.log('成功', '宝箱被破坏！获得5金币');
+                    room.objects = room.objects.filter(o => o.id !== 'chest');
+                    this.clearSelection();
+                }, () => {
+                    this.log('失败', '破坏失败，宝箱太坚固了');
+                });
+                break;
+            case 'disarm':
+                this.handleSkillCheck('侦查', 45, `尝试解除陷阱`, () => {
+                    this.log('成功', '陷阱被安全解除了');
+                    room.objects = room.objects.filter(o => o.id !== 'trap');
+                    this.clearSelection();
+                }, () => {
+                    this.log('失败', '触发陷阱！HP-15');
+                    this.takeDamage(15);
+                });
+                break;
+            case 'avoid':
+                this.handleSkillCheck('侦查', 30, `尝试避开陷阱`, () => {
+                    this.log('成功', '成功避开陷阱');
+                }, () => {
+                    this.log('失败', '触发陷阱！HP-10');
+                    this.takeDamage(10);
+                });
+                break;
+            case 'disrupt':
+                this.handleSkillCheck('神秘学', 50, `尝试干扰仪式`, () => {
+                    this.log('成功', '仪式受到干扰！Boss被削弱');
+                    const boss = room.objects.find(o => o.type === 'boss');
+                    if (boss) {
+                        boss.hp -= 20;
+                        this.log('战斗', '邪教主教 HP-20');
+                    }
+                }, () => {
+                    this.log('失败', '干扰失败，SAN-10');
+                    this.takeSanityDamage(10);
+                });
+                break;
+            case 'observe':
+                this.handleSkillCheck('侦查', 30, `观察${target.name}`, () => {
+                    this.log('成功', `观察到${target.name}的详细信息`);
+                }, () => {
+                    this.log('失败', '观察失败');
+                });
+                break;
+        }
+        
+        this.checkCombatEnd();
+        if (room.objects.length > 0) {
+            this.renderCombat(room);
+        }
+    },
+    
+    // 处理技能检定
+    handleSkillCheck(skillName, difficulty, actionDesc, onSuccess, onFail) {
+        this.log('行动', actionDesc);
+        const result = this.skillCheck(this.getSkill(skillName), difficulty);
+        if (result.success) {
+            if (result.critical) this.log('大成功', '完美的执行！');
+            onSuccess();
+        } else {
+            if (result.fumble) this.log('大失败', '糟糕的结果！');
+            onFail();
+        }
+    },
+    
+    // 战斗攻击 - 对选中目标
+    combatAttack() {
+        const target = this.state.selectedTarget;
+        if (!target || (target.type !== 'enemy' && target.type !== 'boss')) {
+            this.log('系统', '请先选择一个敌人');
+            return;
+        }
+        
+        if (target.hp <= 0) {
+            this.log('系统', '该目标已被击败');
+            return;
+        }
         
         if (!this.consumeTurns(1)) return;
         
@@ -357,6 +541,7 @@ const game = {
             
             if (target.hp <= 0) {
                 this.log('胜利', `${target.name}被击败了！`);
+                this.clearSelection();
             }
         } else {
             const dmg = result.fumble ? 15 : 8;
@@ -367,13 +552,20 @@ const game = {
         this.checkCombatEnd();
     },
     
-    // 观察弱点
+    // 观察敌人 - 对选中目标
     combatObserve() {
         if (!this.consumeTurns(1)) return;
         
-        const result = this.skillCheck(this.getSkill('侦查'), 35);
+        const target = this.state.selectedTarget;
+        const difficulty = target && target.type === 'boss' ? 45 : 35;
+        
+        const result = this.skillCheck(this.getSkill('侦查'), difficulty);
         if (result.success) {
-            this.log('侦查', '发现了敌人的弱点！下次攻击+10伤害');
+            if (target && (target.type === 'enemy' || target.type === 'boss')) {
+                this.log('侦查', `发现了${target.name}的弱点！下次攻击+10伤害`);
+            } else {
+                this.log('侦查', '发现了重要线索');
+            }
         } else {
             this.log('侦查', '观察失败');
         }
