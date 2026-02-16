@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DS10 - 深渊调查员 Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+        
+        /* 像素风格基础 */
+        .pixel-border {
+            border: 4px solid #2a2a3a;
+            box-shadow: 
+                inset 0 0 0 2px #1a1a2a,
+                0 0 0 2px #0a0a0f;
+        }
+        
+        /* 状态栏 */
+        .status-bar {
+            background: #1a1a2e;
+            padding: 12px;
+            display: flex;
+            justify-content: space-around;
+            border-bottom: 4px solid #0f0f1a;
+            font-size: 12px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-label {
+            color: #888;
+            font-size: 10px;
+        }
+        
+        .status-value {
+            color: #e94560;
+            font-weight: bold;
+        }
+        
+        .bar-container {
+            width: 80px;
+            height: 14px;
+            background: #0a0a0f;
+            border: 2px solid #2a2a3a;
+            position: relative;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(180deg, #e94560 0%, #c73e54 100%);
+            transition: width 0.3s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        
+        .bar-fill.sanity {
+            background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
+        }
+        
+        /* 主游戏区域 */
+        .game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 12px;
+            overflow-y: auto;
+        }
+        
+        /* 场景标题 */
+        .scene-header {
+            text-align: center;
+            padding: 12px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            border: 2px solid #2a2a3a;
+        }
+        
+        .scene-title {
+            color: #e94560;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(233, 69, 96, 0.3);
+        }
+        
+        .scene-subtitle {
+            color: #666;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        
+        /* 像素画面区域 */
+        .pixel-view {
+            aspect-ratio: 1;
+            max-height: 320px;
+            background: #0f0f1a;
+            border: 4px solid #2a2a3a;
+            position: relative;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 320px;
+            overflow: hidden;
+        }
+        
+        /* 像素对象 */
+        .pixel-object {
+            position: absolute;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            image-rendering: pixelated;
+        }
+        
+        .pixel-object:hover {
+            filter: brightness(1.3);
+            transform: scale(1.05);
+        }
+        
+        .pixel-object.selected {
+            animation: selected-pulse 1s infinite;
+            z-index: 10;
+        }
+        
+        @keyframes selected-pulse {
+            0%, 100% { 
+                filter: brightness(1.2) drop-shadow(0 0 4px #e94560);
+            }
+            50% { 
+                filter: brightness(1.5) drop-shadow(0 0 8px #e94560);
+            }
+        }
+        
+        /* 具体像素对象样式 */
+        .obj-chest {
+            width: 48px;
+            height: 40px;
+            background: 
+                linear-gradient(180deg, #8b4513 0%, #654321 50%, #4a3018 100%);
+            border: 2px solid #a0522d;
+            box-shadow: inset 0 2px 0 rgba(255,200,100,0.3);
+        }
+        
+        .obj-chest::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 12px;
+            background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
+            border: 2px solid #daa520;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .obj-trap {
+            width: 40px;
+            height: 40px;
+            background: repeating-linear-gradient(
+                45deg,
+                #2a2a3a,
+                #2a2a3a 4px,
+                #1a1a2e 4px,
+                #1a1a2e 8px
+            );
+            border: 2px dashed #444;
+        }
+        
+        .obj-trap::before {
+            content: '▲';
+            position: absolute;
+            color: #666;
+            font-size: 12px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .obj-monster {
+            width: 44px;
+            height: 48px;
+            background: linear-gradient(180deg, #2d5a3d 0%, #1a3a28 100%);
+            border: 2px solid #4a7c59;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .obj-monster::before {
+            content: '◉ ◉';
+            position: absolute;
+            color: #ff3333;
+            font-size: 10px;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            letter-spacing: 2px;
+            text-shadow: 0 0 4px #ff0000;
+        }
+        
+        .obj-ritual {
+            width: 56px;
+            height: 56px;
+            background: 
+                radial-gradient(circle at 30% 30%, #9b59b6 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, #e74c3c 0%, transparent 50%),
+                #2c003e;
+            border: 3px solid #e74c3c;
+            border-radius: 50%;
+            animation: ritual-rotate 3s linear infinite;
+            box-shadow: 
+                0 0 20px rgba(231, 76, 60, 0.5),
+                inset 0 0 20px rgba(155, 89, 182, 0.3);
+        }
+        
+        @keyframes ritual-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .obj-cultist {
+            width: 40px;
+            height: 48px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+        
+        .obj-cultist::after {
+            content: '◉';
+            position: absolute;
+            color: #666;
+            font-size: 16px;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .obj-player {
+            width: 32px;
+            height: 40px;
+            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
+            border: 2px solid #5dade2;
+            border-radius: 4px 4px 0 0;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+        }
+        
+        /* 地图视图 */
+        .map-view {
+            padding: 16px;
+            background: #0f0f1a;
+            border: 4px solid #2a2a3a;
+        }
+        
+        .map-layer {
+            margin-bottom: 20px;
+        }
+        
+        .map-layer-title {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .map-nodes {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .map-node {
+            width: 80px;
+            height: 60px;
+            background: #1a1a2e;
+            border: 3px solid #2a2a3a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 10px;
+        }
+        
+        .map-node:hover:not(.locked) {
+            border-color: #e94560;
+            background: #252538;
+        }
+        
+        .map-node.current {
+            border-color: #3498db;
+            background: #1e3a5f;
+            box-shadow: 0 0 12px rgba(52, 152, 219, 0.4);
+        }
+        
+        .map-node.cleared {
+            border-color: #27ae60;
+            opacity: 0.7;
+        }
+        
+        .map-node.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .map-node-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .map-node-label {
+            color: #aaa;
+            text-align: center;
+        }
+        
+        /* 行动面板 */
+        .action-panel {
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            padding: 12px;
+        }
+        
+        .action-title {
+            color: #e94560;
+            font-size: 12px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2a3a;
+        }
+        
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .action-btn {
+            background: linear-gradient(180deg, #252538 0%, #1a1a2e 100%);
+            border: 2px solid #3a3a4a;
+            color: #e0e0e0;
+            padding: 12px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            text-align: left;
+        }
+        
+        .action-btn:hover {
+            border-color: #e94560;
+            background: linear-gradient(180deg, #303048 0%, #252538 100%);
+        }
+        
+        .action-btn:active {
+            transform: translateY(2px);
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: #2a2a3a;
+        }
+        
+        .action-btn .skill-tag {
+            display: block;
+            font-size: 10px;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        /* 日志面板 */
+        .log-panel {
+            background: #0a0a0f;
+            border: 2px solid #1a1a2e;
+            padding: 12px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            border-left: 3px solid #3a3a4a;
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .log-entry.success {
+            border-left-color: #27ae60;
+            background: rgba(39, 174, 96, 0.05);
+        }
+        
+        .log-entry.failure {
+            border-left-color: #e94560;
+            background: rgba(233, 69, 96, 0.05);
+        }
+        
+        .log-entry.system {
+            border-left-color: #3498db;
+            color: #5dade2;
+        }
+        
+        /* 职业选择 */
+        .profession-select {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .profession-title {
+            color: #e94560;
+            font-size: 20px;
+            margin-bottom: 24px;
+            text-align: center;
+            text-shadow: 0 2px 8px rgba(233, 69, 96, 0.4);
+        }
+        
+        .profession-card {
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            border: 3px solid #2a2a3a;
+            padding: 16px;
+            margin: 8px;
+            width: 100%;
+            max-width: 320px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .profession-card:hover {
+            border-color: #e94560;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(233, 69, 96, 0.2);
+        }
+        
+        .profession-name {
+            color: #e94560;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .profession-stats {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+        }
+        
+        .profession-stats .highlight {
+            color: #27ae60;
+        }
+        
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            border: 4px solid #e94560;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal-title {
+            color: #e94560;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        
+        .modal-text {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .modal-btn {
+            background: linear-gradient(180deg, #e94560 0%, #c73e54 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        .modal-btn:hover {
+            filter: brightness(1.1);
+        }
+        
+        /* 隐藏 */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0a0a0f;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a3a;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a4a;
+        }
+    </style>
+</head>
+<body>
+    <!-- 职业选择界面 -->
+    <div id="professionSelect" class="profession-select">
+        <h1 class="profession-title">选择你的调查员</h1>
+        
+        <div class="profession-card" onclick="game.selectProfession('archaeologist')">
+            <div class="profession-name">🔍 考古学家</div>
+            <div class="profession-stats">
+                HP: 70 | SAN: 80<br>
+                侦查: 50 | 力量: 30 | 神秘学: 35<br>
+                <span class="highlight">擅长: 观察、开锁、古老机关</span>
+            </div>
+        </div>
+        
+        <div class="profession-card" onclick="game.selectProfession('soldier')">
+            <div class="profession-name">⚔️ 前军人</div>
+            <div class="profession-stats">
+                HP: 90 | SAN: 60<br>
+                侦查: 35 | 力量: 55 | 神秘学: 20<br>
+                <span class="highlight">擅长: 战斗、压制、直接突破</span>
+            </div>
+        </div>
+        
+        <div class="profession-card" onclick="game.selectProfession('occultist')">
+            <div class="profession-name">✦ 神秘学者</div>
+            <div class="profession-stats">
+                HP: 50 | SAN: 60<br>
+                侦查: 40 | 力量: 20 | 神秘学: 55<br>
+                <span class="highlight">擅长: 仪式、超自然、高风险高回报</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div id="gameUI" class="hidden" style="flex-direction: column; height: 100vh;">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">HP</span>
+                <div class="bar-container">
+                    <div class="bar-fill" id="hpBar" style="width: 100%"></div>
+                </div>
+                <span class="status-value" id="hpText">70/70</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">SAN</span>
+                <div class="bar-container">
+                    <div class="bar-fill sanity" id="sanBar" style="width: 100%"></div>
+                </div>
+                <span class="status-value" id="sanText">80/80</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">时间</span>
+                <span class="status-value" id="timeText">30:00</span>
+            </div>
+        </div>
+
+        <!-- 游戏容器 -->
+        <div class="game-container">
+            <!-- 场景标题 -->
+            <div class="scene-header">
+                <div class="scene-title" id="sceneTitle">准备进入副本</div>
+                <div class="scene-subtitle" id="sceneSubtitle">选择调查员开始游戏</div>
+            </div>
+
+            <!-- 动态内容区域 -->
+            <div id="gameContent">
+                <!-- 这里会根据状态显示地图或房间 -->
+            </div>
+
+            <!-- 行动面板 -->
+            <div class="action-panel" id="actionPanel" style="display: none;">
+                <div class="action-title" id="actionTitle">选择行动</div>
+                <div class="action-grid" id="actionButtons">
+                    <!-- 动态生成按钮 -->
+                </div>
+            </div>
+
+            <!-- 日志面板 -->
+            <div class="log-panel" id="logPanel">
+                <div class="log-entry system">游戏初始化完成...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">标题</div>
+            <div class="modal-text" id="modalText">内容</div>
+            <button class="modal-btn" onclick="game.closeModal()">确定</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

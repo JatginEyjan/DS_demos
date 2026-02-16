@@ -435,8 +435,7 @@ class DS08Game {
         
         if (layerIndex === 0) {
             this.explorationLogs = [{ msg: `进入了${this.currentDungeon.name} 第1层...`, type: 'system', time: Date.now() }];
-            // 第一层自动显示规则说明
-            setTimeout(() => this.showRules(), 500);
+            // 第一层不自动显示规则说明
         } else {
             this.explorationLogs = [{ msg: `进入了第${layerIndex + 1}层（理智继承：${this.sanity}）`, type: 'system', time: Date.now() }];
         }
@@ -561,10 +560,7 @@ class DS08Game {
         const modal = document.getElementById('layer-story-modal');
         if (modal) modal.remove();
         
-        // 如果是第一层，显示规则说明
-        if (layerIndex === 0) {
-            setTimeout(() => this.showRules(), 300);
-        }
+        // 第一层不自动显示规则说明
     }
 
     createGrid(size) {
