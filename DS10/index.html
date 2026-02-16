@@ -35,21 +35,40 @@
         
         @media (max-width: 768px) {
             .status-bar {
-                padding: 6px 8px;
-                height: 40px;
-                font-size: 11px;
+                padding: 6px 4px;
+                height: 36px;
+                font-size: 10px;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+            }
+            
+            .status-item {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 3px;
+                font-size: 10px;
+                flex: 1;
+                justify-content: center;
+            }
+            
+            .status-item span {
+                white-space: nowrap;
+                font-size: 10px;
             }
             
             .bar-container {
-                width: 45px !important;
-                height: 10px !important;
+                width: 35px !important;
+                height: 8px !important;
             }
         }
         
         .status-item {
             display: flex;
+            flex-direction: row; /* 明确水平排列 */
             align-items: center;
             gap: 6px;
+            white-space: nowrap; /* 防止文字换行 */
         }
         
         .bar-container {
