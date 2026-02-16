@@ -486,6 +486,23 @@ const game = {
     // 更新小地图
     updateMinimap() {
         const minimap = document.getElementById('minimapContent');
+        const mobileMap = document.getElementById('mobileMapContent');
+        
+        const mapHTML = this.generateMapHTML();
+        
+        // 桌面端侧边地图
+        if (minimap) {
+            minimap.innerHTML = mapHTML.desktop;
+        }
+        
+        // 手机端弹窗地图
+        if (mobileMap) {
+            mobileMap.innerHTML = mapHTML.mobile;
+        }
+    },
+    
+    // 生成地图HTML
+    generateMapHTML() {
         const current = this.getCurrentNode();
         
         // 计算显示范围
@@ -494,49 +511,103 @@ const game = {
         const minY = Math.min(...this.routeGrid.map(n => n.y));
         const maxY = Math.max(...this.routeGrid.map(n => n.y));
         
-        let html = '<div class="grid-map">';
-        
+        // 桌面端地图（带图例）
+        let desktopHTML = '<div class="grid-map">';
         for (let y = minY; y <= maxY; y++) {
-            html += '<div class="grid-row">';
+            desktopHTML += '<div class="grid-row">';
+            for (let x = minX; x <= maxX; x++) {
+                desktopHTML += this.getCellHTML(x, y, current);
+            }
+            desktopHTML += '</div>';
+        }
+        desktopHTML += '</div>';
+        desktopHTML += `<div class="map-legend">图例: ●当前 ✓已访问 ?可探索 █迷雾</div>`;
+        
+        // 手机端地图（更大格子，无图例）
+        let mobileHTML = '<div class="grid-map" style="gap:5px;">';
+        for (let y = minY; y <= maxY; y++) {
+            mobileHTML += '<div class="grid-row" style="gap:5px;">';
             for (let x = minX; x <= maxX; x++) {
                 const node = this.routeGrid.find(n => n.x === x && n.y === y);
-                
                 if (!node) {
-                    html += '<div class="grid-cell empty"></div>';
+                    mobileHTML += '<div style="width:32px;height:32px;"></div>';
                     continue;
                 }
                 
-                // 迷雾判断：只显示已访问的、当前位置、或与已访问相邻的
-                const isVisible = node.visited || 
-                                  node.id === current.id ||
+                const isVisible = node.visited || node.id === current.id ||
                                   this.getNeighbors(node.id).some(n => n.visited);
                 
-                let cellClass = 'grid-cell';
+                let style = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;border-radius:4px;';
                 let content = '';
                 
                 if (node.id === current.id) {
-                    cellClass += ' current';
+                    style += 'background:#e94560;color:white;font-weight:bold;';
                     content = '●';
                 } else if (node.visited) {
-                    cellClass += ' visited';
-                    content = this.getNodeIcon(node.type);
+                    style += 'background:#27ae60;color:white;';
+                    content = '✓';
                 } else if (isVisible) {
-                    cellClass += ' visible';
+                    style += 'background:#3a3a4a;color:#aaa;border:1px solid #555;';
                     content = '?';
                 } else {
-                    cellClass += ' fog';
-                    content = '';
+                    style += 'background:#0a0a0f;border:1px solid #1a1a2a;';
                 }
                 
-                html += `<div class="${cellClass}">${content}</div>`;
+                mobileHTML += `<div style="${style}">${content}</div>`;
             }
-            html += '</div>';
+            mobileHTML += '</div>';
+        }
+        mobileHTML += '</div>';
+        
+        return { desktop: desktopHTML, mobile: mobileHTML };
+    },
+    
+    // 获取格子HTML
+    getCellHTML(x, y, current) {
+        const node = this.routeGrid.find(n => n.x === x && n.y === y);
+        
+        if (!node) {
+            return '<div class="grid-cell empty"></div>';
         }
         
-        html += '</div>';
-        html += `<div class="map-legend">图例: ●当前 ✓已访问 ?可探索 █迷雾</div>`;
+        const isVisible = node.visited || node.id === current.id ||
+                          this.getNeighbors(node.id).some(n => n.visited);
         
-        minimap.innerHTML = html;
+        let cellClass = 'grid-cell';
+        let content = '';
+        
+        if (node.id === current.id) {
+            cellClass += ' current';
+            content = '●';
+        } else if (node.visited) {
+            cellClass += ' visited';
+            content = this.getNodeIcon(node.type);
+        } else if (isVisible) {
+            cellClass += ' visible';
+            content = '?';
+        } else {
+            cellClass += ' fog';
+            content = '';
+        }
+        
+        return `<div class="${cellClass}">${content}</div>`;
+    },
+    
+    // 显示手机地图
+    showMobileMap() {
+        const modal = document.getElementById('mobileMapModal');
+        if (modal) {
+            this.updateMinimap(); // 确保内容最新
+            modal.classList.add('show');
+        }
+    },
+    
+    // 隐藏手机地图
+    hideMobileMap() {
+        const modal = document.getElementById('mobileMapModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
     },
     
     getNodeIcon(type) {

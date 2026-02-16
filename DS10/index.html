@@ -81,37 +81,16 @@
             flex-shrink: 0; /* 防止压缩 */
         }
         
-        /* 移动端适配 */
+        /* 移动端适配 - 隐藏侧边地图，使用全屏+按钮 */
         @media (max-width: 768px) {
             .game-layout {
-                flex-direction: column-reverse;
+                flex-direction: column;
                 height: calc(100vh - 45px);
             }
             
+            /* 手机端完全隐藏右侧地图面板 */
             .minimap-panel {
-                width: 100%;
-                height: 120px;
-                border-left: none;
-                border-top: 3px solid #2a2a3a;
-                flex-direction: row;
-                padding: 8px;
-            }
-            
-            .minimap-title {
-                display: none; /* 移动端隐藏标题节省空间 */
-            }
-            
-            .minimap-content {
-                flex: 1;
-            }
-            
-            .grid-map {
-                flex-direction: row;
-                justify-content: center;
-            }
-            
-            .map-legend {
-                display: none; /* 移动端隐藏图例 */
+                display: none;
             }
             
             .main-panel {
@@ -122,15 +101,77 @@
             
             .scene-header {
                 padding: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
             }
             
             .scene-title {
                 font-size: 14px;
             }
             
-            .log-panel {
-                height: 80px;
+            .scene-subtitle {
+                font-size: 10px;
             }
+            
+            .log-panel {
+                height: 70px;
+            }
+            
+            /* 移动端网格地图弹窗 */
+            .mobile-map-btn {
+                display: block !important;
+                background: #2a2a3a;
+                border: 2px solid #3a3a4a;
+                color: #e0e0e0;
+                padding: 6px 12px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            
+            .mobile-map-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.95);
+                z-index: 1500;
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            
+            .mobile-map-modal.show {
+                display: flex;
+            }
+            
+            .mobile-map-content {
+                background: #0f0f1a;
+                border: 3px solid #2a2a3a;
+                padding: 20px;
+            }
+            
+            .mobile-map-close {
+                margin-top: 20px;
+                background: #e94560;
+                border: none;
+                color: white;
+                padding: 12px 30px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+        }
+        
+        /* 桌面端隐藏手机地图按钮 */
+        .mobile-map-btn {
+            display: none;
+        }
+        
+        .mobile-map-modal {
+            display: none;
         }
         
         /* 超小屏幕适配 */
@@ -735,8 +776,11 @@
             <!-- 左侧主画面 -->
             <div class="main-panel">
                 <div class="scene-header">
-                    <div class="scene-title" id="sceneTitle">准备</div>
-                    <div class="scene-subtitle" id="sceneSubtitle">选择调查员</div>
+                    <div>
+                        <div class="scene-title" id="sceneTitle">准备</div>
+                        <div class="scene-subtitle" id="sceneSubtitle">选择调查员</div>
+                    </div>
+                    <button class="mobile-map-btn" id="mobileMapBtn" onclick="game.showMobileMap()">🗺️ 地图</button>
                 </div>
                 
                 <div class="main-content" id="mainContent"></div>
@@ -770,6 +814,12 @@
             <div class="modal-text" id="modalText">内容</div>
             <button class="modal-btn" onclick="game.closeModal()">确定</button>
         </div>
+    </div>
+
+    <!-- 手机端地图弹窗 -->
+    <div class="mobile-map-modal" id="mobileMapModal">
+        <div class="mobile-map-content" id="mobileMapContent"></div>
+        <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
     </div>
 
     <script src="game.js"></script>
