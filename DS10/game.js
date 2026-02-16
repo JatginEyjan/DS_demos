@@ -1,182 +1,272 @@
-// DS10 v4 - 双人小队 + SAN压力系统 + 随机事件
-// 核心改动: 双人并行、SAN累积爆发、随机事件替代安全屋
+// DS10 v5 - 强剧情驱动版
+// 核心：世界观叙事 + 主轴剧情 + 线索系统 + 多结局
 
 const game = {
     state: {
-        phase: 'profession_select',
+        phase: 'intro', // intro, profession_select, game
         currentRoute: null,
         turn: 0,
-        selectedInvestigator: 0, // 当前行动的调查员索引
+        selectedInvestigator: 0,
         selectedTarget: null,
         gameOver: false,
-        victory: false
+        victory: false,
+        ending: null,
+        // 决心值
+        resolve: {
+            stopRitual: 0,    // 阻止仪式
+            seekTruth: 0,     // 探寻真相
+            protect: 0,       // 保护同伴
+            survive: 0        // 自我保全
+        },
+        // 线索收集
+        clues: [],
+        // 永久buff/debuff
+        buffs: [],
+        // 剧情标记
+        storyFlags: {}
     },
     
     // 双人调查员小队
     team: [],
     
-    // 路线网格定义 (移除安全屋，改为普通节点)
+    // 扩展地图（14节点）
     routeGrid: [
-        { id: 'entrance', name: '入口', type: 'start', x: 0, y: 0, visited: false },
-        { id: 'room1', name: '储藏室', type: 'room', x: 1, y: 0, roomId: 'storage', visited: false },
-        { id: 'fork', name: '分叉点', type: 'fork', x: 2, y: 0, visited: false },
+        // 入口区（第一幕）
+        { id: 'entrance', name: '矿坑入口', type: 'start', x: 0, y: 0, visited: false,
+          story: 'entrance', desc: '深渊裂隙的入口，寒风裹挟着腐朽的气息' },
+        { id: 'collapse', name: '塌陷通道', type: 'story', x: 1, y: 0, visited: false,
+          story: 'collapse', desc: '通道被碎石堵塞，墙上有新鲜的刻痕' },
+        { id: 'camp', name: '第7小队营地', type: 'main_story', x: 2, y: 0, visited: false,
+          story: 'camp', desc: '失踪小队的临时营地，马库斯队长的日记' },
         
-        // 上分支
-        { id: 'room2', name: '陷阱房', type: 'room', x: 3, y: -1, roomId: 'trap', visited: false, branch: 'upper' },
-        { id: 'encounter1', name: '阴影走廊', type: 'encounter', x: 4, y: -1, visited: false },
+        // 分叉点
+        { id: 'fork', name: '矿道分叉', type: 'fork', x: 3, y: 0, visited: false,
+          story: 'fork', desc: '通道分成两条，分别通向不同区域' },
         
-        // 下分支
-        { id: 'room3', name: '守卫室', type: 'room', x: 3, y: 1, roomId: 'guard', visited: false, branch: 'lower' },
-        { id: 'encounter2', name: '低语回廊', type: 'encounter', x: 4, y: 1, visited: false },
+        // 上分支 - 参与者之路
+        { id: 'upper1', name: '教导厅', type: 'story', x: 4, y: -1, visited: false,
+          story: 'teaching', desc: '主教教导村民仪式步骤的地方' },
+        { id: 'upper2', name: '藏书室', type: 'main_story', x: 5, y: -1, visited: false,
+          story: 'library', desc: '埃德蒙·布莱克伍德的私人空间' },
+        { id: 'upper3', name: '准备区', type: 'combat', x: 6, y: -1, visited: false,
+          desc: '仪式准备区，有守卫巡逻' },
         
-        // 汇合
-        { id: 'merge', name: '汇合点', type: 'merge', x: 5, y: 0, visited: false },
-        { id: 'encounter3', name: '深渊前厅', type: 'encounter', x: 6, y: 0, visited: false },
-        { id: 'boss', name: '仪式厅', type: 'boss', x: 7, y: 0, roomId: 'ritual', visited: false },
-        { id: 'exit', name: '出口', type: 'exit', x: 8, y: 0, visited: false }
+        // 下分支 - 牺牲品之路
+        { id: 'lower1', name: '牺牲坑道', type: 'story', x: 4, y: 1, visited: false,
+          story: 'sacrifice', desc: '血腥味弥漫的通道，令人不安' },
+        { id: 'lower2', name: '深渊边缘', type: 'main_story', x: 5, y: 1, visited: false,
+          story: 'abyss_edge', desc: '空间裂隙的边缘，马库斯的终末之地' },
+        { id: 'lower3', name: '实验场', type: 'combat', x: 6, y: 1, visited: false,
+          desc: '深渊人体实验的现场' },
+        
+        // 汇合区（第三幕）
+        { id: 'merge', name: '汇合点', type: 'merge', x: 7, y: 0, visited: false,
+          story: 'merge', desc: '两条路径再次汇合' },
+        { id: 'antechamber', name: '深渊前厅', type: 'story', x: 8, y: 0, visited: false,
+          story: 'antechamber', desc: '仪式大厅前的最后空间' },
+        { id: 'boss', name: '仪式大厅', type: 'boss', x: 9, y: 0, visited: false,
+          story: 'ritual_hall', desc: '埃德蒙·布莱克伍德进行仪式的地方' },
+        { id: 'exit', name: '出口', type: 'exit', x: 10, y: 0, visited: false,
+          desc: '离开深渊的通道' }
     ],
     
     connections: [
-        ['entrance', 'room1'],
-        ['room1', 'fork'],
-        ['fork', 'room2'],
-        ['fork', 'room3'],
-        ['room2', 'encounter1'],
-        ['room3', 'encounter2'],
-        ['encounter1', 'merge'],
-        ['encounter2', 'merge'],
-        ['merge', 'encounter3'],
-        ['encounter3', 'boss'],
+        ['entrance', 'collapse'],
+        ['collapse', 'camp'],
+        ['camp', 'fork'],
+        ['fork', 'upper1'],
+        ['fork', 'lower1'],
+        ['upper1', 'upper2'],
+        ['upper2', 'upper3'],
+        ['lower1', 'lower2'],
+        ['lower2', 'lower3'],
+        ['upper3', 'merge'],
+        ['lower3', 'merge'],
+        ['merge', 'antechamber'],
+        ['antechamber', 'boss'],
         ['boss', 'exit']
     ],
     
-    rooms: {},
-    
-    professions: {
-        archaeologist: { name: '考古学家', hp: 70, maxHp: 70, sanity: 0, maxSanity: 100, skills: { 侦查: 50, 力量: 30, 神秘学: 35 } },
-        soldier: { name: '前军人', hp: 90, maxHp: 90, sanity: 0, maxSanity: 100, skills: { 侦查: 35, 力量: 55, 神秘学: 20 } },
-        occultist: { name: '神秘学者', hp: 50, maxHp: 50, sanity: 0, maxSanity: 100, skills: { 侦查: 40, 力量: 20, 神秘学: 55 } }
-    },
-    
-    // SAN状态定义
-    sanityStates: {
-        calm: { min: 0, max: 30, name: '冷静', desc: '内心平静，思维清晰', bonus: '暴击率+5%' },
-        uneasy: { min: 31, max: 50, name: '不安', desc: '隐隐感到不安', penalty: '技能检定-5' },
-        nervous: { min: 51, max: 70, name: '紧张', desc: '手心出汗，心跳加速', penalty: '技能检定-10' },
-        fearful: { min: 71, max: 85, name: '恐惧', desc: '恐惧攫住了你的心', penalty: '技能检定-15, 25%行动失败' },
-        breaking: { min: 86, max: 99, name: '崩溃边缘', desc: '理智即将崩溃', penalty: '技能检定-20, 50%拒绝行动' },
-        broken: { min: 100, max: 100, name: '崩溃', desc: '理智已崩溃', effect: '进入Affliction/Virtue判定' }
-    },
-    
-    // Afflictions (负面状态)
-    afflictions: {
-        paranoid: { name: '偏执', desc: '所有人都在欺骗我', effect: '拒绝队友治疗，总是最后行动' },
-        hopeless: { name: '绝望', desc: '一切都结束了', effect: '伤害-30%，50%几率跳过回合' },
-        manic: { name: '狂躁', desc: '杀！全部杀光！', effect: '伤害+20%，50%攻击敌我不分' },
-        withdrawn: { name: '自闭', desc: '我无法面对这一切', effect: '无法执行任何行动' }
-    },
-    
-    // Virtues (正面状态)
-    virtues: {
-        steadfast: { name: '坚定', desc: '恐惧只是幻觉', effect: '免疫SAN伤害3回合，全队SAN-10' },
-        heroic: { name: '英勇', desc: '为了队友！', effect: '伤害+30%，吸引所有敌人攻击' }
-    },
-    
-    // 随机事件池
-    randomEvents: [
-        {
-            id: 'altar',
-            name: '古老祭坛',
-            desc: '你发现一座刻满符文的祭坛，上面有一本翻开的古籍',
-            choices: [
-                { text: '阅读古籍 (SAN-20, 获得神秘知识)', action: 'altar_read' },
-                { text: '献祭血液 (HP-15, 全队SAN-10)', action: 'altar_sacrifice' },
-                { text: '离开', action: 'leave' }
-            ]
-        },
-        {
-            id: 'merchant',
-            name: '神秘商人',
-            desc: '一个披着黑袍的身影从阴影中走出，提供交易',
-            choices: [
-                { text: '购买镇静剂 (10金币, SAN-15)', action: 'buy_sedative' },
-                { text: '出售情报 (获得15金币)', action: 'sell_info' },
-                { text: '拒绝交易', action: 'leave' }
-            ]
-        },
-        {
-            id: 'whispers',
-            name: '低语',
-            desc: '墙壁中传来无法理解的低语，似乎在诱导你',
-            choices: [
-                { text: '倾听 (SAN+10, 可能获得线索)', action: 'listen_whispers' },
-                { text: '捂住耳朵快速通过', action: 'leave' }
-            ]
-        },
-        {
-            id: 'corpse',
-            name: '前人尸体',
-            desc: '地上躺着一具调查员的尸体，手中紧握着什么',
-            choices: [
-                { text: '搜刮 (SAN+5, 获得物品)', action: 'loot_corpse' },
-                { text: ' respectful离开 (SAN+2)', action: 'respect_leave' }
-            ]
-        },
-        {
-            id: 'ambush',
-            name: '伏击！',
-            desc: '敌人从阴影中跳出！',
-            choices: [
-                { text: '迎战！', action: 'ambush_fight' }
-            ]
-        }
+    // 世界观开场文本
+    introText: [
+        { text: "2024年11月17日 凌晨3:42", style: "date" },
+        { text: "东欧，喀尔巴阡山脉废弃矿区", style: "location" },
+        { text: "", style: "break" },
+        { text: "深渊调查局（DIA）第9小队", style: "title" },
+        { text: "", style: "break" },
+        { text: "3天前，DIA第7小队在此失联。", style: "text" },
+        { text: "12小时前，最后通讯中断。", style: "text" },
+        { text: "传来的最后一句话：", style: "text" },
+        { text: "", style: "break" },
+        { text: '"主教...仪式...阻止他...深渊之主即将..."', style: "quote" },
+        { text: "", style: "break" },
+        { text: "你们的任务：", style: "title" },
+        { text: "1. 找到第7小队的幸存者", style: "list" },
+        { text: "2. 阻止正在进行的仪式", style: "list" },
+        { text: "3. 查明深渊之主的真相", style: "list" },
+        { text: "", style: "break" },
+        { text: "寒风裹挟着腐朽的气息从黑暗中涌出...", style: "text" }
     ],
     
-    init() {
-        this.initRooms();
-        this.log('系统', '=== DS10 v4 已加载 ===');
-        this.log('系统', '双人小队 + SAN压力系统 + 随机事件');
-        this.log('系统', '选择2名不同职业组成小队');
-    },
-    
-    initRooms() {
-        this.rooms = {
-            storage: { id: 'storage', name: '储藏室', objects: null, cleared: false, revealed: [] },
-            trap: { id: 'trap', name: '陷阱房', objects: null, cleared: false, revealed: [] },
-            guard: { id: 'guard', name: '守卫室', objects: null, cleared: false, revealed: [] },
-            ritual: { id: 'ritual', name: '仪式厅', objects: null, cleared: false, revealed: [] }
-        };
-    },
-    
-    // 选择职业 - 改为选择2个
-    selectedProfessions: [],
-    
-    selectProfession(key) {
-        if (this.selectedProfessions.includes(key)) {
-            this.log('系统', '该职业已被选择');
-            return;
+    // 职业定义
+    professions: {
+        archaeologist: { 
+            name: '考古学家', 
+            hp: 70, maxHp: 70, 
+            sanity: 0, maxSanity: 100, 
+            skills: { 侦查: 50, 力量: 30, 神秘学: 35 },
+            desc: '精通古代文献和符号学',
+            dialogStyle: 'analytical'
+        },
+        soldier: { 
+            name: '前军人', 
+            hp: 90, maxHp: 90, 
+            sanity: 0, maxSanity: 100, 
+            skills: { 侦查: 35, 力量: 55, 神秘学: 20 },
+            desc: '实战经验丰富，擅长危机处理',
+            dialogStyle: 'direct'
+        },
+        occultist: { 
+            name: '神秘学者', 
+            hp: 50, maxHp: 50, 
+            sanity: 0, maxSanity: 100, 
+            skills: { 侦查: 40, 力量: 20, 神秘学: 55 },
+            desc: '研究超自然现象的专家',
+            dialogStyle: 'mystical'
         }
+    },
+    
+    // SAN状态
+    sanityStates: {
+        calm: { min: 0, max: 30, name: '冷静', color: '#27ae60' },
+        uneasy: { min: 31, max: 50, name: '不安', color: '#f39c12' },
+        nervous: { min: 51, max: 70, name: '紧张', color: '#e67e22' },
+        fearful: { min: 71, max: 85, name: '恐惧', color: '#e94560' },
+        breaking: { min: 86, max: 99, name: '崩溃边缘', color: '#7c3aed' },
+        broken: { min: 100, max: 100, name: '崩溃', color: '#000' }
+    },
+    
+    // Afflictions
+    afflictions: {
+        paranoid: { name: '偏执', effect: '拒绝治疗' },
+        hopeless: { name: '绝望', effect: '伤害-30%，50%跳过回合' },
+        manic: { name: '狂躁', effect: '50%攻击错误目标' },
+        withdrawn: { name: '自闭', effect: '无法行动' }
+    },
+    
+    // Virtues
+    virtues: {
+        steadfast: { name: '坚定', effect: '免疫SAN伤害3回合' },
+        heroic: { name: '英勇', effect: '伤害+30%，守护队友' }
+    },
+    
+    // Buff/Debuff
+    buffsList: {
+        abyss_insight: { name: '深渊洞察', desc: '侦查+10', effect: { 侦查: 10 } },
+        survivor_guilt: { name: '幸存者愧疚', desc: 'SAN上限-10', effect: { maxSanity: -10 } },
+        marcus_blessing: { name: '马库斯的祝福', desc: '受到伤害-5', effect: { damageReduce: 5 } },
+        deep_one_mark: { name: '深潜者印记', desc: 'SAN积累+20%', effect: { sanGain: 1.2 } }
+    },
+    
+    init() {
+        this.showIntro();
+    },
+    
+    // 显示世界观开场
+    showIntro() {
+        const content = document.getElementById('mainContent') || document.body;
+        content.innerHTML = '<div id="intro-container"></div>';
+        
+        const container = document.getElementById('intro-container');
+        container.style.cssText = 'background:#0a0a0f;color:#e0e0e0;padding:40px 20px;min-height:100vh;font-family:monospace;';
+        
+        let delay = 0;
+        this.introText.forEach((line, idx) => {
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '8px';
+                
+                switch(line.style) {
+                    case 'date':
+                        div.style.color = '#888';
+                        div.style.fontSize = '12px';
+                        break;
+                    case 'location':
+                        div.style.color = '#666';
+                        div.style.fontSize = '11px';
+                        break;
+                    case 'title':
+                        div.style.color = '#e94560';
+                        div.style.fontSize = '14px';
+                        div.style.fontWeight = 'bold';
+                        div.style.marginTop = '16px';
+                        break;
+                    case 'quote':
+                        div.style.color = '#f39c12';
+                        div.style.fontStyle = 'italic';
+                        div.style.paddingLeft = '20px';
+                        div.style.borderLeft = '2px solid #f39c12';
+                        break;
+                    case 'list':
+                        div.style.paddingLeft = '20px';
+                        div.style.color = '#aaa';
+                        break;
+                    case 'break':
+                        div.style.height = '8px';
+                        break;
+                    default:
+                        div.style.color = '#ccc';
+                }
+                
+                div.textContent = line.text;
+                container.appendChild(div);
+                
+                // 自动滚动
+                window.scrollTo(0, document.body.scrollHeight);
+                
+                // 最后一段显示后，显示开始按钮
+                if (idx === this.introText.length - 1) {
+                    setTimeout(() => {
+                        const btn = document.createElement('button');
+                        btn.textContent = '▶ 开始任务';
+                        btn.style.cssText = 'margin-top:30px;padding:15px 40px;background:#e94560;color:white;border:none;font-size:16px;cursor:pointer;';
+                        btn.onclick = () => this.showProfessionSelect();
+                        container.appendChild(btn);
+                    }, 500);
+                }
+            }, delay);
+            
+            delay += line.style === 'break' ? 200 : 800;
+        });
+    },
+    
+    // 显示职业选择
+    showProfessionSelect() {
+        document.getElementById('professionSelect').classList.remove('hidden');
+        document.getElementById('gameUI').classList.add('hidden');
+        
+        this.selectedProfessions = [];
+        document.querySelectorAll('.profession-card').forEach(c => c.classList.remove('selected'));
+        
+        this.log('系统', '选择2名调查员组成第9小队');
+    },
+    
+    // 选择职业
+    selectProfession(key) {
+        if (this.selectedProfessions.includes(key)) return;
         
         this.selectedProfessions.push(key);
-        const prof = this.professions[key];
-        this.log('系统', `选择了 ${prof.name}`);
+        document.querySelector(`.profession-card[data-profession="${key}"]`).classList.add('selected');
         
-        // 高亮已选择的职业按钮
-        document.querySelectorAll('.profession-card').forEach(card => {
-            if (card.dataset.profession === key) {
-                card.classList.add('selected');
-            }
-        });
+        this.log('系统', `选择了 ${this.professions[key].name}`);
         
         if (this.selectedProfessions.length === 2) {
-            this.confirmTeam();
-        } else {
-            this.log('系统', '请选择第二个调查员');
+            setTimeout(() => this.confirmTeam(), 500);
         }
     },
     
+    // 确认队伍
     confirmTeam() {
-        // 创建双人小队
         this.team = this.selectedProfessions.map((key, idx) => ({
             id: idx,
             key: key,
@@ -191,7 +281,7 @@ const game = {
         document.getElementById('gameUI').classList.remove('hidden');
         document.getElementById('gameUI').style.display = 'flex';
         
-        this.log('系统', `小队组成: ${this.team[0].name} + ${this.team[1].name}`);
+        this.log('系统', `第9小队组成: ${this.team[0].name} + ${this.team[1].name}`);
         this.startGame();
     },
     
@@ -201,12 +291,17 @@ const game = {
         this.routeGrid[0].visited = true;
         this.updateMainView();
         this.updateStatus();
-    },
-    
+    }
+};
+
+// 核心方法
+Object.assign(game, {
+    // 获取当前节点
     getCurrentNode() {
         return this.routeGrid[this.state.currentRoute];
     },
     
+    // 获取相邻节点
     getNeighbors(nodeId) {
         const neighbors = [];
         this.connections.forEach(([a, b]) => {
@@ -216,51 +311,440 @@ const game = {
         return neighbors.map(id => this.routeGrid.find(n => n.id === id));
     },
     
-    canAccess(from, to) {
-        const hasConnection = this.connections.some(([a, b]) => {
-            return (a === from.id && b === to.id) || (b === from.id && a === to.id);
-        });
-        if (hasConnection) return true;
-        const dx = Math.abs(to.x - from.x);
-        const dy = Math.abs(to.y - from.y);
-        return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-    },
-    
     // 更新主画面
     updateMainView() {
         const node = this.getCurrentNode();
         
-        // 随机事件判定
-        if (node.type === 'encounter' && !node.eventTriggered) {
-            node.eventTriggered = true;
-            this.triggerRandomEvent();
+        // 首次进入的SAN压力
+        if (!node.visited) {
+            if (node.type === 'main_story') {
+                this.log('压力', `进入${node.name}，未知的恐惧袭来...`);
+                this.addSanityToAll(8);
+            } else if (node.type === 'story') {
+                this.log('压力', '这个房间让人感到不安...');
+                this.addSanityToAll(5);
+            }
+        }
+        
+        node.visited = true;
+        
+        // 根据房间类型显示不同内容
+        switch(node.type) {
+            case 'start':
+            case 'story':
+            case 'main_story':
+                this.showStoryRoom(node);
+                break;
+            case 'combat':
+                this.showCombatRoom(node);
+                break;
+            case 'boss':
+                this.showBossRoom(node);
+                break;
+            case 'exit':
+                this.showEnding();
+                break;
+            default:
+                this.showRouteView();
+        }
+    },
+    
+    // 显示剧情房间
+    showStoryRoom(node) {
+        const story = this.storyData[node.story];
+        if (!story) {
+            this.showRouteView();
             return;
         }
         
-        if ((node.type === 'room' || node.type === 'boss') && !node.cleared && !node.inCombat) {
-            this.showRoomEntry(node);
+        const content = document.getElementById('mainContent');
+        document.getElementById('sceneTitle').textContent = node.name;
+        document.getElementById('sceneSubtitle').textContent = story.subtitle || '调查进行中';
+        
+        let html = '<div class="story-room">';
+        
+        // 环境描述
+        html += `<div class="story-desc">${story.desc}</div>`;
+        
+        // 调查员动态对话
+        if (story.dialog) {
+            html += '<div class="story-dialog">';
+            this.team.forEach((inv, idx) => {
+                const sanState = this.getSanityState(inv.sanity);
+                const dialog = this.getDialog(inv, story.dialog, sanState.key);
+                html += `
+                    <div class="dialog-line">
+                        <span class="dialog-speaker">${inv.name} [${sanState.name}]:</span>
+                        <span class="dialog-text">"${dialog}"</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        // 发现物
+        if (story.discoveries && !node.discovered) {
+            html += '<div class="story-discoveries">';
+            html += '<div class="section-title">📦 发现物</div>';
+            story.discoveries.forEach(d => {
+                html += `<div class="discovery-item" onclick="game.examineDiscovery('${node.id}', '${d.id}')">${d.icon} ${d.name}</div>`;
+            });
+            html += '</div>';
+        }
+        
+        // 选择
+        if (story.choices) {
+            html += '<div class="story-choices">';
+            story.choices.forEach((c, idx) => {
+                html += `<button class="action-btn large" onclick="game.makeStoryChoice('${node.id}', ${idx})">${c.text}</button>`;
+            });
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        content.innerHTML = html;
+        document.getElementById('actionPanel').style.display = 'none';
+    },
+    
+    // 获取动态对话
+    getDialog(inv, dialogData, sanState) {
+        const prof = inv.key;
+        const style = inv.dialogStyle;
+        
+        // 优先使用职业+SAN特定对话
+        if (dialogData[prof] && dialogData[prof][sanState]) {
+            return dialogData[prof][sanState];
+        }
+        // 其次使用职业默认
+        if (dialogData[prof] && dialogData[prof].default) {
+            return dialogData[prof].default;
+        }
+        // 最后使用通用
+        return dialogData.default || '...';
+    },
+    
+    // 检查发现物
+    examineDiscovery(nodeId, discoveryId) {
+        const node = this.routeGrid.find(n => n.id === nodeId);
+        const story = this.storyData[node.story];
+        const discovery = story.discoveries.find(d => d.id === discoveryId);
+        
+        if (!discovery) return;
+        
+        this.log('调查', `${this.team[0].name} 检查了 ${discovery.name}`);
+        
+        // 显示详细描述
+        this.showModal(discovery.name, discovery.detail, () => {
+            // 如果是线索，添加到线索清单
+            if (discovery.clue) {
+                this.addClue(discovery.clue);
+            }
+            // 标记为已发现
+            if (!node.discovered) node.discovered = [];
+            node.discovered.push(discoveryId);
+            
+            // 继续显示房间
+            this.showStoryRoom(node);
+        });
+    },
+    
+    // 做出剧情选择
+    makeStoryChoice(nodeId, choiceIdx) {
+        const node = this.routeGrid.find(n => n.id === nodeId);
+        const story = this.storyData[node.story];
+        const choice = story.choices[choiceIdx];
+        
+        this.log('选择', `${this.team[this.state.selectedInvestigator].name}: ${choice.text}`);
+        
+        // 应用选择效果
+        if (choice.effects) {
+            this.applyChoiceEffects(choice.effects);
+        }
+        
+        // 设置剧情标记
+        if (choice.flag) {
+            this.state.storyFlags[choice.flag] = true;
+        }
+        
+        // 即死判定
+        if (choice.instantDeath) {
+            this.handleInstantDeath(choice.instantDeath);
+            return;
+        }
+        
+        // 进入战斗
+        if (choice.combat) {
+            this.enterCombat(choice.combat);
+            return;
+        }
+        
+        // 移动到下一节点或显示结果
+        if (choice.next) {
+            this.moveToNode(choice.next);
         } else {
             this.showRouteView();
         }
     },
     
-    // 触发随机事件
-    triggerRandomEvent() {
-        const event = this.randomEvents[Math.floor(Math.random() * this.randomEvents.length)];
-        this.showEventModal(event);
+    // 应用选择效果
+    applyChoiceEffects(effects) {
+        // 决心值
+        if (effects.resolve) {
+            Object.entries(effects.resolve).forEach(([key, val]) => {
+                this.state.resolve[key] += val;
+                this.log('决心', `${key} +${val}`);
+            });
+        }
+        
+        // SAN变化
+        if (effects.san) {
+            if (effects.san.all) {
+                this.addSanityToAll(effects.san.all);
+            }
+        }
+        
+        // 获得物品
+        if (effects.item) {
+            this.log('获得', effects.item.name);
+            // 添加到队伍物品
+        }
+        
+        // 获得buff
+        if (effects.buff) {
+            this.addBuff(effects.buff);
+        }
     },
     
-    showEventModal(event) {
+    // 处理即死
+    handleInstantDeath(deathData) {
+        const victim = this.team[deathData.target || 0];
+        victim.hp = 0;
+        
+        this.log('💀 即死', deathData.desc);
+        this.log('系统', `${victim.name} 死亡...`);
+        
+        // 幸存者获得debuff
+        if (deathData.survivorDebuff) {
+            this.addBuff(deathData.survivorDebuff);
+        }
+        
+        // 检查是否全灭
+        const alive = this.team.filter(i => i.hp > 0);
+        if (alive.length === 0) {
+            this.gameOver('第9小队全军覆没...');
+        } else {
+            this.showModal('悲剧', deathData.desc, () => {
+                this.showRouteView();
+            });
+        }
+    },
+    
+    // 添加线索
+    addClue(clueData) {
+        if (!this.state.clues.find(c => c.id === clueData.id)) {
+            this.state.clues.push(clueData);
+            this.log('线索', `获得: ${clueData.name}`);
+            
+            // 检查线索收集奖励
+            if (this.state.clues.length >= 3) {
+                this.log('系统', '收集的线索已经足够影响Boss战');
+            }
+        }
+    },
+    
+    // 添加buff
+    addBuff(buffId) {
+        if (!this.state.buffs.includes(buffId)) {
+            this.state.buffs.push(buffId);
+            const buff = this.buffsList[buffId];
+            this.log('状态', `获得: ${buff.name} - ${buff.desc}`);
+        }
+    },
+    
+    // 主轴房间故事数据
+    storyData: {
+        // 第一幕：入口
+        collapse: {
+            subtitle: '新鲜的痕迹',
+            desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。',
+            dialog: {
+                archaeologist: {
+                    calm: '这是拉丁语"危险"的意思，但最后一个字母被人改成了"邀请"...',
+                    default: '这个符号...有问题...'
+                },
+                soldier: {
+                    calm: '要么是我们的人被逼疯了，要么...有什么东西在模仿我们。',
+                    default: '保持警惕。'
+                },
+                occultist: {
+                    calm: '我能感觉到...符号上有残留的能量...是活物留下的。',
+                    default: '有什么东西在这里...'
+                }
+            },
+            discoveries: [
+                { id: 'dagger', icon: '🗡️', name: 'DIA制式匕首', detail: '第7小队成员的装备，刀刃上有干涸的血迹。刻痕是用这把匕首留下的。', clue: { id: 'warning', name: '被篡改的警告', desc: '符号原本意为"危险"，但被改成了"邀请"。深渊在模仿人类？' } }
+            ],
+            choices: [
+                { text: '✓ 强行通过', effects: { resolve: { survive: 5 }, san: { all: 3 } }, next: 'camp' },
+                { text: '🔍 仔细检查符号', effects: { resolve: { seekTruth: 10 } }, next: 'camp' }
+            ]
+        },
+        
+        // 第一幕主轴：第7小队营地
+        camp: {
+            subtitle: '失踪者的痕迹',
+            desc: '一个相对开阔的洞室，显然是第7小队的临时营地。床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...他们离开不超过6小时。',
+            dialog: {
+                archaeologist: {
+                    calm: '6小时...如果他们还活着，可能就在不远处。',
+                    default: '这里发生过什么...'
+                },
+                soldier: {
+                    calm: '检查武器箱，看看他们带走了什么。',
+                    default: '小心陷阱。'
+                },
+                occultist: {
+                    calm: '能量残留很强...他们接触了什么强大的存在。',
+                    default: '有什么东西经过这里...'
+                }
+            },
+            discoveries: [
+                { id: 'diary', icon: '📖', name: '马库斯的日记', detail: '日记的最后几页："11月15日。我们找到了他。埃德蒙·布莱克伍德主教。他曾是DIA最资深的顾问，3个月前失踪。他没有被绑架。他是自愿来到这里的。他说他发现了一个可怕的真相：深渊不是威胁，而是...屏障。
+
+11月16日。我试图说服他，但他已经听不进去了。他说仪式需要"3个媒介"，需要"自愿的参与者"。他看向我们的眼神...像是在看候选人。我们必须阻止他。"', clue: { id: 'bishop', name: '埃德蒙·布莱克伍德', desc: 'DIA前资深顾问，自愿进入深渊，认为仪式可以阻止更大的灾难。' } },
+                { id: 'map', icon: '🗺️', name: '地图标记', detail: '马库斯标记了两条路径："上分支：主教的活动区域"、"下分支：村民的聚集地"。两条路最终都会到达仪式大厅。' }
+            ],
+            choices: [
+                { text: '🏃 追击主教（上分支）', effects: { resolve: { stopRitual: 15 } }, next: 'fork', flag: 'choose_upper' },
+                { text: '👥 寻找村民（下分支）', effects: { resolve: { protect: 15 } }, next: 'fork', flag: 'choose_lower' },
+                { text: '🔍 继续搜集情报', effects: { resolve: { seekTruth: 10 }, san: { all: 3 } }, next: 'fork' }
+            ]
+        },
+        
+        // 第二幕上主轴：藏书室
+        library: {
+            subtitle: '主教的真实',
+            desc: '埃德蒙·布莱克伍德的私人空间。墙上贴满了研究报告和...照片？是DIA成立初期的合影，年轻的埃德蒙站在中央，笑容自信。角落里，你们发现了他和一位女子的合影——背景是某个深渊裂隙。',
+            dialog: {
+                archaeologist: {
+                    calm: '这些笔记...他研究了17处深渊遗迹。如果他都倒向了深渊...',
+                    default: '这些研究太深入了...'
+                },
+                soldier: {
+                    calm: '不管他的动机是什么，利用无辜村民就是错误的。',
+                    default: '他被深渊腐蚀了。'
+                },
+                occultist: {
+                    calm: '如果我们能帮他完善替代方法...不需要牺牲，也能强化封印？',
+                    default: '他走得太远了...'
+                }
+            },
+            discoveries: [
+                { id: 'notes', icon: '📄', name: '埃德蒙的研究笔记', detail: '"我不期望有人能理解我。3个月前，我在第9裂隙发现了完整的文献。深渊不是随机出现的。它们是封印，封印着某种存在——文献称之为深渊之主。
+
+唯一的方法是：成为守门人。仪式不是召唤它，而是强化封印——以一个人的意识为代价，永远困在深渊边缘。
+
+我需要的3个媒介：1.深渊之血 2.守门人的誓言 3.活的祭品。但我不愿使用这个。我找到了替代方法：用深渊能量喂养的凡人灵魂。"
+
+最后一段话的字迹颤抖："艾琳娜会理解我吗？她为了阻止第3裂隙，已经...如果她在，她会怎么做？"', clue: { id: 'truth', name: '仪式的真相', desc: '仪式目的是强化封印而非召唤，埃德蒙想用村民替代活人祭品。' } },
+                { id: 'photo', icon: '🖼️', name: '破碎的合影', detail: '照片上的女子：艾琳娜·布莱克伍德，埃德蒙的妻子，DIA传奇调查员，2年前在第3裂隙事件中确认阵亡。照片背面写着："等我。"', clue: { id: 'elena', name: '艾琳娜还活着', desc: '埃德蒙相信艾琳娜被困在深渊边缘，他想替换她出来。' } }
+            ],
+            choices: [
+                { text: '💬 "我们可以一起找其他方法！"', effects: { resolve: { stopRitual: 10, protect: 10 } }, next: 'upper3', flag: 'bishop_persuaded' },
+                { text: '⚔️ "你已经被深渊腐蚀了！"', effects: { resolve: { stopRitual: 20 } }, next: 'upper3' },
+                { text: '💔 "艾琳娜不会希望看到这样的你。"', effects: { resolve: { seekTruth: 15 } }, next: 'upper3', flag: 'elena_mentioned' }
+            ]
+        },
+        
+        // 第二幕下主轴：深渊边缘
+        abyss_edge: {
+            subtitle: '马库斯的终末',
+            desc: '你们来到了裂隙边缘。不是比喻，是真正的空间裂缝——黑色的虚无悬浮在矿坑尽头，散发着无法理解的"光芒"。在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着。',
+            dialog: {
+                archaeologist: {
+                    calm: '马库斯队长！坚持住，我们来救你了！',
+                    default: '他还活着...但快不行了...'
+                },
+                soldier: {
+                    calm: '别说话，保存体力！',
+                    default: '该死...没有医疗设备...'
+                },
+                occultist: {
+                    calm: '他的灵魂...正在被什么东西吸走...',
+                    default: '救不了他了...'
+                }
+            },
+            discoveries: [
+                { id: 'marcus', icon: '👤', name: '马库斯队长', detail: '马库斯艰难地抓住你的手："听着...主教...他不是坏人...他在保护她。艾琳娜·布莱克伍德，他的妻子。2年前第3裂隙事件，她没有死。她被困在了深渊边缘，成为了某种守门人。埃德蒙想要替换她。"
+
+他的眼神逐渐涣散："但最可怕的是...如果他说的是真的呢？如果深渊之主真的在苏醒，我们除了成为守门人，还有其他选择吗？阻止他...但请记住...有时候，敌人也是受害者..."', clue: { id: 'marcus_truth', name: '马库斯的遗言', desc: '艾琳娜被困在深渊边缘成为守门人，埃德蒙想救她出来。' } }
+            ],
+            choices: [
+                { text: '💉 尝试救治（消耗镇静剂）', effects: { resolve: { protect: 20 } }, next: 'lower3' },
+                { text: '✋ 让他安心离去', effects: { resolve: { seekTruth: 10 }, san: { all: 5 } }, next: 'lower3', flag: 'marcus_dead' },
+                { text: '❓ "告诉我们怎么阻止仪式！"', effects: { resolve: { stopRitual: 15 } }, next: 'lower3' }
+            ]
+        },
+        
+        // 第三幕入口
+        antechamber: {
+            subtitle: '最终抉择之地',
+            desc: '无论你们选择了哪条路，最终都来到了这里。仪式正在进行——黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。',
+            dialog: {
+                archaeologist: {
+                    calm: '还来得及，埃德蒙！我们可以一起找到更好的方法！',
+                    default: '他已经走得太远了...'
+                },
+                soldier: {
+                    calm: '埃德蒙·布莱克伍德，以DIA的名义，命令你停止仪式！',
+                    default: '准备战斗...'
+                },
+                occultist: {
+                    calm: '我能感受到艾琳娜的灵魂...她还在那里，埃德蒙！',
+                    default: '深渊的力量太强了...'
+                }
+            },
+            choices: [
+                { text: '⚔️ 强行阻止（进入Boss战）', effects: {}, combat: 'bishop_normal' },
+                { text: '💬 尝试说服', effects: {}, next: 'boss', flag: 'try_persuade' },
+                { text: '[线索≥3] 展示收集的证据', effects: {}, next: 'boss', flag: 'show_evidence' },
+                { text: '[有艾琳娜线索] "艾琳娜不会希望这样！"', effects: {}, next: 'boss', flag: 'elena_emotion' }
+            ]
+        }
+    },
+    
+    // 显示路线选择
+    showRouteView() {
+        const node = this.getCurrentNode();
         const content = document.getElementById('mainContent');
-        document.getElementById('sceneTitle').textContent = event.name;
-        document.getElementById('sceneSubtitle').textContent = '遭遇事件';
         
-        let html = '<div class="event-view">';
-        html += `<div class="event-desc">${event.desc}</div>`;
-        html += '<div class="event-choices">';
+        document.getElementById('sceneTitle').textContent = node.name;
+        document.getElementById('sceneSubtitle').textContent = '选择前进方向';
         
-        event.choices.forEach(choice => {
-            html += `<button class="action-btn large" onclick="game.handleEventChoice('${event.id}', '${choice.action}')">${choice.text}</button>`;
+        let html = '<div class="route-view">';
+        html += `<div class="room-desc">${node.desc || '前方有路可走'}</div>`;
+        
+        const neighbors = this.getNeighbors(node.id).filter(n => {
+            return n.visited || this.canAccess(node, n);
+        });
+        
+        html += '<div class="direction-grid">';
+        neighbors.forEach(neighbor => {
+            let arrow = '';
+            if (neighbor.x > node.x) arrow = '➡️';
+            else if (neighbor.x < node.x) arrow = '⬅️';
+            else if (neighbor.y < node.y) arrow = '⬆️';
+            else if (neighbor.y > node.y) arrow = '⬇️';
+            
+            const visitedMark = neighbor.visited ? '✓' : '?';
+            const typeIcon = neighbor.type === 'main_story' ? '📜' : neighbor.type === 'combat' ? '⚔️' : '';
+            
+            html += `
+                <button class="direction-btn" onclick="game.moveToNode('${neighbor.id}')">
+                    <div class="dir-arrow">${arrow}</div>
+                    <div class="dir-name">${typeIcon} ${neighbor.name} ${visitedMark}</div>
+                </button>
+            `;
         });
         
         html += '</div></div>';
@@ -268,898 +752,25 @@ const game = {
         document.getElementById('actionPanel').style.display = 'none';
     },
     
-    handleEventChoice(eventId, action) {
-        switch(action) {
-            case 'altar_read':
-                this.addSanityToAll(20);
-                this.log('事件', '阅读古籍让你获得神秘知识，但精神受到冲击');
-                break;
-            case 'altar_sacrifice':
-                this.damageAll(15);
-                this.reduceSanityToAll(10);
-                this.log('事件', '祭坛吸收了你的血液，全队感到一阵轻松');
-                break;
-            case 'buy_sedative':
-                this.reduceSanityToAll(15);
-                this.log('事件', '镇静剂起效了，噩梦般的幻象消退');
-                break;
-            case 'sell_info':
-                this.team.forEach(inv => inv.inventory.gold += 15);
-                this.log('事件', '你出售了情报获得15金币');
-                break;
-            case 'listen_whispers':
-                this.addSanityToAll(10);
-                if (Math.random() < 0.3) {
-                    this.log('事件', '低语中隐藏着有价值的信息！');
-                }
-                break;
-            case 'loot_corpse':
-                this.addSanityToAll(5);
-                this.team.forEach(inv => inv.inventory.sedative += 1);
-                this.log('事件', '从尸体手中找到镇静剂 ×1');
-                break;
-            case 'respect_leave':
-                this.addSanityToAll(2);
-                this.log('事件', '你 respectful 地离开了，内心稍感平静');
-                break;
-            case 'ambush_fight':
-                this.log('事件', '伏击战开始！');
-                // 创建伏击敌人并进入战斗
-                const node = this.getCurrentNode();
-                node.inCombat = true;
-                node.cleared = false;
-                // 创建伏击敌人
-                node.ambushEnemies = [
-                    { id: 'ambush1', name: '伏击者', type: 'enemy', hp: 40, maxHp: 40, damage: 10, fearAttack: { name: '恐吓', sanDamage: 8 } },
-                    { id: 'ambush2', name: '伏击者', type: 'enemy', hp: 40, maxHp: 40, damage: 10, fearAttack: { name: '恐吓', sanDamage: 8 } }
-                ];
-                this.renderAmbushCombat();
-                return;
-        }
+    // 移动节点
+    moveToNode(nodeId) {
+        const nodeIndex = this.routeGrid.findIndex(n => n.id === nodeId);
+        if (nodeIndex === -1) return;
         
-        if (action !== 'ambush_fight') {
-            this.showRouteView();
-        }
+        this.state.turn++;
+        this.state.currentRoute = nodeIndex;
+        
+        this.log('移动', `第${this.state.turn}回合: 到达${this.routeGrid[nodeIndex].name}`);
+        this.updateMainView();
         this.updateStatus();
     },
     
-    // 显示房间入口
-    showRoomEntry(node) {
-        const content = document.getElementById('mainContent');
-        document.getElementById('sceneTitle').textContent = node.name;
-        document.getElementById('sceneSubtitle').textContent = '选择如何进入';
-        
-        content.innerHTML = `
-            <div class="room-entry">
-                <div class="entry-preview">
-                    <div class="preview-icon">${node.type === 'boss' ? '☠️' : '📦'}</div>
-                    <div class="preview-desc">
-                        ${node.type === 'boss' ? '强大的敌人守卫着这里' : '可能有资源和危险'}
-                    </div>
-                </div>
-                <div class="entry-actions">
-                    <button class="action-btn large" onclick="game.enterRoomCombat('${node.roomId}')">
-                        ⚔️ 正面进入
-                        <span class="skill-tag">遭遇战斗，获得全部奖励</span>
-                    </button>
-                    <button class="action-btn large" onclick="game.stealthApproach('${node.roomId}')">
-                        👁️ 侦查潜入
-                        <span class="skill-tag">侦查检定，可能发现隐藏内容</span>
-                    </button>
-                    <button class="action-btn large" onclick="game.showRouteView()">
-                        ⬅️ 离开
-                        <span class="skill-tag">返回地图</span>
-                    </button>
-                </div>
-            </div>
-        `;
-        document.getElementById('actionPanel').style.display = 'none';
-        this.updateMinimap();
-    },
-    
-    // 侦查潜入
-    stealthApproach(roomId) {
-        const inv = this.getHealthyInvestigator();
-        if (!inv) return;
-        
-        const result = this.skillCheck(inv.skills.侦查, 40);
-        this.log(`${inv.name}`, `尝试侦查潜入 (侦查 ${inv.skills.侦查} vs 40)`);
-        this.log('检定', `掷骰: ${result.roll} → ${result.success ? '成功！' : '失败'}`);
-        
-        const room = this.rooms[roomId];
-        if (!room.objects) {
-            room.objects = this.createRoomObjects(roomId);
-        }
-        
-        if (result.success) {
-            this.log('✓ 成功', '你发现了一个隐藏的魔法阵！');
-            room.revealed.push('magic_circle');
-            room.objects.push({
-                id: 'magic_circle', name: '神秘魔法阵', type: 'secret',
-                desc: '古老的保护阵法，可以净化SAN',
-                actions: ['激活']
-            });
-        }
-        
-        this.enterRoomCombat(roomId);
-    },
-    
-    // 创建房间对象
-    createRoomObjects(roomId) {
-        const objects = [];
-        
-        if (roomId === 'storage') {
-            objects.push({
-                id: 'chest', name: '宝箱', type: 'object',
-                desc: '一个上锁的箱子',
-                actions: ['开锁', '破坏']
-            });
-            objects.push({
-                id: 'guard', name: '腐化守卫', type: 'enemy',
-                hp: 35, maxHp: 35, damage: 10,
-                fearAttack: { name: '腐化凝视', sanDamage: 8 }
-            });
-        } else if (roomId === 'trap') {
-            objects.push({
-                id: 'trap_spirit', name: '陷阱精灵', type: 'enemy',
-                hp: 30, maxHp: 30, damage: 8,
-                fearAttack: { name: '恐怖尖啸', sanDamage: 12 }
-            });
-            objects.push({
-                id: 'hidden_trap', name: '隐藏陷阱', type: 'hazard',
-                desc: '看起来危险的机关',
-                actions: ['解除', '触发']
-            });
-        } else if (roomId === 'guard') {
-            objects.push({
-                id: 'deep_one1', name: '深潜者', type: 'enemy',
-                hp: 45, maxHp: 45, damage: 12,
-                fearAttack: { name: '深渊凝视', sanDamage: 10 }
-            });
-            objects.push({
-                id: 'deep_one2', name: '深潜者', type: 'enemy',
-                hp: 45, maxHp: 45, damage: 12,
-                fearAttack: { name: '深渊凝视', sanDamage: 10 },
-                hiddenLoot: { name: '深渊宝箱', gold: 25 }
-            });
-        } else if (roomId === 'ritual') {
-            objects.push({
-                id: 'bishop', name: '邪教主教', type: 'boss',
-                hp: 100, maxHp: 100, damage: 15,
-                fearAttack: { name: '疯狂低语', sanDamage: 15 }
-            });
-            objects.push({
-                id: 'ritual_circle', name: '仪式法阵', type: 'object',
-                desc: '维持主教力量的源泉',
-                actions: ['干扰']
-            });
-        }
-        
-        return objects;
-    },
-
-    // 渲染伏击战斗
-    renderAmbushCombat() {
-        const content = document.getElementById('mainContent');
-        document.getElementById('sceneTitle').textContent = '伏击战！';
-        document.getElementById('sceneSubtitle').textContent = '敌人从阴影中现身';
-
-        const node = this.getCurrentNode();
-        const enemies = node.ambushEnemies || [];
-
-        let html = '<div class="combat-view">';
-
-        // 双人调查员状态（战斗位置）
-        html += '<div class="team-battle-row">';
-        this.team.forEach((inv, idx) => {
-            if (inv.hp > 0) {
-                const isSelected = this.state.selectedInvestigator === idx;
-                const selectedClass = isSelected ? 'selected' : '';
-                const sanityState = this.getSanityState(inv.sanity);
-                html += `
-                    <div class="investigator-battle-card ${selectedClass}" onclick="game.selectInvestigator(${idx})">
-                        <div class="inv-icon">${idx === 0 ? '👤' : '👥'}</div>
-                        <div class="inv-name">${inv.name}</div>
-                        <div class="inv-status">[${sanityState.name}]</div>
-                        <div class="inv-hp">HP: ${inv.hp}/${inv.maxHp}</div>
-                        <div class="inv-san">SAN: ${inv.sanity}</div>
-                        ${inv.affliction ? `<div class="inv-affliction">💔 ${inv.affliction}</div>` : ''}
-                        ${inv.virtue ? `<div class="inv-virtue">✨ ${inv.virtue}</div>` : ''}
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="investigator-battle-card dead">
-                        <div class="inv-icon">💀</div>
-                        <div class="inv-name">${inv.name}</div>
-                        <div class="inv-status">[阵亡]</div>
-                    </div>
-                `;
-            }
+    // 检查是否可以访问
+    canAccess(from, to) {
+        const hasConnection = this.connections.some(([a, b]) => {
+            return (a === from.id && b === to.id) || (b === from.id && a === to.id);
         });
-        html += '</div>';
-
-        // VS 分隔
-        html += '<div class="vs-divider">⚔️ VS ⚔️</div>';
-
-        // 伏击敌人
-        if (enemies.length > 0) {
-            html += '<div class="enemies-row">';
-            enemies.forEach((enemy, idx) => {
-                const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === enemy.id;
-                const selectedClass = isSelected ? 'selected' : '';
-                html += `
-                    <div class="enemy-card ${selectedClass}" onclick="game.selectAmbushTarget(${idx})">
-                        <div class="enemy-icon">👹</div>
-                        <div class="enemy-name">${enemy.name}</div>
-                        <div class="enemy-hp-bar"><div style="width:${(enemy.hp/enemy.maxHp)*100}%"></div></div>
-                        <div class="enemy-hp-text">${enemy.hp}/${enemy.maxHp}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-
-        html += '</div>';
-        content.innerHTML = html;
-
-        document.getElementById('actionPanel').style.display = 'block';
-        this.updateAmbushActions();
-        this.updateMinimap();
-    },
-
-    // 选择伏击目标
-    selectAmbushTarget(idx) {
-        const node = this.getCurrentNode();
-        const enemy = node.ambushEnemies[idx];
-        if (enemy) {
-            this.state.selectedTarget = enemy;
-            this.log('系统', `选中目标: ${enemy.name}`);
-            this.renderAmbushCombat();
-        }
-    },
-
-    // 更新伏击战斗行动
-    updateAmbushActions() {
-        const panel = document.getElementById('actionButtons');
-        panel.innerHTML = '';
-
-        const invIdx = this.state.selectedInvestigator;
-        const inv = this.team[invIdx];
-
-        if (!inv || inv.hp <= 0) {
-            panel.innerHTML = '<div class="action-hint">该调查员无法行动</div>';
-            return;
-        }
-
-        const target = this.state.selectedTarget;
-
-        if (target) {
-            panel.innerHTML += `
-                <button class="action-btn" onclick="game.ambushAttack()">⚔️ 攻击</button>
-                <button class="action-btn" onclick="game.ambushObserve()">👁️ 观察</button>
-            `;
-            panel.innerHTML += `<button class="action-btn" onclick="game.clearAmbushSelection()">❌ 取消选择</button>`;
-        } else {
-            panel.innerHTML += `<div class="action-hint">选择敌人后执行行动</div>`;
-        }
-
-        if (inv.inventory.sedative > 0) {
-            panel.innerHTML += `<button class="action-btn rest" onclick="game.useSedative()">💊 镇静剂</button>`;
-        }
-
-        panel.innerHTML += `<button class="action-btn" onclick="game.endAmbushRound()">⏭️ 结束回合</button>`;
-    },
-
-    // 伏击攻击
-    ambushAttack() {
-        const inv = this.team[this.state.selectedInvestigator];
-        const target = this.state.selectedTarget;
-        const node = this.getCurrentNode();
-
-        if (!target || target.hp <= 0) {
-            this.log('系统', '请选择一个敌人');
-            return;
-        }
-
-        const str = inv.skills.力量;
-        this.log(`${inv.name}`, `攻击 ${target.name} (力量 ${str})`);
-
-        const result = this.skillCheck(str, 40);
-        this.log('检定', `掷骰: ${result.roll}`);
-
-        let damage = 20;
-        if (inv.virtue === '英勇') damage = Math.floor(damage * 1.3);
-        if (inv.affliction === '绝望') damage = Math.floor(damage * 0.7);
-
-        if (result.success) {
-            if (result.critical) damage = Math.floor(damage * 1.5);
-            target.hp -= damage;
-            this.log('⚔️ 命中', `造成 ${damage} 伤害！剩余 ${Math.max(0, target.hp)}/${target.maxHp}`);
-
-            if (target.hp <= 0) {
-                this.log('🏆 击败', `${target.name} 被消灭了！`);
-                this.clearAmbushSelection();
-            }
-        } else {
-            this.log('🛡️ 未命中', '攻击被闪避');
-        }
-
-        this.ambushEnemyTurn();
-    },
-
-    // 伏击观察
-    ambushObserve() {
-        const inv = this.team[this.state.selectedInvestigator];
-        const target = this.state.selectedTarget;
-
-        const per = inv.skills.侦查;
-        this.log(`${inv.name}`, `观察敌人 (侦查 ${per})`);
-
-        const result = this.skillCheck(per, 35);
-        this.log('检定', `掷骰: ${result.roll}`);
-
-        if (result.success) {
-            this.log('✓ 发现', '发现了敌人的弱点！下次攻击+10伤害');
-        } else {
-            this.log('✗ 无果', '观察失败');
-        }
-    },
-
-    // 伏击敌人回合
-    ambushEnemyTurn() {
-        const node = this.getCurrentNode();
-        const enemies = node.ambushEnemies.filter(e => e.hp > 0);
-
-        if (enemies.length === 0) {
-            this.log('系统', '伏击战胜利！');
-            node.cleared = true;
-            node.inCombat = false;
-            this.showRouteView();
-            return;
-        }
-
-        const heroicInv = this.team.find(i => i.virtue === '英勇' && i.hp > 0);
-
-        enemies.forEach(enemy => {
-            let target;
-            if (heroicInv) {
-                target = heroicInv;
-            } else {
-                const alive = this.team.filter(i => i.hp > 0);
-                target = alive[Math.floor(Math.random() * alive.length)];
-            }
-
-            if (!target) return;
-
-            const dmg = enemy.damage;
-            target.hp -= dmg;
-            this.log('💀 敌人', `${enemy.name} 攻击 ${target.name}，造成 ${dmg} 伤害！`);
-
-            if (enemy.fearAttack) {
-                this.addSanity(target, enemy.fearAttack.sanDamage);
-                this.log('恐惧', `${target.name} SAN+${enemy.fearAttack.sanDamage}`);
-
-                this.team.forEach(teammate => {
-                    if (teammate.id !== target.id && teammate.hp > 0) {
-                        this.addSanity(teammate, 5);
-                        this.log('压力', `${teammate.name} 看到战友受伤，SAN+5`);
-                    }
-                });
-            }
-
-            if (target.hp <= 0) {
-                target.hp = 0;
-                this.log('💀 阵亡', `${target.name} 倒下了...`);
-
-                const alive = this.team.filter(i => i.hp > 0);
-                if (alive.length === 0) {
-                    this.gameOver('全队阵亡...');
-                    return;
-                }
-
-                const nextInv = alive[0];
-                this.state.selectedInvestigator = nextInv.id;
-                this.log('系统', `${nextInv.name} 独自继续战斗！`);
-            }
-        });
-
-        this.updateStatus();
-        this.renderAmbushCombat();
-    },
-
-    // 结束伏击回合
-    endAmbushRound() {
-        const node = this.getCurrentNode();
-        const enemies = node.ambushEnemies.filter(e => e.hp > 0);
-
-        if (enemies.length === 0) {
-            this.log('系统', '伏击战胜利！');
-            node.cleared = true;
-            node.inCombat = false;
-            this.showRouteView();
-        } else {
-            this.ambushEnemyTurn();
-        }
-    },
-
-    // 清除伏击选择
-    clearAmbushSelection() {
-        this.state.selectedTarget = null;
-        this.renderAmbushCombat();
-    },
-
-    // 进入房间战斗
-    enterRoomCombat(roomId) {
-        const node = this.getCurrentNode();
-        node.inCombat = true;
-        
-        const room = this.rooms[roomId];
-        if (!room.objects) {
-            room.objects = this.createRoomObjects(roomId);
-        }
-        
-        this.log('系统', `进入${room.name}！`);
-        
-        // 进入未知房间的SAN压力
-        if (!node.visited) {
-            this.log('压力', '进入未知区域，恐惧感袭来...');
-            this.addSanityToAll(5);
-        }
-        
-        this.renderCombat(room);
-    },
-    
-    // 渲染战斗画面
-    renderCombat(room) {
-        const content = document.getElementById('mainContent');
-        document.getElementById('sceneTitle').textContent = room.name + ' - 战斗中';
-        document.getElementById('sceneSubtitle').textContent = '选择调查员和行动';
-        
-        let html = '<div class="combat-view">';
-        
-        // 双人调查员状态（战斗位置）
-        html += '<div class="team-battle-row">';
-        this.team.forEach((inv, idx) => {
-            if (inv.hp > 0) {
-                const isSelected = this.state.selectedInvestigator === idx;
-                const selectedClass = isSelected ? 'selected' : '';
-                const sanityState = this.getSanityState(inv.sanity);
-                html += `
-                    <div class="investigator-battle-card ${selectedClass}" onclick="game.selectInvestigator(${idx})">
-                        <div class="inv-icon">${idx === 0 ? '👤' : '👥'}</div>
-                        <div class="inv-name">${inv.name}</div>
-                        <div class="inv-status">[${sanityState.name}]</div>
-                        <div class="inv-hp">HP: ${inv.hp}/${inv.maxHp}</div>
-                        <div class="inv-san">SAN: ${inv.sanity}</div>
-                        ${inv.affliction ? `<div class="inv-affliction">💔 ${inv.affliction}</div>` : ''}
-                        ${inv.virtue ? `<div class="inv-virtue">✨ ${inv.virtue}</div>` : ''}
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="investigator-battle-card dead">
-                        <div class="inv-icon">💀</div>
-                        <div class="inv-name">${inv.name}</div>
-                        <div class="inv-status">[阵亡]</div>
-                    </div>
-                `;
-            }
-        });
-        html += '</div>';
-        
-        // VS 分隔
-        html += '<div class="vs-divider">⚔️ VS ⚔️</div>';
-        
-        // 敌人列表
-        const enemies = room.objects.filter(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
-        if (enemies.length > 0) {
-            html += '<div class="enemies-row">';
-            enemies.forEach((enemy, idx) => {
-                const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === enemy.id;
-                const selectedClass = isSelected ? 'selected' : '';
-                html += `
-                    <div class="enemy-card ${selectedClass}" onclick="game.selectTarget('${enemy.id}')">
-                        <div class="enemy-icon">${enemy.type === 'boss' ? '☠️' : '👹'}</div>
-                        <div class="enemy-name">${enemy.name}</div>
-                        <div class="enemy-hp-bar"><div style="width:${(enemy.hp/enemy.maxHp)*100}%"></div></div>
-                        <div class="enemy-hp-text">${enemy.hp}/${enemy.maxHp}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-        
-        // 环境/隐藏对象
-        const others = room.objects.filter(o => o.type !== 'enemy' && o.type !== 'boss');
-        if (others.length > 0) {
-            html += '<div class="objects-row">';
-            others.forEach(obj => {
-                const isSelected = this.state.selectedTarget && this.state.selectedTarget.id === obj.id;
-                const selectedClass = isSelected ? 'selected' : '';
-                const icon = obj.type === 'hazard' ? '⚠️' : obj.type === 'secret' ? '🔮' : '📦';
-                html += `
-                    <div class="object-card ${selectedClass}" onclick="game.selectTarget('${obj.id}')">
-                        <div class="object-icon">${icon}</div>
-                        <div class="object-name">${obj.name}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
-        
-        // 战斗日志
-        html += '<div class="battle-log-mini">';
-        html += '<div class="section-title">📜 最近行动</div>';
-        html += '</div>';
-        
-        html += '</div>';
-        content.innerHTML = html;
-        
-        // 显示行动面板
-        document.getElementById('actionPanel').style.display = 'block';
-        this.updateCombatActions();
-        this.updateMinimap();
-    },
-    
-    // 选择调查员
-    selectInvestigator(idx) {
-        const inv = this.team[idx];
-        if (inv.hp <= 0) {
-            this.log('系统', `${inv.name} 已阵亡，无法行动`);
-            return;
-        }
-        if (inv.affliction === '自闭') {
-            this.log('系统', `${inv.name} 陷入自闭，无法行动`);
-            return;
-        }
-        
-        this.state.selectedInvestigator = idx;
-        this.log('系统', `切换至 ${inv.name}`);
-        
-        const room = this.rooms[this.getCurrentNode().roomId];
-        this.renderCombat(room);
-    },
-    
-    // 选择目标
-    selectTarget(targetId) {
-        const room = this.rooms[this.getCurrentNode().roomId];
-        const target = room.objects.find(o => o.id === targetId);
-        if (target) {
-            this.state.selectedTarget = target;
-            this.log('系统', `选中目标: ${target.name}`);
-            this.renderCombat(room);
-        }
-    },
-    
-    // 更新战斗行动按钮
-    updateCombatActions() {
-        const panel = document.getElementById('actionButtons');
-        panel.innerHTML = '';
-        
-        const invIdx = this.state.selectedInvestigator;
-        const inv = this.team[invIdx];
-        
-        if (!inv || inv.hp <= 0) {
-            panel.innerHTML = '<div class="action-hint">该调查员无法行动</div>';
-            return;
-        }
-        
-        // 检查Affliction影响
-        if (inv.affliction === '绝望' && Math.random() < 0.5) {
-            panel.innerHTML = `<div class="action-hint">${inv.name} 陷入绝望，无法行动...</div>`;
-            return;
-        }
-        
-        const target = this.state.selectedTarget;
-        const room = this.rooms[this.getCurrentNode().roomId];
-        
-        if (target) {
-            // 根据目标类型显示不同行动
-            if (target.type === 'enemy' || target.type === 'boss') {
-                panel.innerHTML += `
-                    <button class="action-btn" onclick="game.combatAttack()">⚔️ 攻击</button>
-                    <button class="action-btn" onclick="game.combatObserve()">👁️ 观察</button>
-                `;
-                if (inv.skills.神秘学 >= 40) {
-                    panel.innerHTML += `<button class="action-btn" onclick="game.mysticAttack()">✨ 神秘学攻击</button>`;
-                }
-            } else if (target.type === 'object' || target.type === 'secret') {
-                if (target.id === 'magic_circle') {
-                    panel.innerHTML += `<button class="action-btn" onclick="game.activateMagicCircle()">🔮 激活法阵</button>`;
-                } else if (target.id === 'chest') {
-                    panel.innerHTML += `
-                        <button class="action-btn" onclick="game.interactWithTarget('picklock')">🔓 开锁</button>
-                        <button class="action-btn" onclick="game.interactWithTarget('break')">💥 破坏</button>
-                    `;
-                } else if (target.id === 'ritual_circle') {
-                    panel.innerHTML += `<button class="action-btn" onclick="game.disruptRitual()">✨ 干扰仪式</button>`;
-                }
-            } else if (target.type === 'hazard') {
-                panel.innerHTML += `
-                    <button class="action-btn" onclick="game.interactWithTarget('disarm')">🛠️ 解除</button>
-                    <button class="action-btn" onclick="game.interactWithTarget('trigger')">⚡ 触发</button>
-                `;
-            }
-            
-            panel.innerHTML += `<button class="action-btn" onclick="game.clearSelection()">❌ 取消选择</button>`;
-        } else {
-            // 未选择目标时的通用选项
-            panel.innerHTML += `<div class="action-hint">选择目标后执行行动</div>`;
-            
-            // 使用镇静剂
-            if (inv.inventory.sedative > 0) {
-                panel.innerHTML += `<button class="action-btn rest" onclick="game.useSedative()">💊 使用镇静剂 (-15 SAN)</button>`;
-            }
-        }
-        
-        panel.innerHTML += `<button class="action-btn" onclick="game.endCombatRound()">⏭️ 结束回合</button>`;
-    },
-    
-    // 战斗攻击
-    combatAttack() {
-        const invIdx = this.state.selectedInvestigator;
-        const inv = this.team[invIdx];
-        const target = this.state.selectedTarget;
-        
-        if (!target || (target.type !== 'enemy' && target.type !== 'boss')) {
-            this.log('系统', '请选择一个敌人');
-            return;
-        }
-        
-        // 狂躁Affliction：可能攻击错误目标
-        if (inv.affliction === '狂躁' && Math.random() < 0.5) {
-            const wrongTarget = Math.random() < 0.5 ? this.team.find(i => i.hp > 0 && i.id !== inv.id) : target;
-            if (wrongTarget && wrongTarget !== target) {
-                this.log('💔 狂躁', `${inv.name} 陷入狂躁，攻击了 ${wrongTarget.name}！`);
-            }
-        }
-        
-        const str = inv.skills.力量;
-        const difficulty = target.type === 'boss' ? 55 : 40;
-        
-        this.log(`${inv.name}`, `攻击 ${target.name} (力量 ${str} vs ${difficulty})`);
-        
-        const result = this.skillCheck(str, difficulty);
-        this.log('检定', `掷骰: ${result.roll}`);
-        
-        let damage = 20;
-        if (inv.virtue === '英勇') damage = Math.floor(damage * 1.3);
-        if (inv.affliction === '绝望') damage = Math.floor(damage * 0.7);
-        
-        if (result.success) {
-            if (result.critical) damage = Math.floor(damage * 1.5);
-            target.hp -= damage;
-            this.log('⚔️ 命中', `造成 ${damage} 伤害！${target.name} 剩余 ${Math.max(0, target.hp)}/${target.maxHp}`);
-            
-            if (target.hp <= 0) {
-                this.log('🏆 击败', `${target.name} 被消灭了！`);
-                this.onEnemyDefeated(target);
-                this.clearSelection();
-            }
-        } else {
-            this.log('🛡️ 未命中', '攻击被闪避');
-        }
-        
-        this.enemyTurn();
-    },
-    
-    // 观察敌人
-    combatObserve() {
-        const inv = this.team[this.state.selectedInvestigator];
-        const target = this.state.selectedTarget;
-        
-        const per = inv.skills.侦查;
-        const difficulty = target && target.type === 'boss' ? 45 : 35;
-        
-        this.log(`${inv.name}`, `观察 ${target ? target.name : '周围环境'} (侦查 ${per})`);
-        
-        const result = this.skillCheck(per, difficulty);
-        this.log('检定', `掷骰: ${result.roll}`);
-        
-        if (result.success) {
-            if (target && (target.type === 'enemy' || target.type === 'boss')) {
-                this.log('✓ 发现', `${target.name} 弱点暴露！下次攻击+10伤害`);
-            } else {
-                this.log('✓ 发现', '周围环境中隐藏着重要线索');
-            }
-        } else {
-            this.log('✗ 无果', '观察失败');
-        }
-        
-        this.enemyTurn();
-    },
-    
-    // 敌人回合
-    enemyTurn() {
-        const room = this.rooms[this.getCurrentNode().roomId];
-        const enemies = room.objects.filter(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
-        
-        if (enemies.length === 0) return;
-        
-        // 英勇Virtue：吸引所有攻击
-        const heroicInv = this.team.find(i => i.virtue === '英勇' && i.hp > 0);
-        
-        enemies.forEach(enemy => {
-            // 选择攻击目标
-            let target;
-            if (heroicInv) {
-                target = heroicInv;
-                this.log('✨ 英勇', `${target.name} 吸引攻击守护队友！`);
-            } else {
-                const alive = this.team.filter(i => i.hp > 0);
-                target = alive[Math.floor(Math.random() * alive.length)];
-            }
-            
-            if (!target) return;
-            
-            // 攻击
-            const dmg = enemy.damage || 10;
-            target.hp -= dmg;
-            this.log('💀 敌人', `${enemy.name} 攻击 ${target.name}，造成 ${dmg} 伤害！`);
-            
-            // 恐惧攻击造成SAN伤害
-            if (enemy.fearAttack && target.hp > 0) {
-                const sanDmg = enemy.fearAttack.sanDamage;
-                this.addSanity(target, sanDmg);
-                this.log('恐惧', `${target.name} 目睹恐怖场景，SAN +${sanDmg}`);
-                
-                // 队友目睹也加SAN
-                this.team.forEach(teammate => {
-                    if (teammate.id !== target.id && teammate.hp > 0) {
-                        this.addSanity(teammate, 8);
-                        this.log('压力', `${teammate.name} 看到战友受伤，SAN +8`);
-                    }
-                });
-            }
-            
-            if (target.hp <= 0) {
-                target.hp = 0;
-                this.log('💀 阵亡', `${target.name} 倒下了...`);
-                
-                // 检查是否全灭
-                const alive = this.team.filter(i => i.hp > 0);
-                if (alive.length === 0) {
-                    this.gameOver('全队阵亡...');
-                    return;
-                }
-                
-                // 自动切换
-                const nextInv = alive[0];
-                this.state.selectedInvestigator = nextInv.id;
-                this.log('系统', `${nextInv.name} 独自继续战斗！`);
-            }
-        });
-        
-        this.updateStatus();
-        this.renderCombat(room);
-    },
-    
-    // 敌人被击败
-    onEnemyDefeated(enemy) {
-        // 检查隐藏奖励
-        if (enemy.hiddenLoot) {
-            this.log('🎁 发现', `从 ${enemy.name} 身上发现 ${enemy.hiddenLoot.name}！`);
-            this.team.forEach(inv => inv.inventory.gold += enemy.hiddenLoot.gold || 0);
-        }
-    },
-    
-    // 使用镇静剂
-    useSedative() {
-        const inv = this.team[this.state.selectedInvestigator];
-        if (inv.inventory.sedative > 0) {
-            inv.inventory.sedative--;
-            this.reduceSanity(inv, 15);
-            this.log('💊 镇静', `${inv.name} 使用镇静剂，SAN -15`);
-            this.updateStatus();
-        }
-    },
-    
-    // 激活魔法阵
-    activateMagicCircle() {
-        const room = this.rooms[this.getCurrentNode().roomId];
-        this.team.forEach(inv => {
-            this.reduceSanity(inv, 20);
-        });
-        this.log('🔮 净化', '魔法阵激活，全队SAN -20！');
-        
-        // 移除魔法阵
-        room.objects = room.objects.filter(o => o.id !== 'magic_circle');
-        this.clearSelection();
-    },
-    
-    // 干扰仪式
-    disruptRitual() {
-        const inv = this.team[this.state.selectedInvestigator];
-        const room = this.rooms[this.getCurrentNode().roomId];
-        const bishop = room.objects.find(o => o.id === 'bishop');
-        
-        if (!bishop) return;
-        
-        const myst = inv.skills.神秘学;
-        this.log(`${inv.name}`, `尝试干扰仪式 (神秘学 ${myst})`);
-        
-        const result = this.skillCheck(myst, 50);
-        if (result.success) {
-            bishop.hp -= 25;
-            this.log('✨ 成功', '仪式受到干扰！主教HP-25');
-        } else {
-            this.addSanity(inv, 10);
-            this.log('💀 反噬', '神秘能量反噬！SAN+10');
-        }
-        
-        this.enemyTurn();
-    },
-    
-    // 交互
-    interactWithTarget(action) {
-        const inv = this.team[this.state.selectedInvestigator];
-        const room = this.rooms[this.getCurrentNode().roomId];
-        const target = this.state.selectedTarget;
-        
-        switch(action) {
-            case 'picklock':
-                this.log(`${inv.name}`, '尝试开锁...');
-                if (this.skillCheck(inv.skills.侦查, 40).success) {
-                    this.log('✓ 成功', '宝箱打开！获得15金币');
-                    this.team.forEach(i => i.inventory.gold += 15);
-                    room.objects = room.objects.filter(o => o.id !== 'chest');
-                    this.clearSelection();
-                } else {
-                    this.log('✗ 失败', '锁太复杂了');
-                }
-                break;
-            case 'break':
-                this.log(`${inv.name}`, '暴力破坏...');
-                this.addSanity(inv, 3);
-                this.log('💥 破坏', '箱子被砸开，但里面的东西损坏了。SAN+3');
-                this.team.forEach(i => i.inventory.gold += 5);
-                room.objects = room.objects.filter(o => o.id !== 'chest');
-                this.clearSelection();
-                break;
-            case 'disarm':
-                this.log(`${inv.name}`, '尝试解除陷阱...');
-                if (this.skillCheck(inv.skills.侦查, 45).success) {
-                    this.log('✓ 成功', '陷阱被安全解除');
-                    room.objects = room.objects.filter(o => o.id !== 'hidden_trap');
-                } else {
-                    this.log('💥 触发', '陷阱爆炸！');
-                    this.damageAll(15);
-                }
-                this.clearSelection();
-                break;
-            case 'trigger':
-                this.log(`${inv.name}`, '故意触发陷阱...');
-                this.damageAll(10);
-                room.objects = room.objects.filter(o => o.id !== 'hidden_trap');
-                this.clearSelection();
-                break;
-        }
-        
-        this.updateStatus();
-    },
-    
-    // 结束战斗轮
-    endCombatRound() {
-        const room = this.rooms[this.getCurrentNode().roomId];
-        const enemies = room.objects.filter(o => (o.type === 'enemy' || o.type === 'boss') && o.hp > 0);
-        
-        if (enemies.length === 0) {
-            this.log('系统', '战斗结束！');
-            const node = this.getCurrentNode();
-            node.cleared = true;
-            node.inCombat = false;
-            this.updateMainView();
-        } else {
-            this.enemyTurn();
-        }
-    },
-    
-    // 清除选择
-    clearSelection() {
-        this.state.selectedTarget = null;
-        const room = this.rooms[this.getCurrentNode().roomId];
-        this.renderCombat(room);
+        return hasConnection;
     },
     
     // SAN相关方法
@@ -1173,289 +784,29 @@ const game = {
     },
     
     addSanity(inv, amount) {
-        const oldSan = inv.sanity;
         inv.sanity = Math.min(100, inv.sanity + amount);
-        
-        // 检查是否达到100
-        if (oldSan < 100 && inv.sanity >= 100) {
+        if (inv.sanity >= 100 && !inv.affliction && !inv.virtue) {
             this.triggerSanityBreak(inv);
         }
-        
-        this.updateStatus();
-    },
-    
-    reduceSanity(inv, amount) {
-        inv.sanity = Math.max(0, inv.sanity - amount);
-        this.updateStatus();
     },
     
     addSanityToAll(amount) {
         this.team.forEach(inv => this.addSanity(inv, amount));
     },
     
-    reduceSanityToAll(amount) {
-        this.team.forEach(inv => this.reduceSanity(inv, amount));
-    },
-    
-    // SAN崩溃判定
     triggerSanityBreak(inv) {
-        this.log('💀 崩溃', `${inv.name} 的理智崩溃了！`);
-        
-        // 15% Virtue, 85% Affliction
         if (Math.random() < 0.15) {
-            // Virtue
-            const virtues = Object.keys(this.virtues);
-            const vKey = virtues[Math.floor(Math.random() * virtues.length)];
-            const virtue = this.virtues[vKey];
-            inv.virtue = virtue.name;
-            inv.virtueTurns = 3;
-            this.log('✨ Virtue', `${inv.name} 获得了 ${virtue.name}：${virtue.desc}`);
-            
-            // 坚定效果
-            if (vKey === 'steadfast') {
-                this.reduceSanityToAll(10);
-            }
+            inv.virtue = '坚定';
+            this.log('✨ Virtue', `${inv.name} 获得了坚定的意志！`);
         } else {
-            // Affliction
-            const afflictions = Object.keys(this.afflictions);
-            const aKey = afflictions[Math.floor(Math.random() * afflictions.length)];
-            const affliction = this.afflictions[aKey];
-            inv.affliction = affliction.name;
-            this.log('💔 Affliction', `${inv.name} 陷入 ${affliction.name}：${affliction.desc}`);
-        }
-    },
-    
-    // 伤害方法
-    damageAll(amount) {
-        this.team.forEach(inv => {
-            if (inv.hp > 0) {
-                inv.hp = Math.max(0, inv.hp - amount);
-                if (inv.hp === 0) {
-                    this.log('💀 阵亡', `${inv.name} 受到致命伤害！`);
-                }
-            }
-        });
-        
-        const alive = this.team.filter(i => i.hp > 0);
-        if (alive.length === 0) {
-            this.gameOver('全队阵亡...');
-        }
-        this.updateStatus();
-    },
-    
-    getHealthyInvestigator() {
-        const alive = this.team.filter(i => i.hp > 0);
-        return alive.length > 0 ? alive[0] : null;
-    },
-    
-    // 显示路线选择视图
-    showRouteView() {
-        const node = this.getCurrentNode();
-        const content = document.getElementById('mainContent');
-        
-        document.getElementById('sceneTitle').textContent = node.name;
-        document.getElementById('sceneSubtitle').textContent = '选择前进方向';
-        
-        let html = '<div class="route-view">';
-        
-        const neighbors = this.getNeighbors(node.id).filter(n => {
-            return n.visited || this.canAccess(node, n);
-        });
-        
-        html += '<div class="direction-grid">';
-        
-        neighbors.forEach(neighbor => {
-            let arrow = '';
-            if (neighbor.x > node.x) arrow = '➡️';
-            else if (neighbor.x < node.x) arrow = '⬅️';
-            else if (neighbor.y < node.y) arrow = '⬆️';
-            else if (neighbor.y > node.y) arrow = '⬇️';
-            
-            const visitedMark = neighbor.visited ? '✓' : '?';
-            
-            html += `
-                <button class="direction-btn" onclick="game.moveToNode('${neighbor.id}')">
-                    <div class="dir-arrow">${arrow}</div>
-                    <div class="dir-name">${neighbor.name} ${visitedMark}</div>
-                </button>
-            `;
-        });
-        
-        html += '</div></div>';
-        
-        content.innerHTML = html;
-        document.getElementById('actionPanel').style.display = 'none';
-        this.updateMinimap();
-    },
-    
-    // 移动节点
-    moveToNode(nodeId) {
-        const nodeIndex = this.routeGrid.findIndex(n => n.id === nodeId);
-        if (nodeIndex === -1) return;
-        
-        // 消耗1回合
-        this.state.turn++;
-        
-        this.state.currentRoute = nodeIndex;
-        const node = this.getCurrentNode();
-        const isFirstVisit = !node.visited;
-        node.visited = true;
-        
-        this.log('移动', `消耗1回合 → 到达 ${node.name}`);
-        
-        // 首次进入房间增加SAN压力
-        if (isFirstVisit && (node.type === 'room' || node.type === 'boss')) {
-            this.log('压力', '进入未知区域，SAN+5');
-            this.addSanityToAll(5);
-        }
-        
-        // 更新状态栏显示回合
-        this.updateStatus();
-        
-        // 移动后可能触发随机事件
-        if (node.type === 'encounter') {
-            if (!node.eventTriggered) {
-                node.eventTriggered = true;
-                this.triggerRandomEvent();
-            } else {
-                this.showRouteView();
-            }
-        } else {
-            this.updateMainView();
-        }
-    },
-    
-    // 更新小地图
-    updateMinimap() {
-        const minimap = document.getElementById('minimapContent');
-        const mobileMap = document.getElementById('mobileMapContent');
-        
-        const mapHTML = this.generateMapHTML();
-        
-        if (minimap) {
-            minimap.innerHTML = mapHTML.desktop;
-        }
-        
-        if (mobileMap) {
-            mobileMap.innerHTML = mapHTML.mobile;
-        }
-    },
-    
-    generateMapHTML() {
-        const current = this.getCurrentNode();
-        
-        const minX = Math.min(...this.routeGrid.map(n => n.x));
-        const maxX = Math.max(...this.routeGrid.map(n => n.x));
-        const minY = Math.min(...this.routeGrid.map(n => n.y));
-        const maxY = Math.max(...this.routeGrid.map(n => n.y));
-        
-        let desktopHTML = '<div class="grid-map">';
-        for (let y = minY; y <= maxY; y++) {
-            desktopHTML += '<div class="grid-row">';
-            for (let x = minX; x <= maxX; x++) {
-                desktopHTML += this.getCellHTML(x, y, current);
-            }
-            desktopHTML += '</div>';
-        }
-        desktopHTML += '</div>';
-        desktopHTML += `<div class="map-legend">图例: ●当前 ✓已访问 ?可探索 █迷雾</div>`;
-        
-        let mobileHTML = '<div class="grid-map" style="gap:5px;">';
-        for (let y = minY; y <= maxY; y++) {
-            mobileHTML += '<div class="grid-row" style="gap:5px;">';
-            for (let x = minX; x <= maxX; x++) {
-                const node = this.routeGrid.find(n => n.x === x && n.y === y);
-                if (!node) {
-                    mobileHTML += '<div style="width:32px;height:32px;"></div>';
-                    continue;
-                }
-                
-                const isVisible = node.visited || node.id === current.id ||
-                                  this.getNeighbors(node.id).some(n => n.visited);
-                
-                let style = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;border-radius:4px;';
-                let content = '';
-                
-                if (node.id === current.id) {
-                    style += 'background:#e94560;color:white;font-weight:bold;';
-                    content = '●';
-                } else if (node.visited) {
-                    style += 'background:#27ae60;color:white;';
-                    content = '✓';
-                } else if (isVisible) {
-                    style += 'background:#3a3a4a;color:#aaa;border:1px solid #555;';
-                    content = '?';
-                } else {
-                    style += 'background:#0a0a0f;border:1px solid #1a1a2a;';
-                }
-                
-                mobileHTML += `<div style="${style}">${content}</div>`;
-            }
-            mobileHTML += '</div>';
-        }
-        mobileHTML += '</div>';
-        
-        return { desktop: desktopHTML, mobile: mobileHTML };
-    },
-    
-    getCellHTML(x, y, current) {
-        const node = this.routeGrid.find(n => n.x === x && n.y === y);
-        
-        if (!node) {
-            return '<div class="grid-cell empty"></div>';
-        }
-        
-        const isVisible = node.visited || node.id === current.id ||
-                          this.getNeighbors(node.id).some(n => n.visited);
-        
-        let cellClass = 'grid-cell';
-        let content = '';
-        
-        if (node.id === current.id) {
-            cellClass += ' current';
-            content = '●';
-        } else if (node.visited) {
-            cellClass += ' visited';
-            content = this.getNodeIcon(node.type);
-        } else if (isVisible) {
-            cellClass += ' visible';
-            content = '?';
-        } else {
-            cellClass += ' fog';
-            content = '';
-        }
-        
-        return `<div class="${cellClass}">${content}</div>`;
-    },
-    
-    getNodeIcon(type) {
-        const icons = {
-            start: '◎', room: '□', boss: '☠️', exit: '🚪',
-            fork: '◇', merge: '◈', encounter: '!'
-        };
-        return icons[type] || '?';
-    },
-    
-    showMobileMap() {
-        const modal = document.getElementById('mobileMapModal');
-        if (modal) {
-            this.updateMinimap();
-            modal.classList.add('show');
-        }
-    },
-    
-    hideMobileMap() {
-        const modal = document.getElementById('mobileMapModal');
-        if (modal) {
-            modal.classList.remove('show');
+            const affs = ['偏执', '绝望', '狂躁', '自闭'];
+            inv.affliction = affs[Math.floor(Math.random() * affs.length)];
+            this.log('💔 Affliction', `${inv.name} 陷入${inv.affliction}！`);
         }
     },
     
     // 更新状态栏
     updateStatus() {
-        if (!this.team || this.team.length === 0) return;
-        
-        // 更新双人状态栏
         this.team.forEach((inv, idx) => {
             const hpBar = document.getElementById(`hpBar${idx}`);
             const hpText = document.getElementById(`hpText${idx}`);
@@ -1473,57 +824,31 @@ const game = {
                 let statusText = sanState.name;
                 if (inv.affliction) statusText += ` 💔${inv.affliction}`;
                 if (inv.virtue) statusText += ` ✨${inv.virtue}`;
-                if (inv.hp <= 0) statusText = '💀 阵亡';
                 statusLabel.textContent = statusText;
-                statusLabel.className = `status-label ${sanState.key}`;
+                statusLabel.style.color = sanState.color;
             }
         });
+        
+        // 更新决心值显示
+        const resolveDiv = document.getElementById('resolveDisplay');
+        if (resolveDiv) {
+            resolveDiv.innerHTML = `
+                阻止:${this.state.resolve.stopRitual} 
+                真相:${this.state.resolve.seekTruth} 
+                保护:${this.state.resolve.protect}
+            `;
+        }
     },
     
-    // 日志系统
+    // 日志
     log(type, msg) {
         const panel = document.getElementById('logPanel');
+        if (!panel) return;
         const entry = document.createElement('div');
-        
-        let className = 'system';
-        if (type.includes('成功') || type.includes('✓') || type === '🏆 击败' || type === '✨ Virtue') {
-            className = 'success';
-        } else if (type.includes('失败') || type.includes('✗') || type === '💀 阵亡' || type === '💔 Affliction' || type === '💀 敌人') {
-            className = 'failure';
-        } else if (type.includes('理智') || type === '🌀 崩溃' || type === '恐惧') {
-            className = 'sanity';
-        } else if (type.includes('战斗') || type === '⚔️ 命中' || type === '🛡️ 未命中') {
-            className = 'combat';
-        } else if (type.includes('🎁') || type === '✨ 成功') {
-            className = 'reward';
-        } else if (type.includes('伤害') || type === '💔 狂躁') {
-            className = 'damage';
-        }
-        
-        entry.className = `log-entry ${className}`;
-        entry.textContent = `[${this.state.turn || 0}] ${type}: ${msg}`;
+        entry.className = 'log-entry';
+        entry.textContent = `[${this.state.turn}] ${type}: ${msg}`;
         panel.appendChild(entry);
         panel.scrollTop = panel.scrollHeight;
-    },
-    
-    // 技能检定
-    skillCheck(skill, difficulty) {
-        const roll = Math.floor(Math.random() * 100) + 1;
-        if (roll <= 5) return { success: true, critical: true, roll };
-        if (roll >= 96) return { success: false, fumble: true, roll };
-        return { success: roll <= skill, roll };
-    },
-    
-    // 游戏结束
-    gameOver(reason) {
-        this.state.gameOver = true;
-        this.showModal('游戏结束', reason, () => location.reload());
-    },
-    
-    // 胜利
-    victory(title, msg) {
-        this.state.victory = true;
-        this.showModal(title, msg, () => location.reload());
     },
     
     // 弹窗
@@ -1540,7 +865,67 @@ const game = {
             this.modalCallback();
             this.modalCallback = null;
         }
+    },
+    
+    // 结局
+    showEnding() {
+        const r = this.state.resolve;
+        let ending = '';
+        let desc = '';
+        
+        if (r.stopRitual >= 60 && this.team.every(i => i.hp > 0)) {
+            ending = '🏆 英雄结局';
+            desc = '你们成功阻止了仪式，救出了艾琳娜，并找到了不牺牲任何人就能维持封印的方法。埃德蒙被DIA逮捕，但他的研究为理解深渊提供了宝贵资料。';
+        } else if (r.stopRitual >= 60) {
+            ending = '😢 牺牲结局';
+            desc = '一名调查员替代艾琳娜成为守门人，永远困在深渊边缘。其他人回到地面，但永远无法忘记那个身影。';
+        } else if (r.seekTruth >= 60) {
+            ending = '📚 真相结局';
+            desc = '你们和埃德蒙合作，完成了他的研究，找到了第三种方法——让深渊沉睡。但代价是永远无法完全理解深渊的本质。';
+        } else if (r.protect >= 60) {
+            ending = '💔 悲剧结局';
+            desc = '你们救出了艾琳娜，但她和埃德蒙都已经无法回到正常生活。两人选择一起留在深渊边缘，成为永恒的守门人。';
+        } else if (r.survive >= 40) {
+            ending = '🏃 逃离结局';
+            desc = '你们意识到无法阻止仪式，选择带着情报逃离。深渊之主没有完全苏醒，但封印被削弱...这只是时间问题。';
+        } else {
+            ending = '💀 末日结局';
+            desc = '深渊之主苏醒。在最后的意识中，你们感受到一双眼睛在黑暗中睁开，看向你们..."谢谢你...帮我解开封印..."';
+        }
+        
+        this.showModal(ending, desc, () => location.reload());
+    },
+    
+    // 游戏结束
+    gameOver(reason) {
+        this.showModal('游戏结束', reason, () => location.reload());
+    },
+    
+    // 战斗相关（简化版）
+    showCombatRoom(node) {
+        this.log('系统', `进入战斗区域: ${node.name}`);
+        // 简化实现，直接标记为通过
+        node.cleared = true;
+        this.showRouteView();
+    },
+    
+    showBossRoom(node) {
+        this.showEnding();
+    },
+    
+    enterCombat(type) {
+        this.log('系统', '进入战斗！');
+        // 简化实现
+        this.showRouteView();
     }
-};
+});
 
-game.init();
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    game.init();
+});
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    game.init();
+});

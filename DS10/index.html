@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DS10 v4 - 深渊调查员</title>
+    <title>DS10 v5 - 深渊编年史</title>
     <style>
         * {
             margin: 0;
@@ -494,6 +494,93 @@
             gap: 10px;
             max-width: 280px;
             margin: 0 auto;
+        }
+
+        /* 剧情房间样式 */
+        .story-room {
+            padding: 15px;
+        }
+
+        .story-desc {
+            background: #1a1a2e;
+            border-left: 3px solid #e94560;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #ccc;
+        }
+
+        .story-dialog {
+            background: #0f0f1a;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .dialog-line {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1a1a2e;
+            border-radius: 4px;
+        }
+
+        .dialog-speaker {
+            color: #e94560;
+            font-weight: bold;
+            font-size: 11px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .dialog-text {
+            color: #aaa;
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .story-discoveries {
+            margin-bottom: 15px;
+        }
+
+        .discovery-item {
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .discovery-item:hover {
+            border-color: #e94560;
+            background: #2a2a3a;
+        }
+
+        .story-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .story-choices .action-btn {
+            text-align: left;
+            padding: 12px 15px;
+        }
+
+        /* 决心值显示 */
+        .resolve-display {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #3a3a4a;
+            padding: 8px 12px;
+            font-size: 10px;
+            color: #888;
+            z-index: 100;
         }
 
         .dir-arrow {
@@ -1017,32 +1104,32 @@
 <body>
     <!-- 职业选择 -->
     <div id="professionSelect" class="profession-select">
-        <h1 class="profession-title">DS10 v3 - 深渊调查员<br><span style="font-size:14px;color:#666;">双画面模式</span></h1>
-        
-        <div class="profession-card" onclick="game.selectProfession('archaeologist')">
+        <h1 class="profession-title">DS10 v5 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
+
+        <div class="profession-card" data-profession="archaeologist" onclick="game.selectProfession('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
             <div class="profession-stats">
-                HP: 70 | SAN: 80<br>
+                HP: 70 | SAN: 100<br>
                 侦查: 50 | 力量: 30 | 神秘学: 35<br>
-                <span style="color:#27ae60;">擅长观察、开锁、侦察</span>
+                <span style="color:#27ae60;">精通古代文献，能从符号中发现隐藏信息</span>
             </div>
         </div>
-        
-        <div class="profession-card" onclick="game.selectProfession('soldier')">
+
+        <div class="profession-card" data-profession="soldier" onclick="game.selectProfession('soldier')">
             <div class="profession-name">⚔️ 前军人</div>
             <div class="profession-stats">
-                HP: 90 | SAN: 60<br>
+                HP: 90 | SAN: 100<br>
                 侦查: 35 | 力量: 55 | 神秘学: 20<br>
-                <span style="color:#27ae60;">擅长战斗、强行突破</span>
+                <span style="color:#27ae60;">实战经验丰富，危机时刻保持冷静</span>
             </div>
         </div>
-        
-        <div class="profession-card" onclick="game.selectProfession('occultist')">
+
+        <div class="profession-card" data-profession="occultist" onclick="game.selectProfession('occultist')">
             <div class="profession-name">✦ 神秘学者</div>
             <div class="profession-stats">
-                HP: 50 | SAN: 60<br>
+                HP: 50 | SAN: 100<br>
                 侦查: 40 | 力量: 20 | 神秘学: 55<br>
-                <span style="color:#27ae60;">擅长仪式干扰、感知</span>
+                <span style="color:#27ae60;">能感知深渊能量，理解超自然现象</span>
             </div>
         </div>
     </div>
@@ -1120,7 +1207,12 @@
                 </div>
                 
                 <div class="log-panel" id="logPanel">
-                    <div class="log-entry system">DS10 v4 - 双人调查员模式启动</div>
+                    <div class="log-entry system">DS10 v5 - 深渊编年史</div>
+                </div>
+
+                <!-- 决心值显示 -->
+                <div class="resolve-display" id="resolveDisplay">
+                    阻止:0 真相:0 保护:0
                 </div>
             </div>
             
@@ -1151,6 +1243,6 @@
         <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
     </div>
 
-    <script src="game.js?v=4"></script>
+    <script src="game.js?v=5"></script>
 </body>
 </html>
