@@ -23,11 +23,27 @@
         /* 状态栏 */
         .status-bar {
             background: #1a1a2e;
-            padding: 10px 15px;
+            padding: 8px 10px;
             display: flex;
             justify-content: space-around;
-            border-bottom: 3px solid #0f0f1a;
+            align-items: center;
+            border-bottom: 2px solid #0f0f1a;
             font-size: 12px;
+            height: 45px;
+            flex-shrink: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .status-bar {
+                padding: 6px 8px;
+                height: 40px;
+                font-size: 11px;
+            }
+            
+            .bar-container {
+                width: 45px !important;
+                height: 10px !important;
+            }
         }
         
         .status-item {
@@ -57,6 +73,13 @@
         .game-layout {
             display: flex;
             height: calc(100vh - 45px);
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            .game-layout {
+                height: calc(100vh - 40px);
+            }
         }
         
         /* 左侧主画面 */
@@ -95,8 +118,9 @@
             
             .main-panel {
                 flex: 1;
-                padding: 8px;
-                gap: 8px;
+                padding: 6px;
+                gap: 6px;
+                overflow: hidden;
             }
             
             .scene-header {
@@ -115,7 +139,18 @@
             }
             
             .log-panel {
-                height: 70px;
+                height: 60px;
+                flex-shrink: 0;
+            }
+            
+            .main-content {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+            }
+            
+            .action-panel {
+                flex-shrink: 0;
             }
             
             /* 移动端网格地图弹窗 */
