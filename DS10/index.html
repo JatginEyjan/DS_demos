@@ -20,55 +20,27 @@
             overflow: hidden;
         }
         
-        /* 状态栏 */
+        /* 状态栏 - 使用Grid布局确保水平排列 */
         .status-bar {
             background: #1a1a2e;
-            padding: 8px 10px;
-            display: flex;
-            justify-content: space-around;
+            padding: 8px 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
             align-items: center;
             border-bottom: 2px solid #0f0f1a;
             font-size: 12px;
             height: 45px;
             flex-shrink: 0;
-        }
-        
-        @media (max-width: 768px) {
-            .status-bar {
-                padding: 6px 4px;
-                height: 36px;
-                font-size: 10px;
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-            }
-            
-            .status-item {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                gap: 3px;
-                font-size: 10px;
-                flex: 1;
-                justify-content: center;
-            }
-            
-            .status-item span {
-                white-space: nowrap;
-                font-size: 10px;
-            }
-            
-            .bar-container {
-                width: 35px !important;
-                height: 8px !important;
-            }
+            box-sizing: border-box;
         }
         
         .status-item {
             display: flex;
-            flex-direction: row; /* 明确水平排列 */
+            flex-direction: row;
             align-items: center;
             gap: 6px;
-            white-space: nowrap; /* 防止文字换行 */
+            white-space: nowrap;
         }
         
         .bar-container {
@@ -76,6 +48,7 @@
             height: 12px;
             background: #0a0a0f;
             border: 2px solid #2a2a3a;
+            flex-shrink: 0;
         }
         
         .bar-fill {
@@ -86,6 +59,46 @@
         
         .bar-fill.sanity {
             background: #7c3aed;
+        }
+        
+        /* 移动端状态栏 */
+        @media (max-width: 768px) {
+            .status-bar {
+                padding: 6px 8px;
+                height: 38px;
+                font-size: 11px;
+                gap: 8px;
+            }
+            
+            .status-item {
+                gap: 4px;
+                font-size: 11px;
+            }
+            
+            .status-item span:first-child {
+                font-size: 10px;
+            }
+            
+            .bar-container {
+                width: 40px;
+                height: 10px;
+            }
+        }
+        
+        @media (max-width: 380px) {
+            .status-bar {
+                padding: 6px 6px;
+                gap: 6px;
+            }
+            
+            .bar-container {
+                width: 35px;
+                height: 8px;
+            }
+            
+            .status-item {
+                font-size: 10px;
+            }
         }
         
         /* 游戏主容器 - 左右分栏（桌面端） */
