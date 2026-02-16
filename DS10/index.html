@@ -53,7 +53,7 @@
             background: #7c3aed;
         }
         
-        /* 游戏主容器 - 左右分栏 */
+        /* 游戏主容器 - 左右分栏（桌面端） */
         .game-layout {
             display: flex;
             height: calc(100vh - 45px);
@@ -67,6 +67,7 @@
             padding: 12px;
             gap: 10px;
             overflow-y: auto;
+            min-width: 0; /* 防止flex子项溢出 */
         }
         
         /* 右侧小地图 */
@@ -77,6 +78,82 @@
             padding: 10px;
             display: flex;
             flex-direction: column;
+            flex-shrink: 0; /* 防止压缩 */
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .game-layout {
+                flex-direction: column-reverse;
+                height: calc(100vh - 45px);
+            }
+            
+            .minimap-panel {
+                width: 100%;
+                height: 120px;
+                border-left: none;
+                border-top: 3px solid #2a2a3a;
+                flex-direction: row;
+                padding: 8px;
+            }
+            
+            .minimap-title {
+                display: none; /* 移动端隐藏标题节省空间 */
+            }
+            
+            .minimap-content {
+                flex: 1;
+            }
+            
+            .grid-map {
+                flex-direction: row;
+                justify-content: center;
+            }
+            
+            .map-legend {
+                display: none; /* 移动端隐藏图例 */
+            }
+            
+            .main-panel {
+                flex: 1;
+                padding: 8px;
+                gap: 8px;
+            }
+            
+            .scene-header {
+                padding: 8px;
+            }
+            
+            .scene-title {
+                font-size: 14px;
+            }
+            
+            .log-panel {
+                height: 80px;
+            }
+        }
+        
+        /* 超小屏幕适配 */
+        @media (max-width: 380px) {
+            .status-bar {
+                font-size: 10px;
+                padding: 8px 10px;
+            }
+            
+            .bar-container {
+                width: 40px;
+                height: 10px;
+            }
+            
+            .minimap-panel {
+                height: 100px;
+            }
+            
+            .grid-cell {
+                width: 18px;
+                height: 18px;
+                font-size: 10px;
+            }
         }
         
         .minimap-title {
@@ -101,6 +178,8 @@
             flex-direction: column;
             gap: 3px;
             align-items: center;
+            justify-content: center;
+            height: 100%;
         }
         
         .grid-row {
@@ -109,14 +188,15 @@
         }
         
         .grid-cell {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             background: #1a1a2e;
             border: 1px solid #2a2a3a;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 10px;
+            flex-shrink: 0;
         }
         
         .grid-cell.empty {
@@ -192,16 +272,34 @@
         
         /* 路线选择界面 */
         .route-view {
-            padding: 20px;
+            padding: 15px;
             text-align: center;
         }
         
         .direction-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            max-width: 300px;
+            gap: 10px;
+            max-width: 280px;
             margin: 0 auto;
+        }
+        
+        @media (max-width: 768px) {
+            .direction-grid {
+                gap: 8px;
+            }
+            
+            .direction-btn {
+                padding: 12px 8px;
+            }
+            
+            .dir-arrow {
+                font-size: 20px;
+            }
+            
+            .dir-name {
+                font-size: 11px;
+            }
         }
         
         .direction-btn {
@@ -239,30 +337,44 @@
         
         /* 房间入口 */
         .room-entry {
-            padding: 30px;
+            padding: 20px 15px;
             text-align: center;
         }
         
         .entry-preview {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         .preview-icon {
-            font-size: 64px;
-            margin-bottom: 15px;
+            font-size: 48px;
+            margin-bottom: 10px;
         }
         
         .preview-desc {
             color: #888;
-            font-size: 13px;
+            font-size: 12px;
         }
         
         .entry-actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-width: 280px;
+            gap: 8px;
+            max-width: 260px;
             margin: 0 auto;
+        }
+        
+        @media (max-width: 768px) {
+            .room-entry {
+                padding: 15px 10px;
+            }
+            
+            .preview-icon {
+                font-size: 40px;
+            }
+            
+            .entry-actions {
+                max-width: 100%;
+            }
         }
         
         .action-btn.large {
@@ -272,24 +384,43 @@
         
         /* 战斗界面 */
         .combat-view {
-            padding: 15px;
+            padding: 10px;
         }
         
         .enemies-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .enemy-card {
             background: #1a1a2e;
             border: 2px solid #e94560;
-            padding: 15px;
-            width: 100px;
+            padding: 12px 8px;
+            width: 85px;
             text-align: center;
             cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .enemy-card {
+                width: 75px;
+                padding: 10px 5px;
+            }
+            
+            .enemy-icon {
+                font-size: 24px;
+            }
+            
+            .enemy-name {
+                font-size: 10px;
+            }
+            
+            .enemy-hp-text {
+                font-size: 9px;
+            }
         }
         
         .enemy-card:hover {
@@ -297,20 +428,20 @@
         }
         
         .enemy-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
+            font-size: 28px;
+            margin-bottom: 6px;
         }
         
         .enemy-name {
             font-size: 11px;
             color: #e94560;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         
         .enemy-hp-bar {
-            height: 6px;
+            height: 5px;
             background: #0a0a0f;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         
         .enemy-hp-bar div {
@@ -320,7 +451,7 @@
         }
         
         .enemy-hp-text {
-            font-size: 10px;
+            font-size: 9px;
             color: #888;
         }
         
