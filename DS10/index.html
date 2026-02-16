@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DS10 - 深渊调查员 Demo</title>
+    <title>DS10 - 深渊调查员 v2</title>
     <style>
         * {
             margin: 0;
@@ -20,15 +20,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            image-rendering: pixelated;
-        }
-        
-        /* 像素风格基础 */
-        .pixel-border {
-            border: 4px solid #2a2a3a;
-            box-shadow: 
-                inset 0 0 0 2px #1a1a2a,
-                0 0 0 2px #0a0a0f;
         }
         
         /* 状态栏 */
@@ -58,7 +49,7 @@
         }
         
         .bar-container {
-            width: 80px;
+            width: 60px;
             height: 14px;
             background: #0a0a0f;
             border: 2px solid #2a2a3a;
@@ -69,27 +60,26 @@
             height: 100%;
             background: linear-gradient(180deg, #e94560 0%, #c73e54 100%);
             transition: width 0.3s ease;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
         }
         
         .bar-fill.sanity {
             background: linear-gradient(180deg, #7c3aed 0%, #6d28d9 100%);
         }
         
-        /* 主游戏区域 */
+        /* 游戏容器 */
         .game-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 16px;
-            gap: 12px;
+            padding: 12px;
+            gap: 10px;
             overflow-y: auto;
         }
         
         /* 场景标题 */
         .scene-header {
             text-align: center;
-            padding: 12px;
+            padding: 10px;
             background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
             border: 2px solid #2a2a3a;
         }
@@ -98,7 +88,6 @@
             color: #e94560;
             font-size: 16px;
             font-weight: bold;
-            text-shadow: 0 2px 4px rgba(233, 69, 96, 0.3);
         }
         
         .scene-subtitle {
@@ -107,230 +96,86 @@
             margin-top: 4px;
         }
         
-        /* 像素画面区域 */
-        .pixel-view {
-            aspect-ratio: 1;
-            max-height: 320px;
+        /* 路线地图样式 */
+        .route-map {
             background: #0f0f1a;
             border: 4px solid #2a2a3a;
-            position: relative;
-            margin: 0 auto;
-            width: 100%;
-            max-width: 320px;
-            overflow: hidden;
-        }
-        
-        /* 像素对象 */
-        .pixel-object {
-            position: absolute;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            image-rendering: pixelated;
-        }
-        
-        .pixel-object:hover {
-            filter: brightness(1.3);
-            transform: scale(1.05);
-        }
-        
-        .pixel-object.selected {
-            animation: selected-pulse 1s infinite;
-            z-index: 10;
-        }
-        
-        @keyframes selected-pulse {
-            0%, 100% { 
-                filter: brightness(1.2) drop-shadow(0 0 4px #e94560);
-            }
-            50% { 
-                filter: brightness(1.5) drop-shadow(0 0 8px #e94560);
-            }
-        }
-        
-        /* 具体像素对象样式 */
-        .obj-chest {
-            width: 48px;
-            height: 40px;
-            background: 
-                linear-gradient(180deg, #8b4513 0%, #654321 50%, #4a3018 100%);
-            border: 2px solid #a0522d;
-            box-shadow: inset 0 2px 0 rgba(255,200,100,0.3);
-        }
-        
-        .obj-chest::after {
-            content: '';
-            position: absolute;
-            width: 16px;
-            height: 12px;
-            background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
-            border: 2px solid #daa520;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
-        }
-        
-        .obj-trap {
-            width: 40px;
-            height: 40px;
-            background: repeating-linear-gradient(
-                45deg,
-                #2a2a3a,
-                #2a2a3a 4px,
-                #1a1a2e 4px,
-                #1a1a2e 8px
-            );
-            border: 2px dashed #444;
-        }
-        
-        .obj-trap::before {
-            content: '▲';
-            position: absolute;
-            color: #666;
-            font-size: 12px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        
-        .obj-monster {
-            width: 44px;
-            height: 48px;
-            background: linear-gradient(180deg, #2d5a3d 0%, #1a3a28 100%);
-            border: 2px solid #4a7c59;
-            border-radius: 4px 4px 0 0;
-        }
-        
-        .obj-monster::before {
-            content: '◉ ◉';
-            position: absolute;
-            color: #ff3333;
-            font-size: 10px;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            letter-spacing: 2px;
-            text-shadow: 0 0 4px #ff0000;
-        }
-        
-        .obj-ritual {
-            width: 56px;
-            height: 56px;
-            background: 
-                radial-gradient(circle at 30% 30%, #9b59b6 0%, transparent 50%),
-                radial-gradient(circle at 70% 70%, #e74c3c 0%, transparent 50%),
-                #2c003e;
-            border: 3px solid #e74c3c;
-            border-radius: 50%;
-            animation: ritual-rotate 3s linear infinite;
-            box-shadow: 
-                0 0 20px rgba(231, 76, 60, 0.5),
-                inset 0 0 20px rgba(155, 89, 182, 0.3);
-        }
-        
-        @keyframes ritual-rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .obj-cultist {
-            width: 40px;
-            height: 48px;
-            background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
-            border: 2px solid #333;
-            border-radius: 4px;
-        }
-        
-        .obj-cultist::after {
-            content: '◉';
-            position: absolute;
-            color: #666;
-            font-size: 16px;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        
-        .obj-player {
-            width: 32px;
-            height: 40px;
-            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
-            border: 2px solid #5dade2;
-            border-radius: 4px 4px 0 0;
-            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
-        }
-        
-        /* 地图视图 */
-        .map-view {
             padding: 16px;
-            background: #0f0f1a;
-            border: 4px solid #2a2a3a;
         }
         
-        .map-layer {
-            margin-bottom: 20px;
-        }
-        
-        .map-layer-title {
-            color: #888;
-            font-size: 11px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        
-        .map-nodes {
+        .route-path {
             display: flex;
-            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
         
-        .map-node {
-            width: 80px;
-            height: 60px;
-            background: #1a1a2e;
-            border: 3px solid #2a2a3a;
+        .route-node {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 3px solid #2a2a3a;
+            min-width: 70px;
+            text-align: center;
             transition: all 0.2s;
-            font-size: 10px;
         }
         
-        .map-node:hover:not(.locked) {
-            border-color: #e94560;
-            background: #252538;
-        }
-        
-        .map-node.current {
-            border-color: #3498db;
-            background: #1e3a5f;
-            box-shadow: 0 0 12px rgba(52, 152, 219, 0.4);
-        }
-        
-        .map-node.cleared {
+        .route-node.past {
             border-color: #27ae60;
-            opacity: 0.7;
+            opacity: 0.6;
         }
         
-        .map-node.locked {
-            opacity: 0.4;
-            cursor: not-allowed;
+        .route-node.current {
+            border-color: #e94560;
+            background: #2a1a2e;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
+            animation: current-pulse 2s infinite;
         }
         
-        .map-node-icon {
+        @keyframes current-pulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(233, 69, 96, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(233, 69, 96, 0.6); }
+        }
+        
+        .route-node.future {
+            opacity: 0.8;
+        }
+        
+        .route-node.future.safehouse {
+            border-color: #3498db;
+        }
+        
+        .route-node.future.boss {
+            border-color: #e74c3c;
+        }
+        
+        .node-icon {
             font-size: 20px;
             margin-bottom: 4px;
         }
         
-        .map-node-label {
+        .node-name {
+            font-size: 10px;
             color: #aaa;
-            text-align: center;
         }
         
-        /* 行动面板 */
-        .action-panel {
+        .node-turn {
+            font-size: 9px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .route-arrow {
+            color: #444;
+            font-size: 18px;
+        }
+        
+        /* 路线行动区 */
+        .route-actions {
             background: #1a1a2e;
             border: 2px solid #2a2a3a;
             padding: 12px;
@@ -371,12 +216,6 @@
             transform: translateY(2px);
         }
         
-        .action-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            border-color: #2a2a3a;
-        }
-        
         .action-btn .skill-tag {
             display: block;
             font-size: 10px;
@@ -384,20 +223,91 @@
             margin-top: 4px;
         }
         
+        /* 房间战斗样式 */
+        .room-combat {
+            padding: 12px;
+        }
+        
+        .enemies-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .enemy-card {
+            background: #1a1a2e;
+            border: 2px solid #e94560;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .enemy-card:hover {
+            background: #2a1a2e;
+        }
+        
+        .enemy-card.defeated {
+            opacity: 0.4;
+            border-color: #444;
+        }
+        
+        .enemy-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .enemy-name {
+            font-size: 12px;
+            color: #e94560;
+            margin-bottom: 4px;
+        }
+        
+        .enemy-hp {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .objects-list {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .object-card {
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .object-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .object-name {
+            font-size: 11px;
+            color: #aaa;
+        }
+        
         /* 日志面板 */
         .log-panel {
             background: #0a0a0f;
             border: 2px solid #1a1a2e;
-            padding: 12px;
-            max-height: 120px;
+            padding: 10px;
+            max-height: 100px;
             overflow-y: auto;
             font-size: 11px;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         .log-entry {
-            margin-bottom: 6px;
-            padding: 4px 8px;
+            margin-bottom: 4px;
+            padding: 3px 8px;
             border-left: 3px solid #3a3a4a;
             background: rgba(255,255,255,0.02);
         }
@@ -415,6 +325,23 @@
         .log-entry.system {
             border-left-color: #3498db;
             color: #5dade2;
+        }
+        
+        /* 警告条 */
+        .alert-bar {
+            background: linear-gradient(90deg, #2a1a1a 0%, #3a1a1a 50%, #2a1a1a 100%);
+            border: 2px solid #e94560;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #e94560;
+            margin-bottom: 10px;
+            animation: alert-pulse 1s infinite;
+        }
+        
+        @keyframes alert-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
         
         /* 职业选择 */
@@ -534,7 +461,7 @@
             display: none !important;
         }
         
-        /* 滚动条美化 */
+        /* 滚动条 */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -554,16 +481,16 @@
     </style>
 </head>
 <body>
-    <!-- 职业选择界面 -->
+    <!-- 职业选择 -->
     <div id="professionSelect" class="profession-select">
-        <h1 class="profession-title">选择你的调查员</h1>
+        <h1 class="profession-title">DS10 深渊调查员 v2<br><span style="font-size:14px;color:#888;">路线探索 + 回合计数</span></h1>
         
         <div class="profession-card" onclick="game.selectProfession('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
             <div class="profession-stats">
                 HP: 70 | SAN: 80<br>
                 侦查: 50 | 力量: 30 | 神秘学: 35<br>
-                <span class="highlight">擅长: 观察、开锁、古老机关</span>
+                <span class="highlight">擅长: 观察、开锁、侦察路线</span>
             </div>
         </div>
         
@@ -572,7 +499,7 @@
             <div class="profession-stats">
                 HP: 90 | SAN: 60<br>
                 侦查: 35 | 力量: 55 | 神秘学: 20<br>
-                <span class="highlight">擅长: 战斗、压制、直接突破</span>
+                <span class="highlight">擅长: 战斗、强行突破</span>
             </div>
         </div>
         
@@ -581,7 +508,7 @@
             <div class="profession-stats">
                 HP: 50 | SAN: 60<br>
                 侦查: 40 | 力量: 20 | 神秘学: 55<br>
-                <span class="highlight">擅长: 仪式、超自然、高风险高回报</span>
+                <span class="highlight">擅长: 仪式干扰、感知危险</span>
             </div>
         </div>
     </div>
@@ -605,8 +532,8 @@
                 <span class="status-value" id="sanText">80/80</span>
             </div>
             <div class="status-item">
-                <span class="status-label">时间</span>
-                <span class="status-value" id="timeText">30:00</span>
+                <span class="status-label">回合</span>
+                <span class="status-value" id="timeText">0/80</span>
             </div>
         </div>
 
@@ -614,26 +541,22 @@
         <div class="game-container">
             <!-- 场景标题 -->
             <div class="scene-header">
-                <div class="scene-title" id="sceneTitle">准备进入副本</div>
-                <div class="scene-subtitle" id="sceneSubtitle">选择调查员开始游戏</div>
+                <div class="scene-title" id="sceneTitle">准备进入</div>
+                <div class="scene-subtitle" id="sceneSubtitle">选择调查员开始</div>
             </div>
 
-            <!-- 动态内容区域 -->
-            <div id="gameContent">
-                <!-- 这里会根据状态显示地图或房间 -->
-            </div>
+            <!-- 动态内容 -->
+            <div id="gameContent"></div>
 
             <!-- 行动面板 -->
             <div class="action-panel" id="actionPanel" style="display: none;">
-                <div class="action-title" id="actionTitle">选择行动</div>
-                <div class="action-grid" id="actionButtons">
-                    <!-- 动态生成按钮 -->
-                </div>
+                <div class="action-title" id="actionTitle">行动</div>
+                <div class="action-grid" id="actionButtons"></div>
             </div>
 
             <!-- 日志面板 -->
             <div class="log-panel" id="logPanel">
-                <div class="log-entry system">游戏初始化完成...</div>
+                <div class="log-entry system">DS10 Demo v2 - 路线探索模式</div>
             </div>
         </div>
     </div>

@@ -1,23 +1,50 @@
-// DS10 Demo - 深渊调查员
-// 核心游戏系统：地图导航 + 安全屋 + 房间遭遇
+// DS10 Demo v2 - 路线式地图 + 回合计数
+// 核心改动：线性探索 + 回合消耗 + 递增风险
 
 const game = {
     // 游戏状态
     state: {
-        phase: 'profession_select', // profession_select, map, safehouse, room, gameover
-        currentLayer: 0,
-        currentRoom: null,
-        turn: 1,
+        phase: 'profession_select',
+        currentRoute: null,      // 当前路线位置
+        turn: 0,                 // 全局回合数
+        maxTurns: 80,            // 最大回合数
+        alertLevel: 0,           // 警觉度（每10回合+1）
         selectedObject: null,
         gameOver: false,
-        victory: false
+        victory: false,
+        logHistory: []           // 记录历史
     },
     
     // 调查员
     investigator: null,
     
-    // 副本数据
-    dungeon: null,
+    // 路线定义（线性结构）
+    route: [
+        { id: 'entrance', name: '遗迹入口', type: 'start', x: 0, y: 0 },
+        { id: 'sh1', name: '第1层安全屋', type: 'safehouse', x: 1, y: 0 },
+        { id: 'room1', name: '储藏室', type: 'room', x: 2, y: 0, roomId: 'storage' },
+        { 
+            id: 'fork1', name: '走廊分叉', type: 'fork', x: 3, y: 0,
+            branches: [
+                { id: 'upper', name: '上走廊', target: 'room2', risk: 'high', reward: 'high' },
+                { id: 'lower', name: '下走廊', target: 'room3', risk: 'low', reward: 'low' }
+            ]
+        },
+        // 上分支
+        { id: 'room2', name: '陷阱房', type: 'room', x: 4, y: -1, roomId: 'trap', branch: 'upper' },
+        { id: 'sh2_upper', name: '偏厅安全屋', type: 'safehouse', x: 5, y: -1 },
+        // 下分支
+        { id: 'room3', name: '守卫室', type: 'room', x: 4, y: 1, roomId: 'guard', branch: 'lower' },
+        { id: 'sh2_lower', name: '侧室安全屋', type: 'safehouse', x: 5, y: 1 },
+        // 汇合
+        { id: 'merge', name: '主通道', type: 'merge', x: 6, y: 0 },
+        { id: 'sh3', name: '第2层安全屋', type: 'safehouse', x: 7, y: 0 },
+        { id: 'boss', name: '仪式厅', type: 'boss', x: 8, y: 0, roomId: 'ritual' },
+        { id: 'exit', name: '撤离点', type: 'exit', x: 9, y: 0 }
+    ],
+    
+    // 房间数据
+    rooms: {},
     
     // 职业模板
     professions: {
@@ -46,67 +73,17 @@ const game = {
     
     // 初始化
     init() {
-        this.dungeon = this.generateDungeon();
-        this.log('系统', '游戏初始化完成，请选择调查员...');
+        this.initRooms();
+        this.log('系统', 'DS10 Demo v2 - 路线探索模式');
     },
     
-    // 生成副本
-    generateDungeon() {
-        return {
-            name: '浅层遗迹',
-            layers: [
-                {
-                    id: 0,
-                    name: '第1层',
-                    safehouse: {
-                        id: 'sh1',
-                        name: '第1层安全屋',
-                        visited: false
-                    },
-                    rooms: [
-                        {
-                            id: 'room1',
-                            name: '储藏室',
-                            icon: '📦',
-                            type: 'normal',
-                            cleared: false,
-                            description: '一间昏暗的储藏室，角落里有一个上锁的宝箱。',
-                            objects: () => this.createStorageRoomObjects()
-                        },
-                        {
-                            id: 'room2',
-                            name: '陷阱走廊',
-                            icon: '⚠️',
-                            type: 'optional',
-                            cleared: false,
-                            risk: 'high',
-                            description: '狭窄的走廊，地板看起来不太对劲...',
-                            objects: () => this.createTrapRoomObjects()
-                        }
-                    ]
-                },
-                {
-                    id: 1,
-                    name: '第2层',
-                    safehouse: {
-                        id: 'sh2',
-                        name: '第2层安全屋',
-                        visited: false
-                    },
-                    rooms: [
-                        {
-                            id: 'boss',
-                            name: '仪式厅',
-                            icon: '🔮',
-                            type: 'boss',
-                            cleared: false,
-                            description: '邪教徒正在进行召唤仪式！',
-                            objects: () => this.createBossRoomObjects()
-                        }
-                    ]
-                }
-            ],
-            currentLocation: 'entrance' // entrance, sh1, sh2, room1, room2, boss
+    // 初始化房间
+    initRooms() {
+        this.rooms = {
+            storage: this.createStorageRoom(),
+            trap: this.createTrapRoom(),
+            guard: this.createGuardRoom(),
+            ritual: this.createBossRoom()
         };
     },
     
@@ -115,11 +92,7 @@ const game = {
         const template = this.professions[professionKey];
         this.investigator = {
             ...template,
-            inventory: {
-                food: 2,
-                medicine: 1,
-                ammo: 6
-            }
+            inventory: { food: 2, medicine: 1, ammo: 6 }
         };
         
         document.getElementById('professionSelect').classList.add('hidden');
@@ -127,647 +100,613 @@ const game = {
         document.getElementById('gameUI').style.display = 'flex';
         
         this.log('系统', `${this.investigator.name}准备进入遗迹...`);
-        this.enterDungeon();
+        this.startDungeon();
     },
     
-    // 进入副本
-    enterDungeon() {
-        this.state.phase = 'map';
-        this.state.currentLayer = 0;
-        this.dungeon.currentLocation = 'entrance';
-        this.renderMap();
+    // 开始副本
+    startDungeon() {
+        this.state.currentRoute = 0; // 从入口开始
+        this.state.turn = 0;
+        this.state.alertLevel = 0;
+        this.renderRoute();
         this.updateStatus();
     },
     
-    // 渲染地图
-    renderMap() {
-        const layer = this.dungeon.layers[this.state.currentLayer];
+    // 渲染路线地图
+    renderRoute() {
+        const current = this.route[this.state.currentRoute];
         const content = document.getElementById('gameContent');
         
-        document.getElementById('sceneTitle').textContent = this.dungeon.name;
-        document.getElementById('sceneSubtitle').textContent = `${layer.name} - 选择要前往的房间`;
+        document.getElementById('sceneTitle').textContent = '路线选择';
+        document.getElementById('sceneSubtitle').textContent = `当前位置: ${current.name}`;
         
-        let html = '<div class="map-view">';
+        // 渲染路线地图
+        let html = '<div class="route-map">';
         
-        // 安全屋
-        const shStatus = layer.safehouse.visited ? 'cleared' : 'available';
-        html += `
-            <div class="map-layer">
-                <div class="map-layer-title">安全屋 ★</div>
-                <div class="map-nodes">
-                    <div class="map-node ${shStatus}" onclick="game.enterSafehouse()">
-                        <div class="map-node-icon">★</div>
-                        <div class="map-node-label">${layer.safehouse.name}</div>
-                    </div>
-                </div>
-            </div>
-        `;
+        // 路线可视化
+        html += '<div class="route-path">';
         
-        // 房间节点
-        html += `
-            <div class="map-layer">
-                <div class="map-layer-title">可探索区域</div>
-                <div class="map-nodes">
-        `;
+        // 显示前后各2个节点
+        const startIdx = Math.max(0, this.state.currentRoute - 2);
+        const endIdx = Math.min(this.route.length - 1, this.state.currentRoute + 3);
         
-        layer.rooms.forEach(room => {
-            let status = '';
-            let onclick = '';
+        for (let i = startIdx; i <= endIdx; i++) {
+            const node = this.route[i];
+            const isCurrent = i === this.state.currentRoute;
+            const isPast = i < this.state.currentRoute;
+            const isFuture = i > this.state.currentRoute;
             
-            if (room.cleared) {
-                status = 'cleared';
-                onclick = `game.log('系统', '${room.name}已探索完毕')`;
+            let statusClass = '';
+            let icon = '';
+            
+            if (isCurrent) {
+                statusClass = 'current';
+                icon = '●';
+            } else if (isPast) {
+                statusClass = 'past';
+                icon = '✓';
             } else {
-                status = 'available';
-                onclick = `game.enterRoom('${room.id}')`;
+                statusClass = 'future';
+                icon = this.getNodeIcon(node.type);
             }
             
             html += `
-                <div class="map-node ${status}" onclick="${onclick}">
-                    <div class="map-node-icon">${room.icon}</div>
-                    <div class="map-node-label">${room.name}</div>
+                <div class="route-node ${statusClass} ${node.type}">
+                    <div class="node-icon">${icon}</div>
+                    <div class="node-name">${node.name}</div>
+                    ${isFuture ? `<div class="node-turn">?回合</div>` : ''}
                 </div>
             `;
-        });
+            
+            if (i < endIdx) {
+                html += '<div class="route-arrow">→</div>';
+            }
+        }
         
-        html += '</div></div>';
+        html += '</div>';
         
-        // 下一层按钮（如果所有房间都清理了）
-        const allCleared = layer.rooms.every(r => r.cleared);
-        if (allCleared && this.state.currentLayer < this.dungeon.layers.length - 1) {
+        // 可用行动
+        html += '<div class="route-actions">';
+        html += '<div class="action-title">选择行动</div>';
+        html += '<div class="action-grid">';
+        
+        // 根据当前节点类型显示不同行动
+        if (current.type === 'safehouse') {
+            html += this.getSafehouseActions();
+        } else if (current.type === 'room' || current.type === 'boss') {
+            html += this.getRoomEntryActions(current);
+        } else if (current.type === 'fork') {
+            html += this.getForkActions(current);
+        } else if (current.type === 'start' || current.type === 'merge') {
+            html += this.getMoveActions();
+        }
+        
+        // 侦察选项（如果不是在安全屋或战斗中）
+        if (!['safehouse', 'boss'].includes(current.type)) {
             html += `
-                <div style="text-align: center; margin-top: 20px;">
-                    <button class="modal-btn" onclick="game.nextLayer()">
-                        ⬇️ 前往${this.dungeon.layers[this.state.currentLayer + 1].name}
-                    </button>
-                </div>
+                <button class="action-btn" onclick="game.scoutAhead()">
+                    🔍 侦察前方
+                    <span class="skill-tag">消耗1回合，了解前方房间</span>
+                </button>
             `;
         }
         
-        // 撤离按钮
-        html += `
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="modal-btn" onclick="game.evacuate()" style="background: #666;">
-                    🚪 撤离副本
-                </button>
-            </div>
-        `;
-        
-        html += '</div>';
-        content.innerHTML = html;
-        
-        // 隐藏行动面板
-        document.getElementById('actionPanel').style.display = 'none';
-    },
-    
-    // 进入安全屋
-    enterSafehouse() {
-        const layer = this.dungeon.layers[this.state.currentLayer];
-        layer.safehouse.visited = true;
-        this.state.phase = 'safehouse';
-        this.dungeon.currentLocation = layer.safehouse.id;
-        
-        this.renderSafehouse();
-    },
-    
-    // 渲染安全屋
-    renderSafehouse() {
-        const layer = this.dungeon.layers[this.state.currentLayer];
-        const content = document.getElementById('gameContent');
-        
-        document.getElementById('sceneTitle').textContent = layer.safehouse.name;
-        document.getElementById('sceneSubtitle').textContent = '这里暂时是安全的，你可以休息和整理';
-        
-        let html = `
-            <div class="map-view">
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">★</div>
-                    <div style="color: #27ae60;">安全区域 - 敌人不会进入</div>
-                </div>
-                
-                <div class="map-layer">
-                    <div class="map-layer-title">可用行动</div>
-                    <div class="action-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-        `;
-        
-        // 进食恢复
-        const canEat = this.investigator.inventory.food > 0;
-        html += `
-            <button class="action-btn" ${!canEat ? 'disabled' : ''} onclick="game.safehouseRest('eat')">
-                🍞 进食恢复
-                <span class="skill-tag">消耗食物×1，恢复30% HP</span>
-            </button>
-        `;
-        
-        // 休息恢复SAN
-        html += `
-            <button class="action-btn" onclick="game.safehouseRest('sleep')">
-                💤 冥想休息
-                <span class="skill-tag">恢复20 SAN，消耗时间</span>
-            </button>
-        `;
-        
-        // 整理背包
-        html += `
-            <button class="action-btn" onclick="game.showInventory()">
-                🎒 整理背包
-                <span class="skill-tag">查看和使用道具</span>
-            </button>
-        `;
-        
-        // 查看地图
-        html += `
-            <button class="action-btn" onclick="game.renderMap()">
-                🗺️ 查看地图
-                <span class="skill-tag">返回地图选择</span>
-            </button>
-        `;
-        
         html += '</div></div>';
-        
-        // 背包状态
-        html += `
-            <div class="map-layer" style="margin-top: 20px;">
-                <div class="map-layer-title">背包</div>
-                <div style="color: #888; font-size: 12px;">
-                    食物: ${this.investigator.inventory.food} | 
-                    药品: ${this.investigator.inventory.medicine} | 
-                    弹药: ${this.investigator.inventory.ammo}
-                </div>
-            </div>
-        `;
-        
         html += '</div>';
-        content.innerHTML = html;
         
+        content.innerHTML = html;
         document.getElementById('actionPanel').style.display = 'none';
     },
     
-    // 安全屋恢复
-    safehouseRest(type) {
+    // 获取节点图标
+    getNodeIcon(type) {
+        const icons = {
+            start: '🚪',
+            safehouse: '★',
+            room: '?',
+            fork: '⚡',
+            merge: '🔀',
+            boss: '☠️',
+            exit: '🏃'
+        };
+        return icons[type] || '?';
+    },
+    
+    // 安全屋行动
+    getSafehouseActions() {
+        return `
+            <button class="action-btn" onclick="game.restInSafehouse('eat')">
+                🍞 进食 (+30% HP)
+                <span class="skill-tag">消耗1食物，1回合</span>
+            </button>
+            <button class="action-btn" onclick="game.restInSafehouse('sleep')">
+                💤 冥想 (+20 SAN)
+                <span class="skill-tag">消耗1回合</span>
+            </button>
+            <button class="action-btn" onclick="game.moveForward()">
+                ➡️ 前进
+                <span class="skill-tag">消耗1回合</span>
+            </button>
+            <button class="action-btn" onclick="game.moveBackward()">
+                ⬅️ 后退
+                <span class="skill-tag">消耗1回合，可能遇敌</span>
+            </button>
+        `;
+    },
+    
+    // 房间进入行动
+    getRoomEntryActions(node) {
+        const room = this.rooms[node.roomId];
+        const riskText = this.getRiskText(room);
+        
+        return `
+            <button class="action-btn" onclick="game.enterRoom('${node.roomId}')">
+                ⚔️ 进入战斗
+                <span class="skill-tag">消耗1回合，${riskText}</span>
+            </button>
+            <button class="action-btn" onclick="game.bypassRoom()">
+                🚶 绕道
+                <span class="skill-tag">消耗2回合，无奖励</span>
+            </button>
+            <button class="action-btn" onclick="game.moveBackward()">
+                ⬅️ 后退
+                <span class="skill-tag">返回安全屋</span>
+            </button>
+        `;
+    },
+    
+    // 分叉点行动
+    getForkActions(node) {
+        let html = '';
+        node.branches.forEach(branch => {
+            html += `
+                <button class="action-btn" onclick="game.takeBranch('${branch.id}')">
+                    ${branch.id === 'upper' ? '⬆️' : '⬇️'} ${branch.name}
+                    <span class="skill-tag">风险:${branch.risk} 奖励:${branch.reward}</span>
+                </button>
+            `;
+        });
+        html += `
+            <button class="action-btn" onclick="game.moveBackward()">
+                ⬅️ 后退
+                <span class="skill-tag">返回上一层</span>
+            </button>
+        `;
+        return html;
+    },
+    
+    // 移动行动
+    getMoveActions() {
+        return `
+            <button class="action-btn" onclick="game.moveForward()">
+                ➡️ 前进
+                <span class="skill-tag">消耗1回合</span>
+            </button>
+            ${this.state.currentRoute > 0 ? `
+            <button class="action-btn" onclick="game.moveBackward()">
+                ⬅️ 后退
+                <span class="skill-tag">消耗1回合，可能遇敌</span>
+            </button>
+            ` : ''}
+        `;
+    },
+    
+    // 获取风险文本
+    getRiskText(room) {
+        const enemyCount = room.objects.filter(o => o.type === 'monster' || o.type === 'boss').length;
+        if (enemyCount >= 2) return '高难度';
+        if (enemyCount === 1) return '中等难度';
+        return '低风险';
+    },
+    
+    // 消耗回合
+    consumeTurns(amount = 1) {
+        this.state.turn += amount;
+        
+        // 检查警觉度提升
+        const newAlertLevel = Math.floor(this.state.turn / 10);
+        if (newAlertLevel > this.state.alertLevel) {
+            this.state.alertLevel = newAlertLevel;
+            this.log('警告', `警觉度提升！敌人变得更加危险（等级${this.state.alertLevel}）`);
+        }
+        
+        // 检查回合限制
+        if (this.state.turn >= this.state.maxTurns) {
+            this.gameOver('回合耗尽，遗迹中的存在注意到了你...');
+            return false;
+        }
+        
+        this.updateStatus();
+        return true;
+    },
+    
+    // 移动：前进
+    moveForward() {
+        if (!this.consumeTurns(1)) return;
+        
+        const nextIdx = this.state.currentRoute + 1;
+        if (nextIdx >= this.route.length) {
+            this.victory('成功逃离遗迹！', '你找到了出口，带着战利品安全撤离。');
+            return;
+        }
+        
+        this.state.currentRoute = nextIdx;
+        const nextNode = this.route[nextIdx];
+        
+        this.log('系统', `前进到 ${nextNode.name}（回合 ${this.state.turn}/${this.state.maxTurns}）`);
+        
+        // 随机遭遇（后退时概率更高）
+        if (Math.random() < 0.1 + (this.state.alertLevel * 0.05)) {
+            this.randomEncounter();
+        } else {
+            this.renderRoute();
+        }
+    },
+    
+    // 移动：后退
+    moveBackward() {
+        // 后退有额外风险
+        const encounterChance = 0.2 + (this.state.alertLevel * 0.1);
+        
+        if (!this.consumeTurns(1)) return;
+        
+        const prevIdx = this.state.currentRoute - 1;
+        if (prevIdx < 0) {
+            this.log('系统', '无法后退，已经在最前方');
+            return;
+        }
+        
+        this.state.currentRoute = prevIdx;
+        const prevNode = this.route[prevIdx];
+        
+        this.log('系统', `后退到 ${prevNode.name}（回合 ${this.state.turn}/${this.state.maxTurns}）`);
+        
+        // 后退更容易遇敌
+        if (Math.random() < encounterChance) {
+            this.randomEncounter(true); // true表示是撤退遭遇
+        } else {
+            this.renderRoute();
+        }
+    },
+    
+    // 选择分支
+    takeBranch(branchId) {
+        if (!this.consumeTurns(1)) return;
+        
+        // 找到对应分支的房间
+        const branchRoom = this.route.find(r => r.branch === branchId && r.x === 4);
+        if (branchRoom) {
+            const roomIdx = this.route.indexOf(branchRoom);
+            this.state.currentRoute = roomIdx;
+            this.log('系统', `选择了${branchId === 'upper' ? '上' : '下'}走廊`);
+            this.renderRoute();
+        }
+    },
+    
+    // 侦察前方
+    scoutAhead() {
+        if (!this.consumeTurns(1)) return;
+        
+        const nextIdx = this.state.currentRoute + 1;
+        if (nextIdx >= this.route.length) {
+            this.log('系统', '前方没有路了');
+            return;
+        }
+        
+        const nextNode = this.route[nextIdx];
+        let info = '';
+        
+        if (nextNode.type === 'room' || nextNode.type === 'boss') {
+            const room = this.rooms[nextNode.roomId];
+            const enemies = room.objects.filter(o => o.type === 'monster' || o.type === 'boss');
+            info = `发现${enemies.length}个敌人，`;
+            info += this.getRiskText(room);
+        } else if (nextNode.type === 'safehouse') {
+            info = '安全区域，可以恢复';
+        } else if (nextNode.type === 'fork') {
+            info = `分叉路口，有${nextNode.branches.length}条路可选`;
+        }
+        
+        this.log('侦查', `侦察结果：${nextNode.name} - ${info}`);
+        
+        // 高侦察技能可能获得额外信息
+        if (this.skillCheck(this.getEffectiveSkill('侦查'), 40).success) {
+            this.log('侦查', '你发现了一些细节：敌人似乎没有察觉到你的存在');
+        }
+    },
+    
+    // 随机遭遇
+    randomEncounter(isRetreat = false) {
+        const enemies = ['深潜者', '邪教徒', '疯狂调查员', '阴影生物'];
+        const enemy = enemies[Math.floor(Math.random() * enemies.length)];
+        
+        this.log('遭遇', `${isRetreat ? '撤退时' : '前进中'}遭遇了${enemy}！`);
+        
+        // 简化遭遇：直接战斗检定
+        const diff = 40 + (this.state.alertLevel * 5);
+        const result = this.skillCheck(this.getEffectiveSkill('力量'), diff);
+        
+        if (result.success) {
+            this.log('成功', `你击退了${enemy}！`);
+        } else {
+            const damage = 10 + (this.state.alertLevel * 3);
+            this.takeDamage(damage);
+            this.log('失败', `${enemy}攻击了你！HP-${damage}`);
+        }
+        
+        this.renderRoute();
+    },
+    
+    // 进入房间战斗
+    enterRoom(roomId) {
+        if (!this.consumeTurns(1)) return;
+        
+        this.state.phase = 'room';
+        this.state.currentRoomId = roomId;
+        const room = this.rooms[roomId];
+        
+        // 重置房间状态（如果是新进入）
+        if (!room.visited) {
+            room.objects = room.createObjects();
+            room.visited = true;
+        }
+        
+        this.log('系统', `进入${room.name}，开始战斗！`);
+        this.renderRoom(room);
+    },
+    
+    // 绕道
+    bypassRoom() {
+        if (!this.consumeTurns(2)) return;
+        
+        this.log('系统', '你小心翼翼地绕过了这个房间，没有触发任何遭遇');
+        
+        // 跳到汇合点或下一个节点
+        const current = this.route[this.state.currentRoute];
+        let nextIdx = this.state.currentRoute + 1;
+        
+        // 如果是分支房间，跳到汇合点
+        if (current.branch) {
+            const mergeIdx = this.route.findIndex(r => r.id === 'merge');
+            if (mergeIdx > 0) nextIdx = mergeIdx;
+        }
+        
+        this.state.currentRoute = nextIdx;
+        this.renderRoute();
+    },
+    
+    // 安全屋休息
+    restInSafehouse(type) {
         if (type === 'eat') {
             if (this.investigator.inventory.food <= 0) {
                 this.log('系统', '没有食物了！');
                 return;
             }
+            if (!this.consumeTurns(1)) return;
+            
             this.investigator.inventory.food--;
             const heal = Math.floor(this.investigator.maxHp * 0.3);
             this.investigator.hp = Math.min(this.investigator.maxHp, this.investigator.hp + heal);
-            this.log('成功', `进食恢复，HP+${heal}`);
+            this.log('恢复', `进食休息，恢复${heal} HP（回合 ${this.state.turn}）`);
         } else if (type === 'sleep') {
+            if (!this.consumeTurns(1)) return;
+            
             this.investigator.sanity = Math.min(this.investigator.maxSanity, this.investigator.sanity + 20);
-            this.log('成功', '冥想休息，SAN+20');
+            this.log('恢复', `冥想休息，恢复20 SAN（回合 ${this.state.turn}）`);
         }
+        
         this.updateStatus();
-        this.renderSafehouse();
     },
     
-    // 显示背包
-    showInventory() {
-        // 简化版，后续可扩展
-        this.log('系统', `背包内容：食物×${this.investigator.inventory.food} 药品×${this.investigator.inventory.medicine} 弹药×${this.investigator.inventory.ammo}`);
-    },
-    
-    // 进入房间
-    enterRoom(roomId) {
-        const layer = this.dungeon.layers[this.state.currentLayer];
-        const room = layer.rooms.find(r => r.id === roomId);
-        
-        if (!room || room.cleared) return;
-        
-        this.state.phase = 'room';
-        this.state.currentRoom = room;
-        this.dungeon.currentLocation = roomId;
-        this.state.turn = 1;
-        
-        // 生成房间对象
-        room.currentObjects = room.objects();
-        
-        this.log('系统', `进入${room.name}：${room.description}`);
-        this.renderRoom();
-    },
-    
-    // 渲染房间
-    renderRoom() {
-        const room = this.state.currentRoom;
+    // 渲染房间战斗
+    renderRoom(room) {
         const content = document.getElementById('gameContent');
         
         document.getElementById('sceneTitle').textContent = room.name;
-        document.getElementById('sceneSubtitle').textContent = '回合 ' + this.state.turn;
+        document.getElementById('sceneSubtitle').textContent = `回合 ${this.state.turn}/${this.state.maxTurns} | 警觉度 ${this.state.alertLevel}`;
         
-        // 像素画面
-        let html = '<div class="pixel-view">';
+        let html = '<div class="room-combat">';
         
-        // 添加调查员（固定在底部中央）
-        html += '<div class="pixel-object obj-player" style="bottom: 40px; left: 50%; transform: translateX(-50%);"></div>';
-        
-        // 添加对象
-        room.currentObjects.forEach((obj, index) => {
-            const className = `pixel-object ${obj.class}`;
-            html += `<div class="${className}" style="${obj.style}" onclick="game.selectObject(${index})" title="${obj.name}"></div>`;
+        // 敌人列表
+        html += '<div class="enemies-list">';
+        room.objects.forEach((obj, idx) => {
+            if (obj.type === 'monster' || obj.type === 'boss') {
+                html += `
+                    <div class="enemy-card ${obj.state.hp <= 0 ? 'defeated' : ''}" onclick="game.selectEnemy(${idx})">
+                        <div class="enemy-icon">${obj.type === 'boss' ? '☠️' : '👹'}</div>
+                        <div class="enemy-name">${obj.name}</div>
+                        <div class="enemy-hp">HP: ${obj.state.hp}/${obj.state.maxHp}</div>
+                    </div>
+                `;
+            }
         });
+        html += '</div>';
+        
+        // 对象列表（非敌人）
+        const objects = room.objects.filter(o => o.type !== 'monster' && o.type !== 'boss');
+        if (objects.length > 0) {
+            html += '<div class="objects-list">';
+            objects.forEach((obj, idx) => {
+                html += `
+                    <div class="object-card" onclick="game.selectObjectInRoom(${idx})">
+                        <div class="object-icon">${obj.icon || '📦'}</div>
+                        <div class="object-name">${obj.name}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
         
         html += '</div>';
         content.innerHTML = html;
         
-        // 显示行动提示
+        // 显示行动面板
         document.getElementById('actionPanel').style.display = 'block';
-        document.getElementById('actionTitle').textContent = '点击对象选择行动';
-        document.getElementById('actionButtons').innerHTML = '';
-        
-        // 添加返回地图按钮
-        const returnBtn = document.createElement('button');
-        returnBtn.className = 'action-btn';
-        returnBtn.innerHTML = '🚪 撤退到安全屋<br><span class="skill-tag">放弃本房间，返回地图</span>';
-        returnBtn.onclick = () => this.retreatFromRoom();
-        document.getElementById('actionButtons').appendChild(returnBtn);
+        this.updateRoomActions(room);
     },
     
-    // 选择对象
-    selectObject(index) {
-        const room = this.state.currentRoom;
-        const obj = room.currentObjects[index];
-        if (!obj) return;
-        
-        this.state.selectedObject = obj;
-        
-        // 高亮
-        document.querySelectorAll('.pixel-object').forEach(el => el.classList.remove('selected'));
-        document.querySelectorAll('.pixel-object')[index + 1].classList.add('selected'); // +1因为第一个是玩家
-        
-        // 显示行动
-        document.getElementById('actionTitle').textContent = `对 ${obj.name}：`;
+    // 更新房间行动
+    updateRoomActions(room) {
         const buttonsDiv = document.getElementById('actionButtons');
         buttonsDiv.innerHTML = '';
         
-        obj.actions.forEach(action => {
-            const btn = document.createElement('button');
-            btn.className = 'action-btn';
-            
-            let skillText = '';
-            if (action.skill) {
-                const diff = action.dynamicDifficulty ? action.dynamicDifficulty(obj) : action.difficulty;
-                const skillValue = this.getEffectiveSkill(action.skill);
-                const successRate = Math.min(95, Math.max(5, skillValue - diff + 50));
-                skillText = `<span class="skill-tag">${action.skill} ${skillValue}/${diff} (${successRate}%)</span>`;
-            }
-            
-            btn.innerHTML = `${action.name}${skillText}`;
-            btn.onclick = () => this.executeAction(obj, action);
-            buttonsDiv.appendChild(btn);
-        });
+        // 战斗行动
+        const hasEnemies = room.objects.some(o => (o.type === 'monster' || o.type === 'boss') && o.state.hp > 0);
         
-        // 撤退按钮
-        const retreatBtn = document.createElement('button');
-        retreatBtn.className = 'action-btn';
-        retreatBtn.innerHTML = '🚪 撤退<br><span class="skill-tag">放弃本房间</span>';
-        retreatBtn.onclick = () => this.retreatFromRoom();
-        buttonsDiv.appendChild(retreatBtn);
+        if (hasEnemies) {
+            buttonsDiv.innerHTML += `
+                <button class="action-btn" onclick="game.combatAction('attack')">
+                    ⚔️ 攻击
+                    <span class="skill-tag">力量检定</span>
+                </button>
+                <button class="action-btn" onclick="game.combatAction('observe')">
+                    👁️ 观察弱点
+                    <span class="skill-tag">侦查检定</span>
+                </button>
+            `;
+        } else {
+            // 清理完毕
+            buttonsDiv.innerHTML += `
+                <button class="action-btn" onclick="game.finishRoom()">
+                    ✓ 完成探索
+                    <span class="skill-tag">返回路线</span>
+                </button>
+            `;
+        }
+        
+        // 特殊行动
+        buttonsDiv.innerHTML += `
+            <button class="action-btn" onclick="game.combatAction('retreat')">
+                🏃 撤退
+                <span class="skill-tag">消耗1回合，可能遇袭</span>
+            </button>
+        `;
     },
     
-    // 执行行动
-    executeAction(obj, action) {
-        // 检查条件
-        if (action.condition && !action.condition(obj, this)) {
-            this.log('失败', '条件不满足，无法执行此行动');
+    // 战斗行动
+    combatAction(action) {
+        const room = this.rooms[this.state.currentRoomId];
+        
+        if (action === 'attack') {
+            // 简化：攻击第一个存活的敌人
+            const target = room.objects.find(o => (o.type === 'monster' || o.type === 'boss') && o.state.hp > 0);
+            if (!target) return;
+            
+            if (!this.consumeTurns(1)) return;
+            
+            const diff = target.type === 'boss' ? 50 : 40;
+            const result = this.skillCheck(this.getEffectiveSkill('力量'), diff - (this.state.alertLevel * 2));
+            
+            if (result.success) {
+                const damage = result.critical ? 40 : 25;
+                target.state.hp -= damage;
+                this.log('战斗', `命中${target.name}！造成${damage}伤害`);
+                
+                if (target.state.hp <= 0) {
+                    this.log('胜利', `${target.name}被击败了！`);
+                    if (target.type === 'boss') {
+                        this.getReward(room);
+                    }
+                }
+            } else {
+                const damage = result.fumble ? 15 : 8;
+                this.takeDamage(damage);
+                this.log('战斗', `攻击失败，反受${damage}伤害！`);
+            }
+        } else if (action === 'observe') {
+            if (!this.consumeTurns(1)) return;
+            
+            const result = this.skillCheck(this.getEffectiveSkill('侦查'), 35);
+            if (result.success) {
+                this.log('侦查', '你发现了敌人的弱点！下次攻击+10伤害');
+            } else {
+                this.log('侦查', '观察失败，浪费时间');
+            }
+        } else if (action === 'retreat') {
+            if (!this.consumeTurns(1)) return;
+            
+            this.state.phase = 'route';
+            this.log('系统', '从房间撤退...');
+            
+            // 撤退遇袭概率
+            if (Math.random() < 0.3) {
+                this.randomEncounter(true);
+            } else {
+                this.renderRoute();
+            }
             return;
         }
         
-        // 计算检定
-        let result = { success: true, roll: 0, critical: false, fumble: false };
-        
-        if (action.skill) {
-            let difficulty = action.difficulty;
-            if (action.dynamicDifficulty) {
-                difficulty = action.dynamicDifficulty(obj);
-            }
-            
-            let skillValue = this.getEffectiveSkill(action.skill);
-            result = this.skillCheck(skillValue, difficulty);
-        }
-        
-        // 显示检定结果
-        if (action.skill) {
-            const resultText = result.success ? (result.critical ? '★大成功' : '✓成功') : (result.fumble ? '💀大失败' : '✗失败');
-            this.log(result.success ? '成功' : '失败', `🎲 ${action.skill}检定: ${result.roll} → ${resultText}`);
-        }
-        
-        // 执行结果
-        if (result.success) {
-            const msg = action.success(obj, this);
-            if (msg) this.log('成功', msg);
-        } else {
-            const msg = action.failure ? action.failure(obj, this) : '行动失败';
-            this.log('失败', msg);
-        }
-        
-        // 检查房间是否完成
-        this.checkRoomComplete();
-        
-        // 更新状态
+        this.renderRoom(room);
         this.updateStatus();
-        
-        // 如果房间还在，重新渲染
-        if (this.state.phase === 'room') {
-            this.state.turn++;
-            setTimeout(() => this.renderRoom(), 500);
-        }
     },
     
-    // 技能检定
+    // 完成房间
+    finishRoom() {
+        const room = this.rooms[this.state.currentRoomId];
+        this.getReward(room);
+        
+        this.state.phase = 'route';
+        
+        // 标记为已清理
+        const routeNode = this.route[this.state.currentRoute];
+        if (routeNode) routeNode.cleared = true;
+        
+        // 移动到下一个节点
+        let nextIdx = this.state.currentRoute + 1;
+        if (routeNode.branch) {
+            // 分支房间清理后跳到汇合点
+            const mergeIdx = this.route.findIndex(r => r.id === 'merge');
+            if (mergeIdx > 0) nextIdx = mergeIdx;
+        }
+        
+        this.state.currentRoute = Math.min(nextIdx, this.route.length - 1);
+        this.renderRoute();
+    },
+    
+    // 获取奖励
+    getReward(room) {
+        let rewards = [];
+        
+        if (room.id === 'storage') {
+            rewards.push('古老钥匙');
+            rewards.push('10金币');
+        } else if (room.id === 'trap') {
+            rewards.push('陷阱解除报告');
+            rewards.push('15金币');
+        } else if (room.id === 'guard') {
+            rewards.push('守卫徽章');
+            rewards.push('20金币');
+        } else if (room.id === 'ritual') {
+            this.victory('副本通关！', `你阻止了仪式，剩余${this.state.maxTurns - this.state.turn}回合。获得大量奖励！`);
+            return;
+        }
+        
+        this.log('奖励', `获得：${rewards.join('、')}`);
+    },
+    
+    // 工具函数（从之前代码继承）
     skillCheck(skillValue, difficulty) {
         const roll = Math.floor(Math.random() * 100) + 1;
-        
-        if (roll <= 5) {
-            return { success: true, roll, critical: true, fumble: false };
-        }
-        if (roll >= 96) {
-            return { success: false, roll, critical: false, fumble: true };
-        }
-        
-        return {
-            success: roll <= skillValue,
-            roll,
-            critical: false,
-            fumble: false
-        };
+        if (roll <= 5) return { success: true, roll, critical: true, fumble: false };
+        if (roll >= 96) return { success: false, roll, critical: false, fumble: true };
+        return { success: roll <= skillValue, roll, critical: false, fumble: false };
     },
     
-    // 获取有效技能值
     getEffectiveSkill(skillName) {
         let value = this.investigator.skills[skillName] || 0;
-        
-        // 特质加成
-        if (this.investigator.traits.includes('敏锐直觉') && skillName === '侦查' && this.state.turn === 1) {
-            value += 10;
-        }
-        if (this.investigator.traits.includes('考古知识') && skillName === '侦查') {
-            // 对宝箱类对象生效，在action中处理
-        }
-        if (this.investigator.traits.includes('战术训练') && skillName === '力量') {
-            value += 10;
-        }
-        
-        return Math.min(95, value);
+        // 警觉度惩罚
+        value -= this.state.alertLevel * 3;
+        return Math.max(5, Math.min(95, value));
     },
     
-    // 检查房间是否完成
-    checkRoomComplete() {
-        const room = this.state.currentRoom;
-        
-        // 检查胜利条件（简化：所有威胁清除）
-        const threats = room.currentObjects.filter(obj => 
-            obj.type === 'monster' && obj.state.hp > 0 ||
-            obj.type === 'boss' && !obj.state.defeated
-        );
-        
-        if (threats.length === 0) {
-            room.cleared = true;
-            this.log('系统', `${room.name}已清理完毕！`);
-            
-            setTimeout(() => {
-                this.showModal('房间清理完毕', '你成功清理了这个房间！\n\n可以前往其他房间或返回安全屋恢复。', () => {
-                    this.state.phase = 'map';
-                    this.renderMap();
-                });
-            }, 1000);
-        }
-    },
-    
-    // 撤退
-    retreatFromRoom() {
-        this.log('系统', '撤退到安全屋...');
-        this.state.phase = 'map';
-        this.renderMap();
-    },
-    
-    // 前往下一层
-    nextLayer() {
-        this.state.currentLayer++;
-        this.log('系统', `前往${this.dungeon.layers[this.state.currentLayer].name}...`);
-        this.renderMap();
-    },
-    
-    // 撤离副本
-    evacuate() {
-        this.showModal('撤离副本', '你选择了撤离，将带走所有已获得的资源。\n\n确定要撤离吗？', () => {
-            this.victory('成功撤离！', '你带着收集到的资源安全返回了事务所。');
-        });
-    },
-    
-    // 创建储藏室对象
-    createStorageRoomObjects() {
-        return [
-            {
-                name: '上锁的宝箱',
-                type: 'chest',
-                class: 'obj-chest',
-                style: 'top: 40px; left: 40px;',
-                state: { locked: true, observed: false },
-                actions: [
-                    {
-                        name: '观察锁',
-                        skill: '侦查',
-                        difficulty: 25,
-                        success: (obj) => {
-                            obj.state.observed = true;
-                            return '你发现锁结构简单，是个老式的铜锁。';
-                        },
-                        failure: () => '你看了半天，锁太复杂了，看不出门道。'
-                    },
-                    {
-                        name: '开锁',
-                        skill: '侦查',
-                        difficulty: 35,
-                        dynamicDifficulty: (obj) => obj.state.observed ? 25 : 35,
-                        success: (obj) => {
-                            obj.state.locked = false;
-                            return '锁开了！你获得了10金币和一些物资。';
-                        },
-                        failure: () => '锁太紧了，你弄了半天也没打开。'
-                    },
-                    {
-                        name: '暴力破坏',
-                        skill: '力量',
-                        difficulty: 30,
-                        success: (obj) => {
-                            obj.state.locked = false;
-                            return '你用蛮力砸开了箱子！获得了10金币，但里面的笔记被砸烂了。';
-                        },
-                        failure: () => '箱子太坚固了，你的拳头都疼了。'
-                    }
-                ]
-            }
-        ];
-    },
-    
-    // 创建陷阱房间对象
-    createTrapRoomObjects() {
-        return [
-            {
-                name: '地板陷阱',
-                type: 'trap',
-                class: 'obj-trap',
-                style: 'top: 180px; left: 40px;',
-                state: { observed: false, disarmed: false },
-                actions: [
-                    {
-                        name: '观察',
-                        skill: '侦查',
-                        difficulty: 30,
-                        success: (obj) => {
-                            obj.state.observed = true;
-                            return '你发现地板有一块微微凸起，是个陷阱！';
-                        },
-                        failure: () => '看起来就是普通的地板。'
-                    },
-                    {
-                        name: '解除',
-                        skill: '侦查',
-                        difficulty: 40,
-                        condition: (obj) => obj.state.observed,
-                        success: (obj) => {
-                            obj.state.disarmed = true;
-                            return '你小心地解除了机关，陷阱失效了。';
-                        },
-                        failure: (obj, game) => {
-                            game.takeDamage(15);
-                            game.loseSanity(5);
-                            obj.state.triggered = true;
-                            return '你弄错了什么，陷阱触发了！HP-15，SAN-5。';
-                        }
-                    },
-                    {
-                        name: '硬闯',
-                        skill: null,
-                        difficulty: 0,
-                        success: (obj, game) => {
-                            game.takeDamage(15);
-                            game.loseSanity(5);
-                            obj.state.triggered = true;
-                            return '你直接踩了过去...HP-15，SAN-5。';
-                        }
-                    }
-                ]
-            },
-            {
-                name: '深潜者守卫',
-                type: 'monster',
-                class: 'obj-monster',
-                style: 'top: 100px; right: 40px;',
-                state: { hp: 50, maxHp: 50, observed: false },
-                actions: [
-                    {
-                        name: '观察',
-                        skill: '侦查',
-                        difficulty: 35,
-                        success: (obj) => {
-                            obj.state.observed = true;
-                            return '你发现这个深潜者左腿有旧伤，攻击那里会有优势！';
-                        },
-                        failure: () => '就是个普通的怪物，绿色的，很丑。'
-                    },
-                    {
-                        name: '战斗',
-                        skill: '力量',
-                        difficulty: 45,
-                        dynamicDifficulty: (obj) => obj.state.observed ? 35 : 45,
-                        success: (obj, game) => {
-                            const damage = obj.state.observed ? 35 : 25;
-                            obj.state.hp -= damage;
-                            if (obj.state.hp <= 0) {
-                                return `你攻击了${obj.state.observed ? '它的伤腿' : '它'}，造成${damage}伤害！深潜者倒下了！`;
-                            }
-                            return `攻击命中！造成${damage}伤害。深潜者还有${obj.state.hp}HP。`;
-                        },
-                        failure: (obj, game) => {
-                            game.takeDamage(15);
-                            game.loseSanity(5);
-                            return '你攻击被躲开了，反被骨刃划伤！HP-15，SAN-5。';
-                        }
-                    }
-                ]
-            }
-        ];
-    },
-    
-    // 创建Boss房间对象
-    createBossRoomObjects() {
-        return [
-            {
-                name: '邪教徒',
-                type: 'boss',
-                class: 'obj-cultist',
-                style: 'top: 60px; right: 40px;',
-                state: { hp: 40, maxHp: 40, defeated: false },
-                actions: [
-                    {
-                        name: '战斗',
-                        skill: '力量',
-                        difficulty: 40,
-                        success: (obj, game) => {
-                            obj.state.hp -= 20;
-                            if (obj.state.hp <= 0) {
-                                obj.state.defeated = true;
-                                return '你的攻击正中要害，邪教徒倒地身亡！';
-                            }
-                            return '攻击命中！邪教徒受伤了。';
-                        },
-                        failure: (obj, game) => {
-                            game.takeDamage(12);
-                            return '没打中！邪教徒反手一道黑暗能量击中你！HP-12。';
-                        }
-                    }
-                ]
-            },
-            {
-                name: '召唤仪式',
-                type: 'ritual',
-                class: 'obj-ritual',
-                style: 'top: 60px; left: 50%; transform: translateX(-50%);',
-                state: { progress: 30 },
-                onTurnEnd: (obj) => {
-                    obj.state.progress += 15;
-                    if (obj.state.progress >= 100) {
-                        game.gameOver('仪式完成，古神降临，世界毁灭！');
-                    }
-                },
-                actions: [
-                    {
-                        name: '干扰',
-                        skill: '神秘学',
-                        difficulty: 40,
-                        success: (obj) => {
-                            obj.state.progress = Math.max(0, obj.state.progress - 25);
-                            return `你念出反制咒语，仪式进度降至${obj.state.progress}%！`;
-                        },
-                        failure: (obj, game) => {
-                            game.loseSanity(15);
-                            return '咒语念错了！反噬的力量冲击你的精神！SAN-15。';
-                        }
-                    }
-                ]
-            }
-        ];
-    },
-    
-    // 伤害处理
     takeDamage(amount) {
         this.investigator.hp -= amount;
         if (this.investigator.hp <= 0) {
-            this.gameOver('你的HP归零，你死在了遗迹中...');
+            this.gameOver('HP归零，调查员倒在了遗迹中...');
         }
     },
     
-    // 理智损失
-    loseSanity(amount) {
-        this.investigator.sanity -= amount;
-        if (this.investigator.sanity <= 0) {
-            this.gameOver('你的SAN归零，你陷入了永恒的疯狂...');
-        }
-    },
-    
-    // 更新状态栏
     updateStatus() {
         if (!this.investigator) return;
         
@@ -779,19 +718,33 @@ const game = {
         
         document.getElementById('sanBar').style.width = sanPercent + '%';
         document.getElementById('sanText').textContent = `${this.investigator.sanity}/${this.investigator.maxSanity}`;
+        
+        // 回合显示
+        const turnPercent = (this.state.turn / this.state.maxTurns) * 100;
+        document.getElementById('timeText').textContent = `${this.state.turn}/${this.state.maxTurns}`;
+        document.getElementById('timeText').style.color = turnPercent > 80 ? '#e94560' : '#e0e0e0';
     },
     
-    // 日志
     log(type, message) {
         const logPanel = document.getElementById('logPanel');
         const entry = document.createElement('div');
-        entry.className = `log-entry ${type === '成功' ? 'success' : type === '失败' ? 'failure' : 'system'}`;
-        entry.textContent = message;
+        entry.className = `log-entry ${type === '成功' || type === '胜利' || type === '恢复' ? 'success' : type === '失败' || type === '战斗' ? 'failure' : 'system'}`;
+        entry.textContent = `[${this.state.turn || 0}] ${message}`;
         logPanel.appendChild(entry);
         logPanel.scrollTop = logPanel.scrollHeight;
     },
     
-    // 显示弹窗
+    gameOver(reason) {
+        this.state.gameOver = true;
+        this.showModal('游戏结束', reason, () => location.reload());
+    },
+    
+    victory(title, message) {
+        this.state.victory = true;
+        this.state.gameOver = true;
+        this.showModal(title, message, () => location.reload());
+    },
+    
     showModal(title, text, onConfirm) {
         document.getElementById('modalTitle').textContent = title;
         document.getElementById('modalText').textContent = text;
@@ -799,7 +752,6 @@ const game = {
         this.modalCallback = onConfirm;
     },
     
-    // 关闭弹窗
     closeModal() {
         document.getElementById('modal').classList.remove('show');
         if (this.modalCallback) {
@@ -808,21 +760,52 @@ const game = {
         }
     },
     
-    // 游戏结束
-    gameOver(reason) {
-        this.state.gameOver = true;
-        this.showModal('游戏结束', reason + '\n\n调查员未能生还...', () => {
-            location.reload();
-        });
+    // 房间创建函数
+    createStorageRoom() {
+        return {
+            id: 'storage',
+            name: '储藏室',
+            visited: false,
+            createObjects: () => [
+                { type: 'chest', name: '宝箱', icon: '📦', state: { opened: false } }
+            ]
+        };
     },
     
-    // 胜利
-    victory(title, message) {
-        this.state.victory = true;
-        this.state.gameOver = true;
-        this.showModal(title, message, () => {
-            location.reload();
-        });
+    createTrapRoom() {
+        return {
+            id: 'trap',
+            name: '陷阱房',
+            visited: false,
+            createObjects: () => [
+                { type: 'monster', name: '陷阱守卫', state: { hp: 40, maxHp: 40 } },
+                { type: 'trap', name: '尖刺陷阱', icon: '⚠️', state: { disarmed: false } }
+            ]
+        };
+    },
+    
+    createGuardRoom() {
+        return {
+            id: 'guard',
+            name: '守卫室',
+            visited: false,
+            createObjects: () => [
+                { type: 'monster', name: '深潜者', state: { hp: 50, maxHp: 50 } },
+                { type: 'monster', name: '深潜者', state: { hp: 50, maxHp: 50 } }
+            ]
+        };
+    },
+    
+    createBossRoom() {
+        return {
+            id: 'ritual',
+            name: '仪式厅',
+            visited: false,
+            createObjects: () => [
+                { type: 'boss', name: '邪教主教', state: { hp: 80, maxHp: 80 } },
+                { type: 'ritual', name: '召唤仪式', icon: '🔮', state: { progress: 50 } }
+            ]
+        };
     }
 };
 
