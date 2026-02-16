@@ -104,13 +104,13 @@
         /* 游戏主容器 - 左右分栏（桌面端） */
         .game-layout {
             display: flex;
-            height: calc(100vh - 45px);
+            flex: 1;
             overflow: hidden;
         }
         
         @media (max-width: 768px) {
             .game-layout {
-                height: calc(100vh - 40px);
+                flex-direction: column-reverse;
             }
         }
         
@@ -138,11 +138,6 @@
         
         /* 移动端适配 - 隐藏侧边地图，使用全屏+按钮 */
         @media (max-width: 768px) {
-            .game-layout {
-                flex-direction: column;
-                height: calc(100vh - 45px);
-            }
-            
             /* 手机端完全隐藏右侧地图面板 */
             .minimap-panel {
                 display: none;
@@ -815,7 +810,7 @@
     </div>
 
     <!-- 游戏主界面 -->
-    <div id="gameUI" class="hidden">
+    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
         <!-- 状态栏 -->
         <div class="status-bar">
             <div class="status-item">
