@@ -1259,9 +1259,17 @@
         window.tempGame = {
             selectedProfessions: [],
             professions: {
-                archaeologist: { name: '考古学家' },
-                soldier: { name: '前军人' },
-                occultist: { name: '神秘学者' }
+                archaeologist: { name: '考古学家', hp: 70, maxHp: 70, sanity: 0, maxSanity: 100, skills: { 侦查: 50, 力量: 30, 神秘学: 35 }, desc: '精通古代文献，能从符号中发现隐藏信息' },
+                soldier: { name: '前军人', hp: 90, maxHp: 90, sanity: 0, maxSanity: 100, skills: { 侦查: 35, 力量: 55, 神秘学: 20 }, desc: '实战经验丰富，危机时刻保持冷静' },
+                occultist: { name: '神秘学者', hp: 50, maxHp: 50, sanity: 0, maxSanity: 100, skills: { 侦查: 40, 力量: 20, 神秘学: 55 }, desc: '能感知深渊能量，理解超自然现象' }
+            },
+            sanityStates: {
+                calm: { min: 0, max: 30, name: '冷静', color: '#27ae60' },
+                uneasy: { min: 31, max: 50, name: '不安', color: '#f39c12' },
+                nervous: { min: 51, max: 70, name: '紧张', color: '#e67e22' },
+                fearful: { min: 71, max: 85, name: '恐惧', color: '#e94560' },
+                breaking: { min: 86, max: 99, name: '崩溃边缘', color: '#7c3aed' },
+                broken: { min: 100, max: 100, name: '崩溃', color: '#000' }
             },
             selectProfession: function(key) {
                 console.log('Temp selectProfession:', key);
@@ -1294,29 +1302,77 @@
                     debugInfo.textContent = '已选择: ' + this.professions[key].name + ' (' + this.selectedProfessions.length + '/2)';
                 }
                 
-                // 选择2个后，如果正式游戏对象已加载，调用它
+                // 选择2个后开始游戏
                 if (this.selectedProfessions.length === 2) {
-                    if (debugInfo) debugInfo.textContent = '队伍已满！等待游戏加载...';
+                    if (debugInfo) debugInfo.textContent = '队伍组成完毕，正在进入游戏...';
                     
-                    // 延迟检查正式游戏对象
-                    setTimeout(() => {
-                        if (window.game && window.game.confirmTeam) {
-                            window.game.selectedProfessions = this.selectedProfessions;
-                            window.game.confirmTeam();
-                        } else {
-                            if (debugInfo) debugInfo.textContent = '错误：游戏对象未加载，请刷新页面';
-                        }
-                    }, 1000);
+                    // 创建队伍并直接进入游戏
+                    this.confirmTeam();
+                }
+            },
+            confirmTeam: function() {
+                const debugInfo = document.getElementById('debug-info');
+                
+                try {
+                    // 创建队伍
+                    this.team = this.selectedProfessions.map((key, idx) => ({
+                        id: idx,
+                        key: key,
+                        ...this.professions[key],
+                        inventory: { gold: 20, sedative: 1 },
+                        affliction: null,
+                        virtue: null,
+                        virtueTurns: 0
+                    }));
+                    
+                    // 切换界面
+                    const selectPanel = document.getElementById('professionSelect');
+                    const gamePanel = document.getElementById('gameUI');
+                    const mainContent = document.getElementById('mainContent');
+                    
+                    if (selectPanel) {
+                        selectPanel.classList.add('hidden');
+                        selectPanel.style.display = 'none';
+                    }
+                    if (gamePanel) {
+                        gamePanel.classList.remove('hidden');
+                        gamePanel.style.display = 'flex';
+                    }
+                    
+                    if (debugInfo) debugInfo.textContent = '游戏开始！' + this.team[0].name + ' + ' + this.team[1].name;
+                    
+                    // 初始化游戏状态
+                    this.state = {
+                        currentRoute: 0,
+                        turn: 0,
+                        selectedInvestigator: 0,
+                        resolve: { stopRitual: 0, seekTruth: 0, protect: 0, survive: 0 },
+                        clues: [],
+                        buffs: [],
+                        storyFlags: {}
+                    };
+                    
+                    // 显示开始游戏
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div style="text-align:center;padding:40px;">
+                                <h2 style="color:#e94560;margin-bottom:20px;">第9小队组成完毕</h2>
+                                <p style="font-size:18px;margin-bottom:10px;">${this.team[0].name} + ${this.team[1].name}</p>
+                                <p style="color:#666;margin:30px 0;">准备进入幽暗矿坑...</p>
+                                <button onclick="window.location.reload()" style="padding:15px 40px;background:#e94560;color:white;border:none;font-size:16px;cursor:pointer;">开始探索</button>
+                            </div>
+                        `;
+                    }
+                    
+                } catch (e) {
+                    console.error('confirmTeam error:', e);
+                    if (debugInfo) debugInfo.textContent = '错误: ' + e.message;
                 }
             }
         };
         
-        // 如果正式游戏对象不存在，使用临时对象
-        if (!window.game) {
-            window.game = window.tempGame;
-        }
+        // 使用临时对象
+        window.game = window.tempGame;
     </script>
-    
-    <script src="game.js?v=11" onload="console.log('game.js loaded');if(window.game&&window.game.init)window.game.init();" onerror="console.error('game.js failed to load');alert('游戏脚本加载失败，请刷新重试');"></script>
 </body>
 </html>
