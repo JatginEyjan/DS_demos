@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS10 - 深渊编年史</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>DS10 - 深渊编年史 v10</title>
     <style>
         body { background: #0a0a0f; color: #e0e0e0; font-family: monospace; margin: 0; padding: 20px; }
         .hidden { display: none !important; }
@@ -49,6 +52,7 @@
             ✦ 神秘学者<br><small style="color:#888;">HP:50 | 侦查40 力量20</small>
         </button>
         <div class="hint" id="hint">已选择: 0/2</div>
+        <div id="test" style="color:#27ae60;text-align:center;margin-top:10px;font-size:11px;">页面加载中...</div>
     </div>
 
     <!-- 游戏画面 -->
@@ -70,6 +74,12 @@
     </div>
 
 <script>
+// 页面加载测试
+document.addEventListener('DOMContentLoaded', function() {
+    var test = document.getElementById('test');
+    if (test) test.textContent = '✓ 页面加载完成，请点击职业按钮';
+});
+
 // 全局变量
 var selProfs = [];
 var team = [];
