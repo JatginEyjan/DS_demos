@@ -303,6 +303,8 @@ const game = {
     
     // 选择职业
     selectProfession(key) {
+        console.log('selectProfession called with:', key);
+        
         // 确保数组已初始化
         if (!this.selectedProfessions) {
             this.selectedProfessions = [];
@@ -311,54 +313,89 @@ const game = {
         // 检查是否已选择该职业
         if (this.selectedProfessions.includes(key)) {
             this.log('系统', '该职业已被选择');
+            alert('该职业已被选择，请选择其他职业');
             return;
         }
         
         // 检查是否已满2人
         if (this.selectedProfessions.length >= 2) {
-            this.log('系统', '队伍已满，请先刷新页面重新选择');
+            this.log('系统', '队伍已满');
+            alert('队伍已满（2/2），准备进入游戏...');
+            this.confirmTeam();
             return;
         }
         
         this.selectedProfessions.push(key);
+        console.log('selectedProfessions:', this.selectedProfessions);
         
         // 高亮选中的卡片
         const card = document.querySelector(`.profession-card[data-profession="${key}"]`);
         if (card) {
             card.classList.add('selected');
             card.style.borderColor = '#27ae60';
-            card.style.boxShadow = '0 0 15px rgba(39, 174, 96, 0.5)';
+            card.style.boxShadow = '0 0 20px rgba(39, 174, 96, 0.8)';
+            card.style.backgroundColor = '#1a3a2e';
+            console.log('Card highlighted:', key);
         }
         
-        this.log('系统', `选择了 ${this.professions[key].name} (${this.selectedProfessions.length}/2)`);
+        alert(`已选择: ${this.professions[key].name}\n当前: ${this.selectedProfessions.length}/2`);
         
         // 选择2个后自动确认
         if (this.selectedProfessions.length === 2) {
             this.log('系统', '队伍组成完毕，准备进入...');
-            setTimeout(() => this.confirmTeam(), 800);
+            alert('队伍组成完毕！\n' + this.professions[this.selectedProfessions[0]].name + ' + ' + this.professions[this.selectedProfessions[1]].name);
+            setTimeout(() => {
+                console.log('Calling confirmTeam...');
+                this.confirmTeam();
+            }, 500);
         } else {
             this.log('系统', '请选择第二名调查员');
+            alert('请选择第二名调查员');
         }
     },
     
     // 确认队伍
     confirmTeam() {
-        this.team = this.selectedProfessions.map((key, idx) => ({
-            id: idx,
-            key: key,
-            ...this.professions[key],
-            inventory: { gold: 20, sedative: 1 },
-            affliction: null,
-            virtue: null,
-            virtueTurns: 0
-        }));
+        console.log('confirmTeam called');
         
-        document.getElementById('professionSelect').classList.add('hidden');
-        document.getElementById('gameUI').classList.remove('hidden');
-        document.getElementById('gameUI').style.display = 'flex';
+        if (!this.selectedProfessions || this.selectedProfessions.length < 2) {
+            alert('错误：需要先选择2名调查员');
+            return;
+        }
         
-        this.log('系统', `第9小队组成: ${this.team[0].name} + ${this.team[1].name}`);
-        this.startGame();
+        try {
+            this.team = this.selectedProfessions.map((key, idx) => ({
+                id: idx,
+                key: key,
+                ...this.professions[key],
+                inventory: { gold: 20, sedative: 1 },
+                affliction: null,
+                virtue: null,
+                virtueTurns: 0
+            }));
+            
+            console.log('Team created:', this.team);
+            
+            const selectPanel = document.getElementById('professionSelect');
+            const gamePanel = document.getElementById('gameUI');
+            
+            if (selectPanel) {
+                selectPanel.classList.add('hidden');
+                selectPanel.style.display = 'none';
+            }
+            if (gamePanel) {
+                gamePanel.classList.remove('hidden');
+                gamePanel.style.display = 'flex';
+            }
+            
+            alert(`第9小队组成!\n${this.team[0].name} + ${this.team[1].name}\n\n游戏开始!`);
+            
+            this.log('系统', `第9小队组成: ${this.team[0].name} + ${this.team[1].name}`);
+            this.startGame();
+        } catch (e) {
+            console.error('confirmTeam error:', e);
+            alert('发生错误: ' + e.message);
+        }
     },
     
     startGame() {
