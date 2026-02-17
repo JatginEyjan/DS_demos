@@ -242,26 +242,64 @@ const game = {
     
     // 显示职业选择
     showProfessionSelect() {
-        document.getElementById('professionSelect').classList.remove('hidden');
-        document.getElementById('gameUI').classList.add('hidden');
+        // 显示选择界面
+        const selectPanel = document.getElementById('professionSelect');
+        const gamePanel = document.getElementById('gameUI');
         
+        if (selectPanel) selectPanel.classList.remove('hidden');
+        if (gamePanel) gamePanel.classList.add('hidden');
+        
+        // 重置选择状态
         this.selectedProfessions = [];
-        document.querySelectorAll('.profession-card').forEach(c => c.classList.remove('selected'));
         
-        this.log('系统', '选择2名调查员组成第9小队');
+        // 重置所有卡片样式
+        document.querySelectorAll('.profession-card').forEach(c => {
+            c.classList.remove('selected');
+            c.style.borderColor = '';
+            c.style.boxShadow = '';
+        });
+        
+        this.log('系统', '=== 选择2名调查员组成第9小队 ===');
+        this.log('系统', '点击卡片选择（1/2）');
     },
     
     // 选择职业
     selectProfession(key) {
-        if (this.selectedProfessions.includes(key)) return;
+        // 确保数组已初始化
+        if (!this.selectedProfessions) {
+            this.selectedProfessions = [];
+        }
+        
+        // 检查是否已选择该职业
+        if (this.selectedProfessions.includes(key)) {
+            this.log('系统', '该职业已被选择');
+            return;
+        }
+        
+        // 检查是否已满2人
+        if (this.selectedProfessions.length >= 2) {
+            this.log('系统', '队伍已满，请先刷新页面重新选择');
+            return;
+        }
         
         this.selectedProfessions.push(key);
-        document.querySelector(`.profession-card[data-profession="${key}"]`).classList.add('selected');
         
-        this.log('系统', `选择了 ${this.professions[key].name}`);
+        // 高亮选中的卡片
+        const card = document.querySelector(`.profession-card[data-profession="${key}"]`);
+        if (card) {
+            card.classList.add('selected');
+            card.style.borderColor = '#27ae60';
+            card.style.boxShadow = '0 0 15px rgba(39, 174, 96, 0.5)';
+        }
         
+        this.log('系统', `选择了 ${this.professions[key].name} (${this.selectedProfessions.length}/2)`);
+        
+        // 选择2个后自动确认
         if (this.selectedProfessions.length === 2) {
-            setTimeout(() => this.confirmTeam(), 500);
+            this.log('系统', '队伍组成完毕，准备进入...');
+            setTimeout(() => this.confirmTeam(), 800);
+        } else {
+            this.log('系统', '请选择第二名调查员');
         }
     },
     
