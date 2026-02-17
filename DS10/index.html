@@ -1526,11 +1526,11 @@
                                 右边通向深渊边缘，那里可能有第7小队成员的踪迹...
                             </div>
                             <div class="story-choices">
-                                <button class="action-btn large" onclick="alert('上分支剧情开发中...')">
+                                <button class="action-btn large" onclick="window.game.secondAct('upper')">
                                     ⬆️ 前往教导厅
                                     <span class="skill-tag">了解仪式的秘密</span>
                                 </button>
-                                <button class="action-btn large" onclick="alert('下分支剧情开发中...')">
+                                <button class="action-btn large" onclick="window.game.secondAct('lower')">
                                     ⬇️ 前往深渊边缘
                                     <span class="skill-tag">寻找第7小队</span>
                                 </button>
@@ -1538,6 +1538,220 @@
                         </div>
                     `;
                 }
+            },
+            
+            // 第二幕
+            secondAct: function(branch) {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (branch === 'upper') {
+                    // 上分支 - 教导厅
+                    if (sceneTitle) sceneTitle.textContent = '教导厅';
+                    if (sceneSubtitle) sceneSubtitle.textContent = '主教教导村民的地方';
+                    
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div class="story-room">
+                                <div class="story-desc">
+                                    一个昏暗的大厅，墙上刻满了你们不认识的符号。<br><br>
+                                    几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。<br><br>
+                                    在讲台上，你们发现了一本翻开的笔记...
+                                </div>
+                                <div class="story-choices">
+                                    <button class="action-btn large" onclick="window.game.readEdmundNotes()">
+                                        阅读笔记
+                                        <span class="skill-tag">埃德蒙·布莱克伍德的研究</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // 下分支 - 深渊边缘
+                    if (sceneTitle) sceneTitle.textContent = '深渊边缘';
+                    if (sceneSubtitle) sceneSubtitle.textContent = '空间裂隙的边界';
+                    
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div class="story-room">
+                                <div class="story-desc">
+                                    你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头，散发着无法理解的"光芒"。<br><br>
+                                    在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着...
+                                </div>
+                                <div class="story-choices">
+                                    <button class="action-btn large" onclick="window.game.marcusFinalWords()">
+                                        听他的遗言
+                                        <span class="skill-tag">了解最终真相</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            },
+            
+            // 阅读埃德蒙的笔记
+            readEdmundNotes: function() {
+                const mainContent = document.getElementById('mainContent');
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin-bottom:20px;">
+                                <h3 style="color:#e94560;margin-bottom:15px;">埃德蒙的研究笔记</h3>
+                                <div style="color:#aaa;line-height:1.8;">
+                                    <p style="margin-bottom:15px;">3个月前，我在第9裂隙发现了完整的文献。深渊不是随机出现的。它们是"封印"，封印着某种存在...</p>
+                                    <p style="margin-bottom:15px;">它更像是一种...法则。当足够多的智慧生物意识到它的存在时，封印就会松动。</p>
+                                    <p style="margin-bottom:15px;">DIA的探索，我们的好奇心，我们正在加速末日。</p>
+                                    <p style="margin-bottom:15px;">唯一的方法是：成为守门人。仪式不是召唤它，而是强化封印——以一个人的意识为代价，永远困在深渊边缘。</p>
+                                    <p>我需要的3个媒介：深渊之血、守门人的誓言、以及...替换。必须有另一个人自愿成为守门人，艾琳娜才能被释放。</p>
+                                </div>
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.makeChoice2('cooperate')">
+                                    "我们可以一起找更好的方法！"
+                                    <span class="skill-tag">决心+阻止仪式+保护同伴</span>
+                                </button>
+                                <button class="action-btn large" onclick="window.game.makeChoice2('hostile')">
+                                    "你已经被深渊腐蚀了。"
+                                    <span class="skill-tag">决心+阻止仪式</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 马库斯的遗言
+            marcusFinalWords: function() {
+                const mainContent = document.getElementById('mainContent');
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc" style="color:#e94560;">
+                                "听着...我发现了主教的弱点。他不是在保护我们...他是在保护'她'。"
+                            </div>
+                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin:20px 0;">
+                                <div style="color:#aaa;line-height:1.8;">
+                                    <p style="margin-bottom:15px;">艾琳娜·布莱克伍德，他的妻子。2年前在第3裂隙事件中没有死——她被困在了深渊边缘，成为了守门人。</p>
+                                    <p style="margin-bottom:15px;">埃德蒙想要替换她。用他自己，或者用其他人。</p>
+                                    <p style="margin-bottom:15px;">仪式需要3个媒介，但第3个不是祭品——是'替换'。必须有另一个人自愿成为守门人，艾琳娜才能被释放。</p>
+                                    <p>阻止他...但请记住...有时候，敌人也是受害者...</p>
+                                </div>
+                            </div>
+                            <div class="story-desc" style="color:#888;">
+                                马库斯在你们手心画下一个符号后死去...
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.makeChoice2('elenia')">
+                                    "艾琳娜会希望看到这样的你吗？"
+                                    <span class="skill-tag">获得情感突破口</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 第二幕选择
+            makeChoice2: function(type) {
+                if (type === 'cooperate') {
+                    this.state.resolve.stopRitual += 15;
+                    this.state.resolve.protect += 15;
+                    alert('决心：阻止仪式 +15，保护同伴 +15');
+                } else if (type === 'hostile') {
+                    this.state.resolve.stopRitual += 20;
+                    alert('决心：阻止仪式 +20');
+                } else if (type === 'elenia') {
+                    this.state.resolve.seekTruth += 20;
+                    alert('获得线索：艾琳娜的真相\n决心：探寻真相 +20');
+                }
+                
+                alert('第二幕完成！\n\n你们已经了解了埃德蒙的动机和他妻子的命运。现在，前往仪式大厅，做出最终选择...');
+                
+                this.thirdAct();
+            },
+            
+            // 第三幕 - 最终决战
+            thirdAct: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (sceneTitle) sceneTitle.textContent = '仪式大厅';
+                if (sceneSubtitle) sceneSubtitle.textContent = '最终决战';
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc">
+                                你们终于来到了核心区域。仪式正在进行——<br><br>
+                                黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。<br><br>
+                                在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中...
+                            </div>
+                            <div style="background:#1a1a2e;padding:20px;border:2px solid #e94560;margin:20px 0;">
+                                <div style="color:#e94560;font-style:italic;">
+                                    "你们来了...我等待着有人能理解我。或者，至少...能阻止我。"
+                                </div>
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.finalChoice('fight')">
+                                    ⚔️ 强行阻止仪式
+                                    <span class="skill-tag">与埃德蒙战斗</span>
+                                </button>
+                                <button class="action-btn large" onclick="window.game.finalChoice('talk')">
+                                    💬 尝试说服
+                                    <span class="skill-tag">利用了解的情报</span>
+                                </button>
+                                <button class="action-btn large" onclick="window.game.finalChoice('sacrifice')">
+                                    ✨ 自愿成为守门人
+                                    <span class="skill-tag">替代艾琳娜（需要高保护决心）</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 最终选择
+            finalChoice: function(type) {
+                const r = this.state.resolve;
+                let ending = '';
+                let desc = '';
+                
+                if (type === 'sacrifice' && r.protect >= 30) {
+                    ending = '😢 牺牲结局';
+                    desc = '一名调查员自愿替代艾琳娜成为守门人，永远困在深渊边缘。其他人回到地面，但永远无法忘记那个身影。艾琳娜终于被释放，而埃德蒙...他选择了自我了断。';
+                } else if (type === 'talk' && (r.seekTruth >= 30 || r.cooperate)) {
+                    ending = '📚 真相结局';
+                    desc = '你们说服了埃德蒙，一起找到了第三种方法——让深渊沉睡，而不需要守门人。代价是你们永远无法完全理解深渊的本质，但世界安全了。';
+                } else if (r.stopRitual >= 40 && this.team.every(i => i.hp > 50)) {
+                    ending = '🏆 英雄结局';
+                    desc = '你们成功阻止了仪式，救出了艾琳娜，并找到了不牺牲任何人就能维持封印的方法。埃德蒙被DIA逮捕，但他的研究为理解深渊提供了宝贵资料。';
+                } else if (r.survive >= 20) {
+                    ending = '🏃 逃离结局';
+                    desc = '你们意识到无法阻止仪式，选择带着情报逃离。深渊之主没有完全苏醒，但封印被削弱...这只是时间问题。';
+                } else {
+                    ending = '💀 末日结局';
+                    desc = '深渊之主苏醒。在最后的意识中，你们感受到一双眼睛在黑暗中睁开..."谢谢你...帮我解开封印..."';
+                }
+                
+                // 显示结局
+                this.showEnding(ending, desc);
+            },
+            
+            // 显示结局
+            showEnding: function(title, desc) {
+                const modal = document.getElementById('modal');
+                const modalTitle = document.getElementById('modalTitle');
+                const modalText = document.getElementById('modalText');
+                
+                if (modalTitle) modalTitle.textContent = title;
+                if (modalText) modalText.innerHTML = desc + '<br><br><button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#e94560;color:white;border:none;cursor:pointer;">再玩一次</button>';
+                if (modal) modal.classList.add('show');
             },
             
             // 更新状态栏
