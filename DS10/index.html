@@ -1253,6 +1253,70 @@
         <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
     </div>
 
-    <script src="game.js?v=10"></script>
+    <!-- 内联脚本确保职业选择能工作 -->
+    <script>
+        // 临时游戏对象，确保职业选择能工作
+        window.tempGame = {
+            selectedProfessions: [],
+            professions: {
+                archaeologist: { name: '考古学家' },
+                soldier: { name: '前军人' },
+                occultist: { name: '神秘学者' }
+            },
+            selectProfession: function(key) {
+                console.log('Temp selectProfession:', key);
+                const debugInfo = document.getElementById('debug-info');
+                
+                if (!this.selectedProfessions) {
+                    this.selectedProfessions = [];
+                }
+                
+                if (this.selectedProfessions.includes(key)) {
+                    if (debugInfo) debugInfo.textContent = '该职业已被选择';
+                    return;
+                }
+                
+                if (this.selectedProfessions.length >= 2) {
+                    if (debugInfo) debugInfo.textContent = '队伍已满';
+                    return;
+                }
+                
+                this.selectedProfessions.push(key);
+                
+                // 高亮卡片
+                const card = document.querySelector('.profession-card[data-profession="' + key + '"]');
+                if (card) {
+                    card.style.borderColor = '#27ae60';
+                    card.style.backgroundColor = '#1a3a2e';
+                }
+                
+                if (debugInfo) {
+                    debugInfo.textContent = '已选择: ' + this.professions[key].name + ' (' + this.selectedProfessions.length + '/2)';
+                }
+                
+                // 选择2个后，如果正式游戏对象已加载，调用它
+                if (this.selectedProfessions.length === 2) {
+                    if (debugInfo) debugInfo.textContent = '队伍已满！等待游戏加载...';
+                    
+                    // 延迟检查正式游戏对象
+                    setTimeout(() => {
+                        if (window.game && window.game.confirmTeam) {
+                            window.game.selectedProfessions = this.selectedProfessions;
+                            window.game.confirmTeam();
+                        } else {
+                            if (debugInfo) debugInfo.textContent = '错误：游戏对象未加载，请刷新页面';
+                        }
+                    }, 1000);
+                }
+            }
+        };
+        
+        // 如果正式游戏对象不存在，使用临时对象
+        if (!window.game) {
+            window.game = window.tempGame;
+        }
+    </script>
+    
+    <script src="game.js?v=11" onload="console.log('game.js loaded');if(window.game&&window.game.init)window.game.init();" onerror="console.error('game.js failed to load');alert('游戏脚本加载失败，请刷新重试');"></script>
 </body>
 </html>
