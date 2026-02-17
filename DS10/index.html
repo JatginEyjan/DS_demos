@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DS10 v7 - 深渊编年史</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #0a0a0f;
             color: #e0e0e0;
@@ -30,64 +25,33 @@
             border-bottom: 2px solid #0f0f1a;
             flex-shrink: 0;
         }
-        
         .investigator-status {
             background: #0f0f1a;
             border: 2px solid #2a2a3a;
             border-radius: 6px;
             padding: 8px;
         }
-        
-        .investigator-status.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
-        }
-        
         .inv-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 6px;
         }
-        
-        .inv-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-        }
-        
+        .inv-name { font-size: 12px; font-weight: bold; color: #e0e0e0; }
         .status-label {
             font-size: 10px;
             padding: 2px 6px;
             border-radius: 3px;
             font-weight: bold;
         }
-        
         .status-label.calm { background: #27ae60; color: white; }
         .status-label.uneasy { background: #f39c12; color: black; }
         .status-label.nervous { background: #e67e22; color: white; }
         .status-label.fearful { background: #e94560; color: white; }
         .status-label.breaking { background: #7c3aed; color: white; }
-        .status-label.broken { background: #000; color: #e94560; border: 1px solid #e94560; }
-        
-        .inv-bars {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .bar-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .bar-label {
-            font-size: 10px;
-            color: #888;
-            width: 24px;
-        }
-        
+        .inv-bars { display: flex; flex-direction: column; gap: 4px; }
+        .bar-row { display: flex; align-items: center; gap: 6px; }
+        .bar-label { font-size: 10px; color: #888; width: 24px; }
         .bar-container {
             flex: 1;
             height: 10px;
@@ -96,86 +60,268 @@
             border-radius: 2px;
             overflow: hidden;
         }
+        .bar-container.hp .bar-fill { background: #e94560; }
+        .bar-container.san .bar-fill { background: #7c3aed; }
+        .bar-fill { height: 100%; transition: width 0.3s; }
+        .bar-value { font-size: 10px; color: #aaa; width: 40px; text-align: right; }
         
-        .bar-container.hp .bar-fill {
-            background: #e94560;
-        }
-        
-        .bar-container.san .bar-fill {
-            background: #7c3aed;
-        }
-        
-        .bar-fill {
-            height: 100%;
-            transition: width 0.3s;
-        }
-        
-        .bar-value {
-            font-size: 10px;
-            color: #aaa;
-            width: 40px;
-            text-align: right;
-        }
-        
-        /* 移动端双人状态栏 */
-        @media (max-width: 768px) {
-            .team-status-bar {
-                padding: 6px 8px;
-                gap: 8px;
-            }
-            
-            .investigator-status {
-                padding: 6px;
-            }
-            
-            .inv-name {
-                font-size: 11px;
-            }
-            
-            .status-label {
-                font-size: 9px;
-                padding: 1px 4px;
-            }
-            
-            .bar-container {
-                height: 8px;
-            }
-            
-            .bar-value {
-                font-size: 9px;
-                width: 35px;
-            }
-        }
-        
-        /* 职业选择 */
-        .profession-card.selected {
-            border-color: #27ae60;
-            box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
-        }
-        
-        /* 游戏主容器 - 左右分栏（桌面端） */
+        /* 游戏布局 */
         .game-layout {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
-        
-        @media (max-width: 768px) {
-            .game-layout {
-                flex-direction: column-reverse;
-            }
-        }
-        
-        /* 左侧主画面 */
         .main-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 12px;
-            gap: 10px;
-            overflow-y: auto;
-            min-width: 0; /* 防止flex子项溢出 */
+            padding: 10px;
+            gap: 8px;
+            overflow: hidden;
         }
+        
+        /* 场景标题 */
+        .scene-header {
+            text-align: center;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .scene-title { color: #e94560; font-size: 16px; font-weight: bold; flex: 1; }
+        .scene-subtitle { color: #666; font-size: 11px; margin-top: 4px; }
+        
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            background: #0f0f1a;
+            border: 3px solid #2a2a3a;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        /* 房间叙事样式 */
+        .room-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .room-title {
+            color: #e94560;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #2a2a3a;
+            padding-bottom: 10px;
+        }
+        .room-desc {
+            color: #ccc;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .room-desc p {
+            margin-bottom: 12px;
+        }
+        
+        /* 发现物 */
+        .discoveries {
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .discoveries-title {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .discovery-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #0f0f1a;
+            border: 1px solid #2a2a3a;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .discovery-item:hover {
+            border-color: #e94560;
+            background: #1a1a2e;
+        }
+        .discovery-icon {
+            font-size: 20px;
+        }
+        .discovery-name {
+            font-size: 13px;
+            color: #e0e0e0;
+        }
+        .discovery-desc {
+            font-size: 10px;
+            color: #666;
+            margin-left: auto;
+        }
+        
+        /* 选择按钮 */
+        .room-choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .choice-btn {
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            color: #e0e0e0;
+            padding: 15px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover {
+            border-color: #e94560;
+            background: #2a1a2e;
+        }
+        .choice-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .choice-desc {
+            font-size: 11px;
+            color: #888;
+        }
+        .choice-btn.combat {
+            border-color: #e94560;
+        }
+        .choice-btn.combat:hover {
+            background: #3a1a2e;
+        }
+        
+        /* 对话 */
+        .dialog-section {
+            background: #1a1a2e;
+            border-left: 3px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .dialog-speaker {
+            color: #3498db;
+            font-weight: bold;
+            font-size: 12px;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .dialog-text {
+            color: #aaa;
+            font-style: italic;
+            font-size: 13px;
+        }
+        
+        /* 战斗界面 */
+        .combat-area {
+            text-align: center;
+            padding: 20px;
+        }
+        .enemy-display {
+            background: #1a1a2e;
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 250px;
+            margin: 0 auto 20px;
+        }
+        .enemy-name {
+            color: #e94560;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .enemy-hp-bar {
+            height: 12px;
+            background: #0a0a0f;
+            border: 1px solid #3a3a4a;
+            margin-bottom: 5px;
+        }
+        .enemy-hp-fill {
+            height: 100%;
+            background: #e94560;
+            transition: width 0.3s;
+        }
+        .enemy-hp-text {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        /* 调查员战斗状态 */
+        .combat-team {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .combat-inv-card {
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .combat-inv-card.active {
+            border-color: #27ae60;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
+        }
+        .combat-inv-card.dead {
+            opacity: 0.5;
+            border-color: #333;
+        }
+        
+        /* 战斗按钮 */
+        .combat-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .action-btn {
+            background: #2a2a3a;
+            border: 2px solid #3a3a4a;
+            color: #e0e0e0;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .action-btn:hover {
+            border-color: #e94560;
+        }
+        .action-btn.primary {
+            background: #e94560;
+            border-color: #e94560;
+        }
+        
+        /* 日志 */
+        .log-panel {
+            background: #0a0a0f;
+            border: 2px solid #1a1a2e;
+            padding: 8px;
+            height: 120px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 3px 8px;
+            border-left: 3px solid #3a3a4a;
+        }
+        .log-entry.system { border-left-color: #3498db; color: #5dade2; }
+        .log-entry.combat { border-left-color: #e94560; color: #ff6b6b; }
+        .log-entry.reward { border-left-color: #f1c40f; color: #f4d03f; }
         
         /* 右侧小地图 */
         .minimap-panel {
@@ -185,803 +331,40 @@
             padding: 10px;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0; /* 防止压缩 */
         }
-        
-        /* 移动端适配 - 隐藏侧边地图，使用全屏+按钮 */
-        @media (max-width: 768px) {
-            /* 手机端完全隐藏右侧地图面板 */
-            .minimap-panel {
-                display: none;
-            }
-            
-            .main-panel {
-                flex: 1;
-                padding: 6px;
-                gap: 6px;
-                overflow: hidden;
-            }
-            
-            .scene-header {
-                padding: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .scene-title {
-                font-size: 14px;
-            }
-            
-            .scene-subtitle {
-                font-size: 10px;
-            }
-            
-            .log-panel {
-                height: 100px;
-                flex-shrink: 0;
-            }
-            
-            .main-content {
-                flex: 1;
-                min-height: 0;
-                overflow-y: auto;
-            }
-            
-            .action-panel {
-                flex-shrink: 0;
-            }
-            
-            /* 移动端网格地图弹窗 */
-            .mobile-map-btn {
-                display: block !important;
-                background: #2a2a3a;
-                border: 2px solid #3a3a4a;
-                color: #e0e0e0;
-                padding: 6px 12px;
-                font-size: 12px;
-                cursor: pointer;
-            }
-            
-            .mobile-map-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.95);
-                z-index: 1500;
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-            
-            .mobile-map-modal.show {
-                display: flex;
-            }
-            
-            .mobile-map-content {
-                background: #0f0f1a;
-                border: 3px solid #2a2a3a;
-                padding: 20px;
-            }
-            
-            .mobile-map-close {
-                margin-top: 20px;
-                background: #e94560;
-                border: none;
-                color: white;
-                padding: 12px 30px;
-                font-size: 14px;
-                cursor: pointer;
-            }
-        }
-        
-        /* 桌面端隐藏手机地图按钮 */
-        .mobile-map-btn {
-            display: none;
-        }
-        
-        .mobile-map-modal {
-            display: none;
-        }
-        
-        /* 超小屏幕适配 */
-        @media (max-width: 380px) {
-            .status-bar {
-                font-size: 10px;
-                padding: 8px 10px;
-            }
-            
-            .bar-container {
-                width: 40px;
-                height: 10px;
-            }
-            
-            .minimap-panel {
-                height: 100px;
-            }
-            
-            .grid-cell {
-                width: 18px;
-                height: 18px;
-                font-size: 10px;
-            }
-        }
-        
         .minimap-title {
-            font-size: 11px;
-            color: #888;
+            color: #e94560;
+            font-size: 12px;
             text-align: center;
             margin-bottom: 10px;
-            padding-bottom: 8px;
             border-bottom: 1px solid #2a2a3a;
+            padding-bottom: 5px;
         }
         
-        .minimap-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        /* 网格地图 */
-        .grid-map {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-        
-        .grid-row {
-            display: flex;
-            gap: 3px;
-        }
-        
-        .grid-cell {
-            width: 20px;
-            height: 20px;
-            background: #1a1a2e;
-            border: 1px solid #2a2a3a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            flex-shrink: 0;
-        }
-        
-        .grid-cell.empty {
-            background: transparent;
-            border: none;
-        }
-        
-        .grid-cell.current {
-            background: #e94560;
-            border-color: #ff6666;
-            color: white;
-            font-weight: bold;
-            animation: pulse 1s infinite;
-        }
-        
-        .grid-cell.visited {
-            background: #27ae60;
-            border-color: #2ecc71;
-            color: white;
-        }
-        
-        .grid-cell.visible {
-            background: #3a3a4a;
-            border-color: #555;
-            color: #888;
-        }
-        
-        .grid-cell.fog {
-            background: #0a0a0f;
-            border-color: #1a1a2a;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        .map-legend {
-            margin-top: 10px;
-            font-size: 9px;
-            color: #666;
-            text-align: center;
-            line-height: 1.4;
-        }
-        
-        /* 场景标题 */
-        .scene-header {
-            text-align: center;
-            padding: 10px;
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-        }
-        
-        .scene-title {
-            color: #e94560;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        .scene-subtitle {
-            color: #666;
-            font-size: 11px;
-            margin-top: 4px;
-        }
-        
-        /* 主内容区 */
-        .main-content {
-            flex: 1;
-            background: #0f0f1a;
-            border: 3px solid #2a2a3a;
-            overflow-y: auto;
-        }
-        
-        /* 路线选择界面 */
-        .route-view {
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .direction-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            max-width: 280px;
-            margin: 0 auto;
-        }
-        
-        @media (max-width: 768px) {
-            .direction-grid {
-                gap: 8px;
-            }
-            
-            .direction-btn {
-                padding: 12px 8px;
-            }
-            
-            .dir-arrow {
-                font-size: 20px;
-            }
-            
-            .dir-name {
-                font-size: 11px;
-            }
-        }
-        
-        .direction-btn {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            color: #e0e0e0;
-            padding: 15px 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .direction-btn:hover {
-            border-color: #e94560;
-            background: #252538;
-        }
-        
-        .direction-btn.rest {
-            border-color: #27ae60;
-        }
-        
-        /* 事件界面 */
-        .event-view {
-            padding: 20px;
-            text-align: center;
-        }
-
-        .event-desc {
-            font-size: 14px;
-            color: #ccc;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .event-choices {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 280px;
-            margin: 0 auto;
-        }
-
-        /* 剧情房间样式 */
-        .story-room {
-            padding: 15px;
-        }
-
-        .story-desc {
-            background: #1a1a2e;
-            border-left: 3px solid #e94560;
-            padding: 12px 15px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            line-height: 1.8;
-            color: #ccc;
-        }
-
-        .story-dialog {
-            background: #0f0f1a;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-
-        .dialog-line {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: #1a1a2e;
-            border-radius: 4px;
-        }
-
-        .dialog-speaker {
-            color: #e94560;
-            font-weight: bold;
-            font-size: 11px;
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .dialog-text {
-            color: #aaa;
-            font-size: 12px;
-            font-style: italic;
-        }
-
-        .story-discoveries {
-            margin-bottom: 15px;
-        }
-
-        .discovery-item {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 12px;
-        }
-
-        .discovery-item:hover {
-            border-color: #e94560;
-            background: #2a2a3a;
-        }
-
-        .story-choices {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .story-choices .action-btn {
-            text-align: left;
-            padding: 12px 15px;
-        }
-
         /* 决心值显示 */
-        .resolve-display {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid #3a3a4a;
-            padding: 8px 12px;
+        .resolve-panel {
+            background: #1a1a2e;
+            border: 1px solid #2a2a3a;
+            padding: 8px;
             font-size: 10px;
-            color: #888;
-            z-index: 100;
         }
-
-        .dir-arrow {
-            font-size: 24px;
+        .resolve-title {
+            color: #888;
             margin-bottom: 5px;
         }
-        
-        .dir-name {
-            font-size: 12px;
+        .resolve-item {
+            display: flex;
+            justify-content: space-between;
             margin-bottom: 3px;
         }
-        
-        .dir-cost {
-            font-size: 10px;
-            color: #888;
-        }
-        
-        /* 房间入口 */
-        .room-entry {
-            padding: 20px 15px;
-            text-align: center;
-        }
-        
-        .entry-preview {
-            margin-bottom: 20px;
-        }
-        
-        .preview-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
-        .preview-desc {
-            color: #888;
-            font-size: 12px;
-        }
-        
-        .entry-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-width: 260px;
-            margin: 0 auto;
-        }
-        
-        @media (max-width: 768px) {
-            .room-entry {
-                padding: 15px 10px;
-            }
-            
-            .preview-icon {
-                font-size: 40px;
-            }
-            
-            .entry-actions {
-                max-width: 100%;
-            }
-        }
-        
-        .action-btn.large {
-            padding: 15px;
-            text-align: center;
-        }
-        
-        /* 战斗界面 */
-        .combat-view {
-            padding: 10px;
-        }
-        
-        /* 双人战斗布局 */
-        .team-battle-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .investigator-battle-card {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .investigator-battle-card:hover {
-            border-color: #3a3a4a;
-        }
-        
-        .investigator-battle-card.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 12px rgba(233, 69, 96, 0.4);
-        }
-        
-        .investigator-battle-card.dead {
-            opacity: 0.5;
-            border-color: #333;
-            cursor: not-allowed;
-        }
-        
-        .investigator-battle-card .inv-icon {
-            font-size: 28px;
-            margin-bottom: 4px;
-        }
-        
-        .investigator-battle-card .inv-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-            margin-bottom: 2px;
-        }
-        
-        .investigator-battle-card .inv-status {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 4px;
-        }
-        
-        .investigator-battle-card .inv-hp,
-        .investigator-battle-card .inv-san {
-            font-size: 10px;
-            color: #aaa;
-        }
-        
-        .investigator-battle-card .inv-affliction {
-            font-size: 9px;
-            color: #e94560;
-            margin-top: 4px;
-        }
-        
-        .investigator-battle-card .inv-virtue {
-            font-size: 9px;
-            color: #f1c40f;
-            margin-top: 4px;
-        }
-        
-        .vs-divider {
-            text-align: center;
-            font-size: 20px;
-            color: #e94560;
-            margin: 10px 0;
-        }
-        
-        /* 房间内容区域 */
-        .room-content-section {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .section-title {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 10px;
-            text-align: center;
-            border-bottom: 1px solid #2a2a3a;
-            padding-bottom: 6px;
-        }
-        
-        .empty-room {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-            padding: 30px 20px;
-        }
-        
-        .target-info {
-            background: #2a2a3a;
-            border: 2px solid #3a3a4a;
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        .target-name {
-            color: #e94560;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        
-        .target-desc {
-            color: #888;
-            font-size: 11px;
-        }
-        
-        .action-hint {
-            color: #888;
-            font-size: 11px;
-            text-align: center;
-            padding: 10px;
-            background: #1a1a2e;
-            border: 1px dashed #3a3a4a;
-            border-radius: 4px;
-        }
-        
-        /* 选中状态 */
-        .enemy-card.selected, .object-card.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
-            transform: scale(1.05);
-        }
-        
-        .enemies-row {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        
-        .enemy-card {
-            background: #1a1a2e;
-            border: 2px solid #e94560;
-            padding: 12px 8px;
-            width: 85px;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        @media (max-width: 768px) {
-            .enemy-card {
-                width: 75px;
-                padding: 10px 5px;
-            }
-            
-            .enemy-icon {
-                font-size: 24px;
-            }
-            
-            .enemy-name {
-                font-size: 10px;
-            }
-            
-            .enemy-hp-text {
-                font-size: 9px;
-            }
-        }
-        
-        .enemy-card:hover {
-            background: #2a1a2e;
-        }
-        
-        .enemy-icon {
-            font-size: 28px;
-            margin-bottom: 6px;
-        }
-        
-        .enemy-name {
-            font-size: 11px;
-            color: #e94560;
-            margin-bottom: 4px;
-        }
-        
-        .enemy-hp-bar {
-            height: 5px;
+        .resolve-bar {
+            height: 4px;
             background: #0a0a0f;
-            margin-bottom: 4px;
+            margin-top: 2px;
         }
-        
-        .enemy-hp-bar div {
+        .resolve-fill {
             height: 100%;
             background: #e94560;
-            transition: width 0.3s;
-        }
-        
-        .enemy-hp-text {
-            font-size: 9px;
-            color: #888;
-        }
-        
-        .objects-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .object-card {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            padding: 15px;
-            width: 80px;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        .object-icon {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-        
-        .object-name {
-            font-size: 10px;
-            color: #aaa;
-        }
-        
-        /* 行动按钮 */
-        .action-panel {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            padding: 12px;
-        }
-        
-        .action-title {
-            color: #e94560;
-            font-size: 12px;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #2a2a3a;
-        }
-        
-        .action-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-        
-        .action-btn {
-            background: #252538;
-            border: 2px solid #3a3a4a;
-            color: #e0e0e0;
-            padding: 12px 8px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-family: inherit;
-            text-align: left;
-        }
-        
-        .action-btn:hover {
-            border-color: #e94560;
-        }
-        
-        .action-btn .skill-tag {
-            display: block;
-            font-size: 10px;
-            color: #888;
-            margin-top: 4px;
-        }
-        
-        /* 日志面板 */
-        .log-panel {
-            background: #0a0a0f;
-            border: 2px solid #1a1a2e;
-            padding: 8px;
-            height: 140px;
-            overflow-y: auto;
-            font-size: 11px;
-            line-height: 1.5;
-        }
-        
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 3px 8px;
-            border-left: 3px solid #3a3a4a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .log-entry.success {
-            border-left-color: #27ae60;
-            color: #2ecc71;
-        }
-        
-        .log-entry.failure {
-            border-left-color: #e94560;
-            color: #ff6666;
-        }
-        
-        .log-entry.system {
-            border-left-color: #3498db;
-            color: #5dade2;
-        }
-        
-        .log-entry.damage {
-            border-left-color: #e94560;
-            color: #ff6b6b;
-            background: rgba(233, 69, 96, 0.1);
-        }
-        
-        .log-entry.sanity {
-            border-left-color: #7c3aed;
-            color: #a78bfa;
-            background: rgba(124, 58, 237, 0.1);
-        }
-        
-        .log-entry.combat {
-            border-left-color: #f39c12;
-            color: #f5b041;
-        }
-        
-        .log-entry.reward {
-            border-left-color: #f1c40f;
-            color: #f4d03f;
-            background: rgba(241, 196, 15, 0.1);
         }
         
         /* 职业选择 */
@@ -999,14 +382,12 @@
             z-index: 1000;
             padding: 20px;
         }
-        
         .profession-title {
             color: #e94560;
             font-size: 20px;
             margin-bottom: 20px;
             text-align: center;
         }
-        
         .profession-card {
             background: #1a1a2e;
             border: 3px solid #2a2a3a;
@@ -1015,21 +396,17 @@
             width: 100%;
             max-width: 300px;
             cursor: pointer;
-            transition: all 0.2s;
         }
-        
-        .profession-card:hover {
-            border-color: #e94560;
-            transform: translateY(-2px);
+        .profession-card:hover, .profession-card.selected {
+            border-color: #27ae60;
+            box-shadow: 0 0 15px rgba(39, 174, 96, 0.5);
         }
-        
         .profession-name {
             color: #e94560;
             font-size: 16px;
             font-weight: bold;
             margin-bottom: 8px;
         }
-        
         .profession-stats {
             font-size: 11px;
             color: #888;
@@ -1048,11 +425,7 @@
             justify-content: center;
             z-index: 2000;
         }
-        
-        .modal-overlay.show {
-            display: flex;
-        }
-        
+        .modal-overlay.show { display: flex; }
         .modal-content {
             background: #1a1a2e;
             border: 4px solid #e94560;
@@ -1060,44 +433,21 @@
             max-width: 300px;
             text-align: center;
         }
-        
-        .modal-title {
-            color: #e94560;
-            font-size: 18px;
-            margin-bottom: 12px;
-        }
-        
-        .modal-text {
-            color: #aaa;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-        
+        .modal-title { color: #e94560; font-size: 18px; margin-bottom: 12px; }
+        .modal-text { color: #aaa; font-size: 13px; margin-bottom: 20px; }
         .modal-btn {
             background: #e94560;
             border: none;
             color: white;
             padding: 12px 24px;
             cursor: pointer;
-            font-family: inherit;
         }
         
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
         
-        /* 滚动条 */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #0a0a0f;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #2a2a3a;
-            border-radius: 3px;
+        @media (max-width: 768px) {
+            .minimap-panel { display: none; }
+            .team-status-bar { padding: 6px 8px; }
         }
     </style>
 </head>
@@ -1105,134 +455,92 @@
     <!-- 职业选择 -->
     <div id="professionSelect" class="profession-select">
         <h1 class="profession-title">DS10 v7 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
-
-        <div class="profession-card" data-profession="archaeologist" onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中，请稍候');">
+        <div class="profession-card" onclick="game.selectProfession('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
-            <div class="profession-stats">
-                HP: 70 | SAN: 100<br>
-                侦查: 50 | 力量: 30 | 神秘学: 35<br>
-                <span style="color:#27ae60;">精通古代文献，能从符号中发现隐藏信息</span>
-            </div>
+            <div class="profession-stats">HP:70 SAN:100 | 侦查50 力量30 神秘学35<br><span style="color:#27ae60;">精通古代文献</span></div>
         </div>
-
-        <div class="profession-card" data-profession="soldier" onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中，请稍候');">
+        <div class="profession-card" onclick="game.selectProfession('soldier')">
             <div class="profession-name">⚔️ 前军人</div>
-            <div class="profession-stats">
-                HP: 90 | SAN: 100<br>
-                侦查: 35 | 力量: 55 | 神秘学: 20<br>
-                <span style="color:#27ae60;">实战经验丰富，危机时刻保持冷静</span>
-            </div>
+            <div class="profession-stats">HP:90 SAN:100 | 侦查35 力量55 神秘学20<br><span style="color:#27ae60;">实战经验丰富</span></div>
         </div>
-
-        <div class="profession-card" data-profession="occultist" onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中，请稍候');">
+        <div class="profession-card" onclick="game.selectProfession('occultist')">
             <div class="profession-name">✦ 神秘学者</div>
-            <div class="profession-stats">
-                HP: 50 | SAN: 100<br>
-                侦查: 40 | 力量: 20 | 神秘学: 55<br>
-                <span style="color:#27ae60;">能感知深渊能量，理解超自然现象</span>
-            </div>
+            <div class="profession-stats">HP:50 SAN:100 | 侦查40 力量20 神秘学55<br><span style="color:#27ae60;">感知深渊能量</span></div>
         </div>
-        
-        <!-- 备用选择按钮（手机端兼容） -->
-        <div style="margin-top:30px;padding:15px;border:2px dashed #666;text-align:center;">
-            <div style="color:#888;margin-bottom:10px;">如果上方卡片无法点击，请使用下方按钮：</div>
-            <button onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#1a3a2e;color:#27ae60;border:2px solid #27ae60;">考古学家</button>
-            <button onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#3a2a1a;color:#e67e22;border:2px solid #e67e22;">前军人</button>
-            <button onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#2a1a3a;color:#7c3aed;border:2px solid #7c3aed;">神秘学者</button>
-        </div>
-        
-        <div id="debug-info" style="margin-top:20px;color:#666;font-size:11px;">调试信息...</div>
+        <div id="selectHint" style="margin-top:20px;color:#666;font-size:12px;">点击卡片选择 (0/2)</div>
     </div>
 
     <!-- 游戏主界面 -->
-    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
+    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh;">
         <!-- 双人状态栏 -->
         <div class="team-status-bar">
-            <!-- 调查员A -->
-            <div class="investigator-status" id="invStatus0">
+            <div class="investigator-status">
                 <div class="inv-header">
-                    <span class="inv-name">调查员A</span>
-                    <span class="status-label calm" id="statusLabel0">冷静</span>
+                    <span class="inv-name" id="inv0Name">调查员A</span>
+                    <span class="status-label calm" id="inv0Status">冷静</span>
                 </div>
                 <div class="inv-bars">
                     <div class="bar-row">
                         <span class="bar-label">HP</span>
-                        <div class="bar-container hp">
-                            <div class="bar-fill" id="hpBar0" style="width:100%"></div>
-                        </div>
-                        <span class="bar-value" id="hpText0">70/70</span>
+                        <div class="bar-container hp"><div class="bar-fill" id="inv0HpBar" style="width:100%"></div></div>
+                        <span class="bar-value" id="inv0Hp">70/70</span>
                     </div>
                     <div class="bar-row">
                         <span class="bar-label">SAN</span>
-                        <div class="bar-container san">
-                            <div class="bar-fill sanity" id="sanBar0" style="width:0%"></div>
-                        </div>
-                        <span class="bar-value" id="sanText0">0</span>
+                        <div class="bar-container san"><div class="bar-fill" id="inv0SanBar" style="width:0%"></div></div>
+                        <span class="bar-value" id="inv0San">0</span>
                     </div>
                 </div>
             </div>
-            
-            <!-- 调查员B -->
-            <div class="investigator-status" id="invStatus1">
+            <div class="investigator-status">
                 <div class="inv-header">
-                    <span class="inv-name">调查员B</span>
-                    <span class="status-label calm" id="statusLabel1">冷静</span>
+                    <span class="inv-name" id="inv1Name">调查员B</span>
+                    <span class="status-label calm" id="inv1Status">冷静</span>
                 </div>
                 <div class="inv-bars">
                     <div class="bar-row">
                         <span class="bar-label">HP</span>
-                        <div class="bar-container hp">
-                            <div class="bar-fill" id="hpBar1" style="width:100%"></div>
-                        </div>
-                        <span class="bar-value" id="hpText1">70/70</span>
+                        <div class="bar-container hp"><div class="bar-fill" id="inv1HpBar" style="width:100%"></div></div>
+                        <span class="bar-value" id="inv1Hp">70/70</span>
                     </div>
                     <div class="bar-row">
                         <span class="bar-label">SAN</span>
-                        <div class="bar-container san">
-                            <div class="bar-fill sanity" id="sanBar1" style="width:0%"></div>
-                        </div>
-                        <span class="bar-value" id="sanText1">0</span>
+                        <div class="bar-container san"><div class="bar-fill" id="inv1SanBar" style="width:0%"></div></div>
+                        <span class="bar-value" id="inv1San">0</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 游戏布局 - 左右分栏 -->
+        <!-- 游戏布局 -->
         <div class="game-layout">
-            <!-- 左侧主画面 -->
             <div class="main-panel">
                 <div class="scene-header">
-                    <div>
-                        <div class="scene-title" id="sceneTitle">准备</div>
-                        <div class="scene-subtitle" id="sceneSubtitle">选择调查员</div>
+                    <div style="flex:1;">
+                        <div class="scene-title" id="roomName">准备</div>
+                        <div class="scene-subtitle" id="roomSubtitle">选择调查员</div>
                     </div>
-                    <button class="mobile-map-btn" id="mobileMapBtn" onclick="game.showMobileMap()">🗺️ 地图</button>
                 </div>
-                
                 <div class="main-content" id="mainContent"></div>
-                
-                <div class="action-panel" id="actionPanel" style="display:none;">
-                    <div class="action-title">行动</div>
-                    <div class="action-grid" id="actionButtons"></div>
-                </div>
-                
                 <div class="log-panel" id="logPanel">
-                    <div class="log-entry system">DS10 v7 - 深渊编年史 (已修复)</div>
-                </div>
-
-                <!-- 决心值显示 -->
-                <div class="resolve-display" id="resolveDisplay">
-                    阻止:0 真相:0 保护:0
+                    <div class="log-entry system">DS10 v7 - 深渊编年史</div>
                 </div>
             </div>
             
-            <!-- 右侧小地图 -->
+            <!-- 右侧面板 -->
             <div class="minimap-panel">
-                <div class="minimap-title">地图</div>
-                <div class="minimap-content" id="minimapContent">
-                    <div class="grid-map">
-                        <div style="color:#666;text-align:center;padding:20px;">选择职业开始...</div>
-                    </div>
+                <div class="minimap-title">进度</div>
+                <div class="resolve-panel">
+                    <div class="resolve-title">决心值</div>
+                    <div class="resolve-item"><span>阻止仪式</span><span id="resolveStop">0</span></div>
+                    <div class="resolve-bar"><div class="resolve-fill" id="resolveStopBar" style="width:0%"></div></div>
+                    <div class="resolve-item"><span>探寻真相</span><span id="resolveTruth">0</span></div>
+                    <div class="resolve-bar"><div class="resolve-fill" id="resolveTruthBar" style="width:0%"></div></div>
+                    <div class="resolve-item"><span>保护同伴</span><span id="resolveProtect">0</span></div>
+                    <div class="resolve-bar"><div class="resolve-fill" id="resolveProtectBar" style="width:0%"></div></div>
+                </div>
+                <div style="margin-top:10px;font-size:10px;color:#666;text-align:center;">
+                    房间: <span id="roomCount">0</span>/13
                 </div>
             </div>
         </div>
@@ -1247,844 +555,6 @@
         </div>
     </div>
 
-    <!-- 手机端地图弹窗 -->
-    <div class="mobile-map-modal" id="mobileMapModal">
-        <div class="mobile-map-content" id="mobileMapContent"></div>
-        <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
-    </div>
-
-    <!-- 内联脚本确保职业选择能工作 -->
-    <script>
-        // 临时游戏对象，确保职业选择能工作
-        window.tempGame = {
-            selectedProfessions: [],
-            professions: {
-                archaeologist: { name: '考古学家', hp: 70, maxHp: 70, sanity: 0, maxSanity: 100, skills: { 侦查: 50, 力量: 30, 神秘学: 35 }, desc: '精通古代文献，能从符号中发现隐藏信息' },
-                soldier: { name: '前军人', hp: 90, maxHp: 90, sanity: 0, maxSanity: 100, skills: { 侦查: 35, 力量: 55, 神秘学: 20 }, desc: '实战经验丰富，危机时刻保持冷静' },
-                occultist: { name: '神秘学者', hp: 50, maxHp: 50, sanity: 0, maxSanity: 100, skills: { 侦查: 40, 力量: 20, 神秘学: 55 }, desc: '能感知深渊能量，理解超自然现象' }
-            },
-            sanityStates: {
-                calm: { min: 0, max: 30, name: '冷静', color: '#27ae60' },
-                uneasy: { min: 31, max: 50, name: '不安', color: '#f39c12' },
-                nervous: { min: 51, max: 70, name: '紧张', color: '#e67e22' },
-                fearful: { min: 71, max: 85, name: '恐惧', color: '#e94560' },
-                breaking: { min: 86, max: 99, name: '崩溃边缘', color: '#7c3aed' },
-                broken: { min: 100, max: 100, name: '崩溃', color: '#000' }
-            },
-            selectProfession: function(key) {
-                console.log('Temp selectProfession:', key);
-                const debugInfo = document.getElementById('debug-info');
-                
-                if (!this.selectedProfessions) {
-                    this.selectedProfessions = [];
-                }
-                
-                if (this.selectedProfessions.includes(key)) {
-                    if (debugInfo) debugInfo.textContent = '该职业已被选择';
-                    return;
-                }
-                
-                if (this.selectedProfessions.length >= 2) {
-                    if (debugInfo) debugInfo.textContent = '队伍已满';
-                    return;
-                }
-                
-                this.selectedProfessions.push(key);
-                
-                // 高亮卡片
-                const card = document.querySelector('.profession-card[data-profession="' + key + '"]');
-                if (card) {
-                    card.style.borderColor = '#27ae60';
-                    card.style.backgroundColor = '#1a3a2e';
-                }
-                
-                if (debugInfo) {
-                    debugInfo.textContent = '已选择: ' + this.professions[key].name + ' (' + this.selectedProfessions.length + '/2)';
-                }
-                
-                // 选择2个后开始游戏
-                if (this.selectedProfessions.length === 2) {
-                    if (debugInfo) debugInfo.textContent = '队伍组成完毕，正在进入游戏...';
-                    
-                    // 创建队伍并直接进入游戏
-                    this.confirmTeam();
-                }
-            },
-            confirmTeam: function() {
-                const debugInfo = document.getElementById('debug-info');
-                
-                try {
-                    // 创建队伍
-                    this.team = this.selectedProfessions.map((key, idx) => ({
-                        id: idx,
-                        key: key,
-                        ...this.professions[key],
-                        inventory: { gold: 20, sedative: 1 },
-                        affliction: null,
-                        virtue: null,
-                        virtueTurns: 0
-                    }));
-                    
-                    // 切换界面
-                    const selectPanel = document.getElementById('professionSelect');
-                    const gamePanel = document.getElementById('gameUI');
-                    const mainContent = document.getElementById('mainContent');
-                    
-                    if (selectPanel) {
-                        selectPanel.classList.add('hidden');
-                        selectPanel.style.display = 'none';
-                    }
-                    if (gamePanel) {
-                        gamePanel.classList.remove('hidden');
-                        gamePanel.style.display = 'flex';
-                    }
-                    
-                    if (debugInfo) debugInfo.textContent = '游戏开始！' + this.team[0].name + ' + ' + this.team[1].name;
-                    
-                    // 初始化游戏状态
-                    this.state = {
-                        currentRoute: 0,
-                        turn: 0,
-                        selectedInvestigator: 0,
-                        resolve: { stopRitual: 0, seekTruth: 0, protect: 0, survive: 0 },
-                        clues: [],
-                        buffs: [],
-                        storyFlags: {}
-                    };
-                    
-                    // 显示开始游戏
-                    this.startGame();
-                    
-                } catch (e) {
-                    console.error('confirmTeam error:', e);
-                    if (debugInfo) debugInfo.textContent = '错误: ' + e.message;
-                }
-            },
-            
-            // 开始游戏
-            startGame: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (sceneTitle) sceneTitle.textContent = '矿坑入口';
-                if (sceneSubtitle) sceneSubtitle.textContent = '深渊裂隙的入口';
-                
-                // 更新状态栏
-                this.updateStatus();
-                
-                // 显示第一个房间
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc">
-                                寒风裹挟着腐朽的气息从黑暗中涌出。<br><br>
-                                手电筒的光束在锈迹斑斑的铁轨上摇晃，照亮了前方坍塌的通道。<br><br>
-                                你们站在深渊裂隙的入口，作为DIA第9小队，任务是找到失踪的第7小队并阻止某种"仪式"。
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.enterRoom('collapse')">
-                                    进入塌陷通道
-                                    <span class="skill-tag">墙上有新鲜的刻痕</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // 更新小地图
-                this.updateMinimap();
-            },
-            
-            // 敌人数据
-            enemies: {
-                guard: { name: '腐化守卫', hp: 40, maxHp: 40, damage: 10, fear: 8 },
-                deep_one: { name: '深潜者', hp: 50, maxHp: 50, damage: 12, fear: 10 },
-                trap_spirit: { name: '陷阱精灵', hp: 35, maxHp: 35, damage: 8, fear: 12 },
-                bishop: { name: '邪教主教', hp: 80, maxHp: 80, damage: 15, fear: 15, isBoss: true }
-            },
-            
-            // 当前战斗状态
-            combatState: null,
-            
-            // 进入房间
-            enterRoom: function(roomId) {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                // 随机遭遇战判定（非主轴房间有30%概率遭遇敌人）
-                if (roomId === 'collapse') {
-                    if (Math.random() < 0.3) {
-                        this.startCombat('guard');
-                        return;
-                    }
-                    
-                    if (sceneTitle) sceneTitle.textContent = '塌陷通道';
-                    if (sceneSubtitle) sceneSubtitle.textContent = '通道被碎石堵塞';
-                    
-                    if (mainContent) {
-                        mainContent.innerHTML = `
-                            <div class="story-room">
-                                <div class="story-desc">
-                                    通道被碎石部分堵塞，但还有一条窄缝可以通过。<br><br>
-                                    你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。
-                                </div>
-                                <div class="story-dialog">
-                                    <div class="dialog-line">
-                                        <span class="dialog-speaker">${this.team[0].name}:</span>
-                                        <span class="dialog-text">"这是拉丁语'危险'的意思，但最后一个字母被人改成了'邀请'..."</span>
-                                    </div>
-                                </div>
-                                <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.enterRoom('camp')">
-                                        强行通过
-                                        <span class="skill-tag">可能会触发陷阱</span>
-                                    </button>
-                                    <button class="action-btn large" onclick="window.game.enterRoom('camp')">
-                                        寻找其他路径
-                                        <span class="skill-tag">消耗更多时间</span>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                } else if (roomId === 'combat_upper') {
-                    this.startCombat('deep_one');
-                    return;
-                } else if (roomId === 'combat_lower') {
-                    this.startCombat('trap_spirit');
-                    return;
-                } else if (roomId === 'camp') {
-                    if (sceneTitle) sceneTitle.textContent = '第7小队营地';
-                    if (sceneSubtitle) sceneSubtitle.textContent = '失踪小队的临时营地';
-                    
-                    if (mainContent) {
-                        mainContent.innerHTML = `
-                            <div class="story-room">
-                                <div class="story-desc">
-                                    一个相对开阔的洞室，显然是第7小队的临时营地。<br><br>
-                                    床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...<br><br>
-                                    你们发现了马库斯队长的日记。
-                                </div>
-                                <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.readDiary()">
-                                        阅读日记
-                                        <span class="skill-tag">了解第7小队的发现</span>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-                
-                this.updateMinimap();
-            },
-            
-            // 阅读日记
-            readDiary: function() {
-                const mainContent = document.getElementById('mainContent');
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin-bottom:20px;">
-                                <h3 style="color:#e94560;margin-bottom:15px;">马库斯的日记</h3>
-                                <div style="color:#aaa;line-height:1.8;">
-                                    <p style="margin-bottom:10px;"><strong>11月15日</strong></p>
-                                    <p style="margin-bottom:15px;">我们找到了他。埃德蒙·布莱克伍德主教。他曾是DIA最资深的顾问，3个月前失踪。</p>
-                                    <p style="margin-bottom:15px;">他没有被绑架。他是自愿来到这里的。他说他发现了一个可怕的真相：深渊不是威胁，而是...屏障。</p>
-                                    <p style="margin-bottom:15px;">"深渊之主"正在苏醒，而人类唯一的生存机会，是主动完成仪式，成为它的"守门人"而非祭品。</p>
-                                    <p style="margin-bottom:10px;"><strong>11月16日</strong></p>
-                                    <p style="margin-bottom:15px;">我试图说服他，但他已经听不进去了。他说仪式需要"3个媒介"，需要"自愿的参与者"。</p>
-                                    <p>我们必须阻止他。即使这意味着...</p>
-                                </div>
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.makeChoice('stop')">
-                                    "我们必须阻止仪式！"
-                                    <span class="skill-tag">决心+阻止仪式</span>
-                                </button>
-                                <button class="action-btn large" onclick="window.game.makeChoice('truth')">
-                                    "他说的是真的吗？"
-                                    <span class="skill-tag">决心+探寻真相</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 做出选择
-            makeChoice: function(type) {
-                if (type === 'stop') {
-                    this.state.resolve.stopRitual += 20;
-                    alert('决心：阻止仪式 +20');
-                } else if (type === 'truth') {
-                    this.state.resolve.seekTruth += 20;
-                    alert('决心：探寻真相 +20');
-                }
-                
-                alert('第一幕完成！\n\n第7小队失踪的真相已揭开。埃德蒙·布莱克伍德主教正在进行某种仪式，试图成为"深渊之主"的守门人。\n\n接下来你们需要决定如何前往仪式现场...');
-                
-                // 显示路线选择
-                this.showRouteChoice();
-            },
-            
-            // 显示路线选择
-            showRouteChoice: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (sceneTitle) sceneTitle.textContent = '矿道分叉';
-                if (sceneSubtitle) sceneSubtitle.textContent = '选择前进方向';
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc">
-                                通道在这里分成两条路。<br><br>
-                                左边通向仪式准备区，主教在那里教导村民仪式的步骤。<br><br>
-                                右边通向深渊边缘，那里可能有第7小队成员的踪迹...
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.secondAct('upper')">
-                                    ⬆️ 前往教导厅
-                                    <span class="skill-tag">了解仪式的秘密</span>
-                                </button>
-                                <button class="action-btn large" onclick="window.game.secondAct('lower')">
-                                    ⬇️ 前往深渊边缘
-                                    <span class="skill-tag">寻找第7小队</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 第二幕
-            secondAct: function(branch) {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (branch === 'upper') {
-                    // 上分支 - 先战斗再剧情
-                    if (sceneTitle) sceneTitle.textContent = '准备区';
-                    if (sceneSubtitle) sceneSubtitle.textContent = '有守卫巡逻';
-                    
-                    if (mainContent) {
-                        mainContent.innerHTML = `
-                            <div class="story-room">
-                                <div class="story-desc">
-                                    你们接近了仪式准备区，但前方有守卫在巡逻。<br><br>
-                                    一个被深渊腐蚀的守卫挡在路中间，他的眼睛泛着不自然的红光...
-                                </div>
-                                <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.startCombat('guard')">
-                                        ⚔️ 正面迎战
-                                        <span class="skill-tag">击败守卫进入教导厅</span>
-                                    </button>
-                                    <button class="action-btn large" onclick="window.game.startCombat('guard')">
-                                        👁️ 潜行偷袭
-                                        <span class="skill-tag">侦查检定，成功先手</span>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                } else {
-                    // 下分支 - 先战斗再剧情
-                    if (sceneTitle) sceneTitle.textContent = '实验场';
-                    if (sceneSubtitle) sceneContent = '深渊人体实验的现场';
-                    
-                    if (mainContent) {
-                        mainContent.innerHTML = `
-                            <div class="story-room">
-                                <div class="story-desc">
-                                    你们闯入了深渊人体实验的现场。一个扭曲的生物从阴影中现身——<br><br>
-                                    那是陷阱精灵，由深渊能量和受害者的怨念构成的怪物！
-                                </div>
-                                <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.startCombat('trap_spirit')">
-                                        ⚔️ 迎战陷阱精灵
-                                        <span class="skill-tag">高SAN伤害，小心应对</span>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-            },
-            
-            // 进入教导厅（战斗胜利后）
-            enterTeachingHall: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (sceneTitle) sceneTitle.textContent = '教导厅';
-                if (sceneSubtitle) sceneSubtitle.textContent = '主教教导村民的地方';
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc">
-                                一个昏暗的大厅，墙上刻满了你们不认识的符号。<br><br>
-                                几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。<br><br>
-                                在讲台上，你们发现了一本翻开的笔记...
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.readEdmundNotes()">
-                                    阅读笔记
-                                    <span class="skill-tag">埃德蒙·布莱克伍德的研究</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 进入深渊边缘（战斗胜利后）
-            enterAbyssEdge: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (sceneTitle) sceneTitle.textContent = '深渊边缘';
-                if (sceneSubtitle) sceneSubtitle.textContent = '空间裂隙的边界';
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc">
-                                你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头，散发着无法理解的"光芒"。<br><br>
-                                在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着...
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.marcusFinalWords()">
-                                    听他的遗言
-                                    <span class="skill-tag">了解最终真相</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 阅读埃德蒙的笔记
-            readEdmundNotes: function() {
-                const mainContent = document.getElementById('mainContent');
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin-bottom:20px;">
-                                <h3 style="color:#e94560;margin-bottom:15px;">埃德蒙的研究笔记</h3>
-                                <div style="color:#aaa;line-height:1.8;">
-                                    <p style="margin-bottom:15px;">3个月前，我在第9裂隙发现了完整的文献。深渊不是随机出现的。它们是"封印"，封印着某种存在...</p>
-                                    <p style="margin-bottom:15px;">它更像是一种...法则。当足够多的智慧生物意识到它的存在时，封印就会松动。</p>
-                                    <p style="margin-bottom:15px;">DIA的探索，我们的好奇心，我们正在加速末日。</p>
-                                    <p style="margin-bottom:15px;">唯一的方法是：成为守门人。仪式不是召唤它，而是强化封印——以一个人的意识为代价，永远困在深渊边缘。</p>
-                                    <p>我需要的3个媒介：深渊之血、守门人的誓言、以及...替换。必须有另一个人自愿成为守门人，艾琳娜才能被释放。</p>
-                                </div>
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.makeChoice2('cooperate')">
-                                    "我们可以一起找更好的方法！"
-                                    <span class="skill-tag">决心+阻止仪式+保护同伴</span>
-                                </button>
-                                <button class="action-btn large" onclick="window.game.makeChoice2('hostile')">
-                                    "你已经被深渊腐蚀了。"
-                                    <span class="skill-tag">决心+阻止仪式</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 马库斯的遗言
-            marcusFinalWords: function() {
-                const mainContent = document.getElementById('mainContent');
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc" style="color:#e94560;">
-                                "听着...我发现了主教的弱点。他不是在保护我们...他是在保护'她'。"
-                            </div>
-                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin:20px 0;">
-                                <div style="color:#aaa;line-height:1.8;">
-                                    <p style="margin-bottom:15px;">艾琳娜·布莱克伍德，他的妻子。2年前在第3裂隙事件中没有死——她被困在了深渊边缘，成为了守门人。</p>
-                                    <p style="margin-bottom:15px;">埃德蒙想要替换她。用他自己，或者用其他人。</p>
-                                    <p style="margin-bottom:15px;">仪式需要3个媒介，但第3个不是祭品——是'替换'。必须有另一个人自愿成为守门人，艾琳娜才能被释放。</p>
-                                    <p>阻止他...但请记住...有时候，敌人也是受害者...</p>
-                                </div>
-                            </div>
-                            <div class="story-desc" style="color:#888;">
-                                马库斯在你们手心画下一个符号后死去...
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.makeChoice2('elenia')">
-                                    "艾琳娜会希望看到这样的你吗？"
-                                    <span class="skill-tag">获得情感突破口</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 第二幕选择
-            makeChoice2: function(type) {
-                if (type === 'cooperate') {
-                    this.state.resolve.stopRitual += 15;
-                    this.state.resolve.protect += 15;
-                    alert('决心：阻止仪式 +15，保护同伴 +15');
-                } else if (type === 'hostile') {
-                    this.state.resolve.stopRitual += 20;
-                    alert('决心：阻止仪式 +20');
-                } else if (type === 'elenia') {
-                    this.state.resolve.seekTruth += 20;
-                    alert('获得线索：艾琳娜的真相\n决心：探寻真相 +20');
-                }
-                
-                alert('第二幕完成！\n\n你们已经了解了埃德蒙的动机和他妻子的命运。现在，前往仪式大厅，做出最终选择...');
-                
-                this.thirdAct();
-            },
-            
-            // 第三幕 - 最终决战
-            thirdAct: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                
-                if (sceneTitle) sceneTitle.textContent = '仪式大厅';
-                if (sceneSubtitle) sceneSubtitle.textContent = '最终决战';
-                
-                if (mainContent) {
-                    mainContent.innerHTML = `
-                        <div class="story-room">
-                            <div class="story-desc">
-                                你们终于来到了核心区域。仪式正在进行——<br><br>
-                                黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。<br><br>
-                                在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中...
-                            </div>
-                            <div style="background:#1a1a2e;padding:20px;border:2px solid #e94560;margin:20px 0;">
-                                <div style="color:#e94560;font-style:italic;">
-                                    "你们来了...我等待着有人能理解我。或者，至少...能阻止我。"
-                                </div>
-                            </div>
-                            <div class="story-choices">
-                                <button class="action-btn large" onclick="window.game.finalChoice('fight')">
-                                    ⚔️ 强行阻止仪式
-                                    <span class="skill-tag">与埃德蒙战斗</span>
-                                </button>
-                                <button class="action-btn large" onclick="window.game.finalChoice('talk')">
-                                    💬 尝试说服
-                                    <span class="skill-tag">利用了解的情报</span>
-                                </button>
-                                <button class="action-btn large" onclick="window.game.finalChoice('sacrifice')">
-                                    ✨ 自愿成为守门人
-                                    <span class="skill-tag">替代艾琳娜（需要高保护决心）</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-            },
-            
-            // 最终选择
-            finalChoice: function(type) {
-                if (type === 'fight') {
-                    // 进入Boss战
-                    this.startCombat('bishop');
-                    return;
-                }
-                
-                const r = this.state.resolve;
-                let ending = '';
-                let desc = '';
-                
-                if (type === 'sacrifice' && r.protect >= 30) {
-                    ending = '😢 牺牲结局';
-                    desc = '一名调查员自愿替代艾琳娜成为守门人，永远困在深渊边缘。其他人回到地面，但永远无法忘记那个身影。艾琳娜终于被释放，而埃德蒙...他选择了自我了断。';
-                } else if (type === 'talk' && (r.seekTruth >= 30)) {
-                    ending = '📚 真相结局';
-                    desc = '你们说服了埃德蒙，一起找到了第三种方法——让深渊沉睡，而不需要守门人。代价是你们永远无法完全理解深渊的本质，但世界安全了。';
-                } else if (r.stopRitual >= 40 && this.team.every(i => i.hp > 50)) {
-                    ending = '🏆 英雄结局';
-                    desc = '你们成功阻止了仪式，救出了艾琳娜，并找到了不牺牲任何人就能维持封印的方法。埃德蒙被DIA逮捕，但他的研究为理解深渊提供了宝贵资料。';
-                } else if (r.survive >= 20) {
-                    ending = '🏃 逃离结局';
-                    desc = '你们意识到无法阻止仪式，选择带着情报逃离。深渊之主没有完全苏醒，但封印被削弱...这只是时间问题。';
-                } else {
-                    ending = '💀 末日结局';
-                    desc = '深渊之主苏醒。在最后的意识中，你们感受到一双眼睛在黑暗中睁开..."谢谢你...帮我解开封印..."';
-                }
-                
-                // 显示结局
-                this.showEnding(ending, desc);
-            },
-            
-            // Boss战结束
-            endBossCombat: function(victory) {
-                this.combatState = null;
-                
-                if (victory) {
-                    const r = this.state.resolve;
-                    if (r.stopRitual >= 40) {
-                        this.showEnding('🏆 英雄结局', '你们成功击败了埃德蒙，阻止了仪式，救出了艾琳娜。埃德蒙在最后时刻醒悟，用自己的生命强化了封印。');
-                    } else {
-                        this.showEnding('😢 悲剧结局', '你们击败了埃德蒙，但仪式已经无法逆转。艾琳娜永远困在深渊边缘，而你们...只能带着这份遗憾离开。');
-                    }
-                } else {
-                    this.showEnding('💀 末日结局', '你们失败了。深渊之主苏醒，世界陷入黑暗...');
-                }
-            },
-            
-            // 显示结局
-            showEnding: function(title, desc) {
-                const modal = document.getElementById('modal');
-                const modalTitle = document.getElementById('modalTitle');
-                const modalText = document.getElementById('modalText');
-                
-                if (modalTitle) modalTitle.textContent = title;
-                if (modalText) modalText.innerHTML = desc + '<br><br><button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#e94560;color:white;border:none;cursor:pointer;">再玩一次</button>';
-                if (modal) modal.classList.add('show');
-            },
-            
-            // 更新状态栏
-            updateStatus: function() {
-                // 更新调查员A状态
-                const inv0 = this.team[0];
-                if (document.getElementById('hpText0')) document.getElementById('hpText0').textContent = inv0.hp + '/' + inv0.maxHp;
-                if (document.getElementById('sanText0')) document.getElementById('sanText0').textContent = inv0.sanity;
-                if (document.getElementById('hpBar0')) document.getElementById('hpBar0').style.width = (inv0.hp / inv0.maxHp * 100) + '%';
-                if (document.getElementById('sanBar0')) document.getElementById('sanBar0').style.width = (inv0.sanity / 100 * 100) + '%';
-                
-                // 更新调查员B状态
-                const inv1 = this.team[1];
-                if (document.getElementById('hpText1')) document.getElementById('hpText1').textContent = inv1.hp + '/' + inv1.maxHp;
-                if (document.getElementById('sanText1')) document.getElementById('sanText1').textContent = inv1.sanity;
-                if (document.getElementById('hpBar1')) document.getElementById('hpBar1').style.width = (inv1.hp / inv1.maxHp * 100) + '%';
-                if (document.getElementById('sanBar1')) document.getElementById('sanBar1').style.width = (inv1.sanity / 100 * 100) + '%';
-            },
-            
-            // 开始战斗
-            startCombat: function(enemyType) {
-                const enemy = this.enemies[enemyType];
-                if (!enemy) return;
-                
-                this.combatState = {
-                    enemy: { ...enemy },
-                    turn: 0,
-                    log: []
-                };
-                
-                this.renderCombat();
-            },
-            
-            // 渲染战斗界面
-            renderCombat: function() {
-                const mainContent = document.getElementById('mainContent');
-                const sceneTitle = document.getElementById('sceneTitle');
-                const sceneSubtitle = document.getElementById('sceneSubtitle');
-                const state = this.combatState;
-                
-                if (!state) return;
-                
-                if (sceneTitle) sceneTitle.textContent = '战斗中！';
-                if (sceneSubtitle) sceneSubtitle.textContent = 'vs ' + state.enemy.name;
-                
-                // 检查战斗是否结束
-                if (state.enemy.hp <= 0) {
-                    this.endCombat(true);
-                    return;
-                }
-                
-                // 检查玩家是否全灭
-                const aliveTeam = this.team.filter(i => i.hp > 0);
-                if (aliveTeam.length === 0) {
-                    this.showEnding('💀 全员阵亡', '你们的尸体将永远留在这个深渊之中...');
-                    return;
-                }
-                
-                if (mainContent) {
-                    let html = '<div class="combat-view">';
-                    
-                    // 敌人信息
-                    html += `
-                        <div class="enemy-card" style="margin:0 auto 20px;max-width:200px;text-align:center;padding:15px;background:#1a1a2e;border:2px solid #e94560;">
-                            <div style="font-size:32px;margin-bottom:5px;">👹</div>
-                            <div style="color:#e94560;font-weight:bold;margin-bottom:5px;">${state.enemy.name}</div>
-                            <div style="background:#0a0a0f;height:10px;margin-bottom:5px;">
-                                <div style="background:#e94560;height:100%;width:${(state.enemy.hp/state.enemy.maxHp)*100}%"></div>
-                            </div>
-                            <div style="font-size:11px;color:#888;">HP: ${state.enemy.hp}/${state.enemy.maxHp}</div>
-                        </div>
-                    `;
-                    
-                    // 调查员状态
-                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">';
-                    this.team.forEach((inv, idx) => {
-                        if (inv.hp > 0) {
-                            html += `
-                                <div style="background:#1a1a2e;border:2px solid ${idx === 0 ? '#3498db' : '#e67e22'};padding:10px;text-align:center;cursor:pointer;" onclick="window.game.selectCombatInvestigator(${idx})">
-                                    <div style="font-size:20px;margin-bottom:3px;">${idx === 0 ? '👤' : '👥'}</div>
-                                    <div style="font-size:12px;font-weight:bold;">${inv.name}</div>
-                                    <div style="font-size:10px;color:#888;">HP: ${inv.hp}/${inv.maxHp} | SAN: ${inv.sanity}</div>
-                                </div>
-                            `;
-                        }
-                    });
-                    html += '</div>';
-                    
-                    // 战斗选项
-                    html += '<div style="display:flex;gap:10px;justify-content:center;">';
-                    html += `<button class="action-btn" onclick="window.game.combatAttack()" style="flex:1;">⚔️ 攻击</button>`;
-                    html += `<button class="action-btn" onclick="window.game.combatUseItem()" style="flex:1;">💊 使用镇静剂</button>`;
-                    html += '</div>';
-                    
-                    // 战斗日志
-                    if (state.log.length > 0) {
-                        html += '<div style="margin-top:15px;padding:10px;background:#0a0a0f;border:1px solid #2a2a3a;font-size:11px;">';
-                        state.log.slice(-5).forEach(log => {
-                            html += `<div style="margin-bottom:3px;color:${log.color || '#aaa'};">${log.text}</div>`;
-                        });
-                        html += '</div>';
-                    }
-                    
-                    html += '</div>';
-                    mainContent.innerHTML = html;
-                }
-            },
-            
-            // 战斗攻击
-            combatAttack: function() {
-                const state = this.combatState;
-                if (!state) return;
-                
-                const inv = this.team[this.state.selectedInvestigator || 0];
-                if (!inv || inv.hp <= 0) {
-                    // 切换到有HP的调查员
-                    const aliveIdx = this.team.findIndex(i => i.hp > 0);
-                    if (aliveIdx >= 0) {
-                        this.state.selectedInvestigator = aliveIdx;
-                    }
-                    return;
-                }
-                
-                // 玩家攻击
-                const damage = inv.skills.力量 + Math.floor(Math.random() * 10);
-                state.enemy.hp -= damage;
-                state.log.push({ text: `${inv.name} 造成 ${damage} 伤害！`, color: '#2ecc71' });
-                
-                // 检查敌人是否死亡
-                if (state.enemy.hp <= 0) {
-                    state.log.push({ text: `${state.enemy.name} 被击败了！`, color: '#f1c40f' });
-                    this.renderCombat();
-                    return;
-                }
-                
-                // 敌人反击
-                setTimeout(() => {
-                    this.enemyAttack();
-                }, 500);
-            },
-            
-            // 敌人攻击
-            enemyAttack: function() {
-                const state = this.combatState;
-                if (!state) return;
-                
-                const aliveTeam = this.team.filter(i => i.hp > 0);
-                if (aliveTeam.length === 0) return;
-                
-                // 随机选择目标
-                const target = aliveTeam[Math.floor(Math.random() * aliveTeam.length)];
-                const damage = state.enemy.damage + Math.floor(Math.random() * 5);
-                
-                target.hp -= damage;
-                state.log.push({ text: `${state.enemy.name} 对 ${target.name} 造成 ${damage} 伤害！`, color: '#e94560' });
-                
-                // SAN伤害
-                this.addSanity(target, state.enemy.fear);
-                state.log.push({ text: `${target.name} 因恐惧 SAN+${state.enemy.fear}`, color: '#7c3aed' });
-                
-                // 更新状态
-                this.updateStatus();
-                
-                // 重新渲染
-                this.renderCombat();
-            },
-            
-            // 使用物品
-            combatUseItem: function() {
-                const inv = this.team[this.state.selectedInvestigator || 0];
-                if (!inv || inv.inventory.sedative <= 0) {
-                    alert('没有镇静剂了！');
-                    return;
-                }
-                
-                inv.inventory.sedative--;
-                this.reduceSanity(inv, 15);
-                this.combatState.log.push({ text: `${inv.name} 使用镇静剂，SAN-15`, color: '#3498db' });
-                this.updateStatus();
-                this.renderCombat();
-            },
-            
-            // 结束战斗
-            endCombat: function(victory) {
-                const state = this.combatState;
-                const isBoss = state && state.enemy && state.enemy.isBoss;
-                
-                if (isBoss) {
-                    this.endBossCombat(victory);
-                    return;
-                }
-                
-                if (victory) {
-                    alert('战斗胜利！获得10金币');
-                    // 奖励
-                    this.team.forEach(inv => {
-                        inv.inventory.gold += 10;
-                    });
-                }
-                this.combatState = null;
-                
-                // 根据当前场景决定下一步
-                const sceneTitle = document.getElementById('sceneTitle');
-                if (sceneTitle && sceneTitle.textContent.includes('准备区')) {
-                    this.enterTeachingHall();
-                } else if (sceneTitle && sceneTitle.textContent.includes('实验场')) {
-                    this.enterAbyssEdge();
-                } else {
-                    // 继续剧情
-                    this.showRouteChoice();
-                }
-            },
-            
-            // 更新小地图
-            updateMinimap: function() {
-                const minimap = document.getElementById('minimapContent');
-                if (minimap) {
-                    minimap.innerHTML = `
-                        <div style="text-align:center;padding:20px;color:#666;">
-                            <div style="margin-bottom:10px;">🗺️ 地图</div>
-                            <div style="font-size:12px;">入口 → 塌陷通道 → 第7小队营地 → 分叉点</div>
-                            <div style="margin-top:15px;font-size:10px;color:#888;">剧情演示版本</div>
-                        </div>
-                    `;
-                }
-            }
-        };
-        
-        // 使用临时对象
-        window.game = window.tempGame;
-    </script>
+    <script src="game.js?v=12"></script>
 </body>
 </html>
