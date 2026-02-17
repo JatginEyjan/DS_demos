@@ -1353,20 +1353,221 @@
                     };
                     
                     // 显示开始游戏
-                    if (mainContent) {
-                        mainContent.innerHTML = `
-                            <div style="text-align:center;padding:40px;">
-                                <h2 style="color:#e94560;margin-bottom:20px;">第9小队组成完毕</h2>
-                                <p style="font-size:18px;margin-bottom:10px;">${this.team[0].name} + ${this.team[1].name}</p>
-                                <p style="color:#666;margin:30px 0;">准备进入幽暗矿坑...</p>
-                                <button onclick="window.location.reload()" style="padding:15px 40px;background:#e94560;color:white;border:none;font-size:16px;cursor:pointer;">开始探索</button>
-                            </div>
-                        `;
-                    }
+                    this.startGame();
                     
                 } catch (e) {
                     console.error('confirmTeam error:', e);
                     if (debugInfo) debugInfo.textContent = '错误: ' + e.message;
+                }
+            },
+            
+            // 开始游戏
+            startGame: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (sceneTitle) sceneTitle.textContent = '矿坑入口';
+                if (sceneSubtitle) sceneSubtitle.textContent = '深渊裂隙的入口';
+                
+                // 更新状态栏
+                this.updateStatus();
+                
+                // 显示第一个房间
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc">
+                                寒风裹挟着腐朽的气息从黑暗中涌出。<br><br>
+                                手电筒的光束在锈迹斑斑的铁轨上摇晃，照亮了前方坍塌的通道。<br><br>
+                                你们站在深渊裂隙的入口，作为DIA第9小队，任务是找到失踪的第7小队并阻止某种"仪式"。
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.enterRoom('collapse')">
+                                    进入塌陷通道
+                                    <span class="skill-tag">墙上有新鲜的刻痕</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 更新小地图
+                this.updateMinimap();
+            },
+            
+            // 进入房间
+            enterRoom: function(roomId) {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (roomId === 'collapse') {
+                    if (sceneTitle) sceneTitle.textContent = '塌陷通道';
+                    if (sceneSubtitle) sceneSubtitle.textContent = '通道被碎石堵塞';
+                    
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div class="story-room">
+                                <div class="story-desc">
+                                    通道被碎石部分堵塞，但还有一条窄缝可以通过。<br><br>
+                                    你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。
+                                </div>
+                                <div class="story-dialog">
+                                    <div class="dialog-line">
+                                        <span class="dialog-speaker">${this.team[0].name}:</span>
+                                        <span class="dialog-text">"这是拉丁语'危险'的意思，但最后一个字母被人改成了'邀请'..."</span>
+                                    </div>
+                                </div>
+                                <div class="story-choices">
+                                    <button class="action-btn large" onclick="window.game.enterRoom('camp')">
+                                        强行通过
+                                        <span class="skill-tag">可能会触发陷阱</span>
+                                    </button>
+                                    <button class="action-btn large" onclick="window.game.enterRoom('camp')">
+                                        寻找其他路径
+                                        <span class="skill-tag">消耗更多时间</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (roomId === 'camp') {
+                    if (sceneTitle) sceneTitle.textContent = '第7小队营地';
+                    if (sceneSubtitle) sceneSubtitle.textContent = '失踪小队的临时营地';
+                    
+                    if (mainContent) {
+                        mainContent.innerHTML = `
+                            <div class="story-room">
+                                <div class="story-desc">
+                                    一个相对开阔的洞室，显然是第7小队的临时营地。<br><br>
+                                    床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...<br><br>
+                                    你们发现了马库斯队长的日记。
+                                </div>
+                                <div class="story-choices">
+                                    <button class="action-btn large" onclick="window.game.readDiary()">
+                                        阅读日记
+                                        <span class="skill-tag">了解第7小队的发现</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                this.updateMinimap();
+            },
+            
+            // 阅读日记
+            readDiary: function() {
+                const mainContent = document.getElementById('mainContent');
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div style="background:#1a1a2e;padding:20px;border:2px solid #3a3a4a;margin-bottom:20px;">
+                                <h3 style="color:#e94560;margin-bottom:15px;">马库斯的日记</h3>
+                                <div style="color:#aaa;line-height:1.8;">
+                                    <p style="margin-bottom:10px;"><strong>11月15日</strong></p>
+                                    <p style="margin-bottom:15px;">我们找到了他。埃德蒙·布莱克伍德主教。他曾是DIA最资深的顾问，3个月前失踪。</p>
+                                    <p style="margin-bottom:15px;">他没有被绑架。他是自愿来到这里的。他说他发现了一个可怕的真相：深渊不是威胁，而是...屏障。</p>
+                                    <p style="margin-bottom:15px;">"深渊之主"正在苏醒，而人类唯一的生存机会，是主动完成仪式，成为它的"守门人"而非祭品。</p>
+                                    <p style="margin-bottom:10px;"><strong>11月16日</strong></p>
+                                    <p style="margin-bottom:15px;">我试图说服他，但他已经听不进去了。他说仪式需要"3个媒介"，需要"自愿的参与者"。</p>
+                                    <p>我们必须阻止他。即使这意味着...</p>
+                                </div>
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.makeChoice('stop')">
+                                    "我们必须阻止仪式！"
+                                    <span class="skill-tag">决心+阻止仪式</span>
+                                </button>
+                                <button class="action-btn large" onclick="window.game.makeChoice('truth')">
+                                    "他说的是真的吗？"
+                                    <span class="skill-tag">决心+探寻真相</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 做出选择
+            makeChoice: function(type) {
+                if (type === 'stop') {
+                    this.state.resolve.stopRitual += 20;
+                    alert('决心：阻止仪式 +20');
+                } else if (type === 'truth') {
+                    this.state.resolve.seekTruth += 20;
+                    alert('决心：探寻真相 +20');
+                }
+                
+                alert('第一幕完成！\n\n第7小队失踪的真相已揭开。埃德蒙·布莱克伍德主教正在进行某种仪式，试图成为"深渊之主"的守门人。\n\n接下来你们需要决定如何前往仪式现场...');
+                
+                // 显示路线选择
+                this.showRouteChoice();
+            },
+            
+            // 显示路线选择
+            showRouteChoice: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (sceneTitle) sceneTitle.textContent = '矿道分叉';
+                if (sceneSubtitle) sceneSubtitle.textContent = '选择前进方向';
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc">
+                                通道在这里分成两条路。<br><br>
+                                左边通向仪式准备区，主教在那里教导村民仪式的步骤。<br><br>
+                                右边通向深渊边缘，那里可能有第7小队成员的踪迹...
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="alert('上分支剧情开发中...')">
+                                    ⬆️ 前往教导厅
+                                    <span class="skill-tag">了解仪式的秘密</span>
+                                </button>
+                                <button class="action-btn large" onclick="alert('下分支剧情开发中...')">
+                                    ⬇️ 前往深渊边缘
+                                    <span class="skill-tag">寻找第7小队</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 更新状态栏
+            updateStatus: function() {
+                // 更新调查员A状态
+                const inv0 = this.team[0];
+                if (document.getElementById('hpText0')) document.getElementById('hpText0').textContent = inv0.hp + '/' + inv0.maxHp;
+                if (document.getElementById('sanText0')) document.getElementById('sanText0').textContent = inv0.sanity;
+                if (document.getElementById('hpBar0')) document.getElementById('hpBar0').style.width = (inv0.hp / inv0.maxHp * 100) + '%';
+                if (document.getElementById('sanBar0')) document.getElementById('sanBar0').style.width = (inv0.sanity / 100 * 100) + '%';
+                
+                // 更新调查员B状态
+                const inv1 = this.team[1];
+                if (document.getElementById('hpText1')) document.getElementById('hpText1').textContent = inv1.hp + '/' + inv1.maxHp;
+                if (document.getElementById('sanText1')) document.getElementById('sanText1').textContent = inv1.sanity;
+                if (document.getElementById('hpBar1')) document.getElementById('hpBar1').style.width = (inv1.hp / inv1.maxHp * 100) + '%';
+                if (document.getElementById('sanBar1')) document.getElementById('sanBar1').style.width = (inv1.sanity / 100 * 100) + '%';
+            },
+            
+            // 更新小地图
+            updateMinimap: function() {
+                const minimap = document.getElementById('minimapContent');
+                if (minimap) {
+                    minimap.innerHTML = `
+                        <div style="text-align:center;padding:20px;color:#666;">
+                            <div style="margin-bottom:10px;">🗺️ 地图</div>
+                            <div style="font-size:12px;">入口 → 塌陷通道 → 第7小队营地 → 分叉点</div>
+                            <div style="margin-top:15px;font-size:10px;color:#888;">剧情演示版本</div>
+                        </div>
+                    `;
                 }
             }
         };
