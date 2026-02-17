@@ -555,6 +555,236 @@
         </div>
     </div>
 
-    <script src="game.js?v=13"></script>
+    <!-- 简化版内联游戏逻辑 -->
+    <script>
+        // 游戏状态
+        var selectedProfs = [];
+        var gameTeam = [];
+        var currentRoom = 0;
+        
+        // 职业数据
+        var profData = {
+            archaeologist: { name: '考古学家', hp: 70, skills: {侦查:50,力量:30} },
+            soldier: { name: '前军人', hp: 90, skills: {侦查:35,力量:55} },
+            occultist: { name: '神秘学者', hp: 50, skills: {侦查:40,力量:20} }
+        };
+        
+        // 13个房间
+        var roomData = [
+            {
+                name: '矿坑入口',
+                desc: '寒风裹挟着腐朽的气息从黑暗中涌出。作为DIA第9小队，你们的任务是找到失踪的第7小队并阻止某种"仪式"。',
+                choices: [
+                    { text: '进入矿坑', next: 1 }
+                ]
+            },
+            {
+                name: '塌陷通道',
+                desc: '通道被碎石部分堵塞，墙上有新鲜的划痕——有人用匕首刻下了符号。',
+                choices: [
+                    { text: '强行通过', next: 2, san: 5 },
+                    { text: '寻找其他路径', next: 2 }
+                ]
+            },
+            {
+                name: '遗弃装备室',
+                desc: '第7小队留下的临时补给点。地上有一张手写便条："如果我们没回来，不要深入。主教已经不是人了。——马库斯"',
+                choices: [
+                    { text: '拿走物资继续前进', next: 3 }
+                ]
+            },
+            {
+                name: '诡异壁画厅',
+                desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。画中人们围着一个黑色裂隙，似乎在献祭？',
+                choices: [
+                    { text: '研究壁画', next: 4, san: 10 },
+                    { text: '快速离开', next: 4 }
+                ]
+            },
+            {
+                name: '第7小队营地【主轴】',
+                desc: '马库斯队长的日记就摊开在桌上："11月15日：我们找到了埃德蒙·布莱克伍德主教。他说深渊不是威胁，而是屏障。我们必须阻止他。"',
+                choices: [
+                    { text: '阅读完整日记', next: 5 },
+                    { text: '立即追赶', next: 5 }
+                ]
+            },
+            {
+                name: '低语回廊',
+                desc: '你们听到了...低语声？像是有人在耳边说话，但听不清内容。',
+                choices: [
+                    { text: '捂住耳朵快速通过', next: 6, san: 5 },
+                    { text: '寻找声音来源', next: 6, san: 10 }
+                ]
+            },
+            {
+                name: '矿道分叉',
+                desc: '左边通向仪式准备区，右边通向深渊边缘。',
+                choices: [
+                    { text: '⬆️ 前往教导厅', next: 7 },
+                    { text: '⬇️ 前往深渊边缘', next: 9 }
+                ]
+            },
+            // 上分支
+            {
+                name: '教导厅',
+                desc: '几个村民坐在地上，眼神空洞。讲台上的笔记揭示着埃德蒙的真实想法：仪式是拯救人类的唯一方法。',
+                choices: [
+                    { text: '继续前往藏书室', next: 8 }
+                ]
+            },
+            {
+                name: '藏书室【主轴】',
+                desc: '发现了埃德蒙妻子的照片。艾琳娜·布莱克伍德，2年前在第3裂隙事件中被认为死亡，但照片背面写着"愿深渊永远封印"。',
+                choices: [
+                    { text: '⚔️ 迎战守卫', next: 10, combat: true }
+                ]
+            },
+            // 下分支
+            {
+                name: '深渊边缘【主轴】',
+                desc: '马库斯队长浑身是血："埃德蒙不是在保护我们...他是在保护'她'...艾琳娜被困在深渊边缘，他想替换她..."',
+                choices: [
+                    { text: '⚔️ 迎战怪物', next: 10, combat: true }
+                ]
+            },
+            // 汇合
+            {
+                name: '仪式大厅【决战】',
+                desc: '埃德蒙站在能量柱中央："你们来了...我等待着有人能理解我...或者至少...能阻止我。"',
+                choices: [
+                    { text: '💬 尝试说服', ending: 'truth' },
+                    { text: '⚔️ 强行阻止', ending: 'hero' },
+                    { text: '✨ 自愿牺牲', ending: 'sacrifice' }
+                ]
+            }
+        ];
+        
+        // 选择职业
+        function selectProfession(key) {
+            alert('点击了: ' + key);
+            
+            if (selectedProfs.indexOf(key) >= 0) {
+                alert('已经选择过了');
+                return;
+            }
+            if (selectedProfs.length >= 2) {
+                alert('已经选了2个');
+                return;
+            }
+            
+            selectedProfs.push(key);
+            document.getElementById('selectHint').textContent = '已选择 (' + selectedProfs.length + '/2)';
+            
+            // 高亮
+            var cards = document.querySelectorAll('.profession-card');
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i].getAttribute('onclick').indexOf(key) >= 0) {
+                    cards[i].style.borderColor = '#27ae60';
+                    cards[i].style.backgroundColor = '#1a3a2e';
+                }
+            }
+            
+            if (selectedProfs.length === 2) {
+                setTimeout(startGame, 500);
+            }
+        }
+        
+        // 开始游戏
+        function startGame() {
+            alert('游戏开始! ' + profData[selectedProfs[0]].name + ' + ' + profData[selectedProfs[1]].name);
+            
+            // 创建队伍
+            gameTeam = [
+                { name: profData[selectedProfs[0]].name, hp: profData[selectedProfs[0]].hp, maxHp: profData[selectedProfs[0]].hp },
+                { name: profData[selectedProfs[1]].name, hp: profData[selectedProfs[1]].hp, maxHp: profData[selectedProfs[1]].hp }
+            ];
+            
+            // 切换界面
+            document.getElementById('professionSelect').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            
+            // 更新状态
+            updateStatus();
+            
+            // 进入第一个房间
+            enterRoom(0);
+        }
+        
+        // 进入房间
+        function enterRoom(idx) {
+            currentRoom = idx;
+            var room = roomData[idx];
+            
+            document.getElementById('roomName').textContent = room.name;
+            document.getElementById('roomSubtitle').textContent = '房间 ' + (idx + 1) + '/11';
+            
+            var html = '<div style="max-width:600px;margin:0 auto;">';
+            html += '<div style="color:#ccc;line-height:1.8;margin-bottom:20px;">' + room.desc + '</div>';
+            html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+            
+            for (var i = 0; i < room.choices.length; i++) {
+                var c = room.choices[i];
+                var onclick = c.next !== undefined ? 'onclick="enterRoom(' + c.next + ')"' : 'onclick="showEnding(' + \'' + c.ending + '\'\)"';
+                html += '<button ' + onclick + ' style="background:#1a1a2e;border:2px solid #3a3a4a;color:#e0e0e0;padding:15px;text-align:left;cursor:pointer;">';
+                html += '<span style="font-weight:bold;display:block;margin-bottom:5px;">' + c.text + '</span>';
+                html += '</button>';
+            }
+            
+            html += '</div></div>';
+            document.getElementById('mainContent').innerHTML = html;
+            
+            // 战斗判定
+            if (room.choices[0].combat) {
+                doCombat();
+            }
+        }
+        
+        // 简化的战斗
+        function doCombat() {
+            alert('进入战斗!');
+            // 扣点血然后继续
+            gameTeam[0].hp -= 10;
+            updateStatus();
+            setTimeout(function() {
+                alert('战斗胜利! HP-10');
+            }, 500);
+        }
+        
+        // 更新状态栏
+        function updateStatus() {
+            for (var i = 0; i < gameTeam.length; i++) {
+                var el = document.getElementById('inv' + i + 'Name');
+                if (el) el.textContent = gameTeam[i].name;
+                el = document.getElementById('inv' + i + 'Hp');
+                if (el) el.textContent = gameTeam[i].hp + '/' + gameTeam[i].maxHp;
+                el = document.getElementById('inv' + i + 'HpBar');
+                if (el) el.style.width = (gameTeam[i].hp / gameTeam[i].maxHp * 100) + '%';
+            }
+        }
+        
+        // 显示结局
+        function showEnding(type) {
+            var titles = {
+                truth: '📚 真相结局',
+                hero: '🏆 英雄结局', 
+                sacrifice: '😢 牺牲结局'
+            };
+            var descs = {
+                truth: '你说服了埃德蒙，一起找到了让深渊沉睡的方法。',
+                hero: '你们成功击败了埃德蒙，阻止了仪式！',
+                sacrifice: '一名调查员替代艾琳娜成为守门人，永远困在深渊边缘。'
+            };
+            
+            document.getElementById('modalTitle').textContent = titles[type];
+            document.getElementById('modalText').innerHTML = descs[type] + '<br><br><button onclick="location.reload()" style="padding:10px 20px;background:#e94560;color:white;border:none;">再玩一次</button>';
+            document.getElementById('modal').classList.add('show');
+        }
+        
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+    </script>
 </body>
 </html>
