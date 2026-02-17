@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS10 v0.1 - 深渊编年史</title>
+    <title>DS10 v0.2 - 深渊编年史</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 14px; min-height: 100vh; overflow: hidden; }
@@ -61,6 +61,28 @@
         .choice-title { font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px; }
         .choice-desc { font-size: 11px; color: #888; }
         
+        /* v0.2 情境系统 */
+        .situation-panel { background: #1a1a2e; border: 2px solid #3a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .situation-title { color: #e94560; font-size: 12px; margin-bottom: 10px; font-weight: bold; }
+        .situation-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .situation-label { font-size: 11px; width: 50px; color: #888; }
+        .situation-bar-fill { flex: 1; height: 12px; background: #0a0a0f; border: 1px solid #2a2a3a; overflow: hidden; border-radius: 2px; }
+        .situation-fill { height: 100%; transition: width 0.3s; }
+        .situation-fill.resolve { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+        .situation-fill.deterioration { background: linear-gradient(90deg, #e94560, #c0392b); }
+        .action-points { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a2a3a; }
+        .ap-label { font-size: 11px; color: #888; }
+        .ap-dot { width: 12px; height: 12px; border-radius: 50%; background: #27ae60; border: 2px solid #1a3a2e; }
+        .ap-dot.used { background: #2a2a3a; border-color: #3a3a4a; }
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .card-btn { background: #1a1a2e; border: 2px solid #3a3a4a; color: #e0e0e0; padding: 12px; cursor: pointer; text-align: center; border-radius: 6px; }
+        .card-btn:hover:not(:disabled) { border-color: #e94560; transform: translateY(-2px); }
+        .card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .card-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+        .card-name { font-size: 13px; font-weight: bold; }
+        .card-effect { font-size: 10px; color: #888; margin-top: 3px; }
+        .narrative-text { background: #0f0f1a; border-left: 3px solid #e94560; padding: 12px; margin: 15px 0; color: #ccc; font-size: 13px; line-height: 1.6; }
+        
         /* 弹窗 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-overlay.show { display: flex; }
@@ -73,7 +95,7 @@
 <body>
     <!-- 职业选择 -->
     <div id="professionSelect" class="profession-select">
-        <h1 class="profession-title">DS10 v0.1 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
+        <h1 class="profession-title">DS10 v0.2 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
         <div class="profession-card" id="card1" onclick="selectProf('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
             <div class="profession-stats">HP:70 SAN:100 | 侦查50 力量30 神秘学35<br><span style="color:#27ae60;">精通古代文献，能从符号中发现隐藏信息</span></div>
@@ -133,7 +155,7 @@
                 </div>
                 <div class="main-content" id="mainContent"></div>
                 <div class="log-panel" id="logPanel">
-                    <div class="log-entry system">DS10 v0.1 - 13房间完整叙事版</div>
+                    <div class="log-entry system">DS10 v0.2 - 情境系统版（解决度/恶化度+行动卡牌）</div>
                 </div>
             </div>
         </div>
@@ -154,6 +176,15 @@ var selectedProfs = [];
 var team = [];
 var currentRoomIdx = 0;
 var clues = [];
+var currentSituation = { resolve: 0, deterioration: 0, actionPoints: 3 };
+
+// 行动卡牌定义
+var actionCards = {
+    investigate: { name: '侦查', icon: '🔍', resolve: 20, deterioration: 0, desc: '解决度+20' },
+    combat: { name: '战斗', icon: '⚔️', resolve: 25, deterioration: 10, desc: '解决度+25 恶化度+10' },
+    negotiate: { name: '交涉', icon: '💬', resolve: 15, deterioration: -5, desc: '解决度+15 恶化度-5' },
+    occult: { name: '神秘学', icon: '✦', resolve: 35, deterioration: 20, desc: '解决度+35 恶化度+20' }
+};
 
 var professions = {
     archaeologist: { name: '考古学家', hp: 70, maxHp: 70, san: 0, skills: {侦查:50,力量:30,神秘学:35} },
@@ -161,7 +192,7 @@ var professions = {
     occultist: { name: '神秘学者', hp: 50, maxHp: 50, san: 0, skills: {侦查:40,力量:20,神秘学:55} }
 };
 
-// 13个房间完整数据
+// 13个房间完整数据 (v0.2 情境系统版)
 var rooms = [
     {
         id: 'entrance',
@@ -355,6 +386,9 @@ function enterRoom(idx) {
     currentRoomIdx = idx;
     var room = rooms[idx];
     
+    // 初始化情境
+    currentSituation = { resolve: 0, deterioration: room.type === 'main' ? 10 : 0, actionPoints: 3 };
+    
     document.getElementById('roomTitle').textContent = room.name;
     document.getElementById('roomSub').textContent = '房间 ' + (idx + 1) + '/13';
     
@@ -363,40 +397,153 @@ function enterRoom(idx) {
     // 描述
     html += '<div class="room-desc">' + room.desc.replace(/\n/g, '<br>') + '</div>';
     
-    // 发现物
-    if (room.discoveries && room.discoveries.length > 0) {
-        html += '<div class="discoveries">';
-        html += '<div class="discoveries-title">发现物（点击阅读）</div>';
-        room.discoveries.forEach(function(d) {
-            html += '<div class="discovery-item" onclick="readDiscovery(' + idx + ', \'' + d.id + '\')">';
-            html += '<span class="discovery-icon">' + d.icon + '</span>';
-            html += '<span class="discovery-name">' + d.name + '</span>';
+    // v0.2 情境面板
+    if (room.type !== 'main' || idx === 0) {
+        // 非情境房间直接显示选择
+        // 选择
+        html += '<div class="room-choices">';
+        room.choices.forEach(function(c) {
+            var onclick = '';
+            if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
+            else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
+            
+            html += '<button class="choice-btn" ' + onclick + '>';
+            html += '<span class="choice-title">' + c.text + '</span>';
+            if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
+            html += '</button>';
+        });
+        html += '</div>';
+    } else {
+        // 情境房间显示情境系统
+        html += '<div class="situation-panel">';
+        html += '<div class="situation-title">⚠️ 情境</div>';
+        html += '<div class="situation-bar">';
+        html += '<span class="situation-label">解决度</span>';
+        html += '<div class="situation-bar-fill"><div class="situation-fill resolve" id="resolveBar" style="width:0%"></div></div>';
+        html += '<span class="bar-value" id="resolveText">0/100</span>';
+        html += '</div>';
+        html += '<div class="situation-bar">';
+        html += '<span class="situation-label">恶化度</span>';
+        html += '<div class="situation-bar-fill"><div class="situation-fill deterioration" id="deteriorationBar" style="width:' + currentSituation.deterioration + '%"></div></div>';
+        html += '<span class="bar-value" id="deteriorationText">' + currentSituation.deterioration + '/100</span>';
+        html += '</div>';
+        html += '<div class="action-points">';
+        html += '<span class="ap-label">行动点</span>';
+        for (var i = 0; i < 3; i++) {
+            html += '<div class="ap-dot" id="ap' + i + '"></div>';
+        }
+        html += '</div>';
+        html += '</div>';
+        
+        // 叙事文本区域
+        html += '<div id="narrativeArea"></div>';
+        
+        // 发现物
+        if (room.discoveries && room.discoveries.length > 0) {
+            html += '<div class="discoveries">';
+            html += '<div class="discoveries-title">发现物（点击阅读）</div>';
+            room.discoveries.forEach(function(d) {
+                html += '<div class="discovery-item" onclick="readDiscovery(' + idx + ', \'' + d.id + '\')">';
+                html += '<span class="discovery-icon">' + d.icon + '</span>';
+                html += '<span class="discovery-name">' + d.name + '</span>';
+                html += '</div>';
+            });
             html += '</div>';
+        }
+        
+        // 行动卡牌
+        html += '<div class="card-grid" id="cardGrid">';
+        var cards = ['investigate', 'combat', 'negotiate', 'occult'];
+        cards.forEach(function(cardKey) {
+            var card = actionCards[cardKey];
+            html += '<button class="card-btn" onclick="playCard(\'' + cardKey + '\')" id="card_' + cardKey + '">';
+            html += '<span class="card-icon">' + card.icon + '</span>';
+            html += '<span class="card-name">' + card.name + '</span>';
+            html += '<span class="card-effect">' + card.desc + '</span>';
+            html += '</button>';
+        });
+        html += '</div>';
+        
+        // 出口按钮（初始隐藏）
+        html += '<div id="exitArea" style="display:none;margin-top:15px;">';
+        html += '<div style="color:#27ae60;text-align:center;margin-bottom:10px;">✓ 情境解决</div>';
+        room.choices.forEach(function(c) {
+            var onclick = '';
+            if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
+            else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
+            html += '<button class="choice-btn" ' + onclick + '>';
+            html += '<span class="choice-title">' + c.text + '</span>';
+            if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
+            html += '</button>';
         });
         html += '</div>';
     }
     
-    // 选择
-    html += '<div class="room-choices">';
-    room.choices.forEach(function(c) {
-        var onclick = '';
-        if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
-        else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
-        
-        html += '<button class="choice-btn" ' + onclick + '>';
-        html += '<span class="choice-title">' + c.text + '</span>';
-        if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
-        html += '</button>';
-    });
-    html += '</div>';
-    
     html += '</div>';
     
     document.getElementById('mainContent').innerHTML = html;
+}
+
+// 打出行动卡牌
+function playCard(cardKey) {
+    if (currentSituation.actionPoints <= 0) return;
+    if (currentSituation.resolve >= 100) return;
     
-    // SAN伤害
-    if (room.choices && room.choices[0].san) {
-        addSanity(room.choices[0].san);
+    var card = actionCards[cardKey];
+    var room = rooms[currentRoomIdx];
+    
+    // 消耗行动点
+    currentSituation.actionPoints--;
+    document.getElementById('ap' + currentSituation.actionPoints).classList.add('used');
+    
+    // 计算效果
+    var resolveGain = card.resolve;
+    var deterGain = card.deterioration;
+    
+    // 职业加成
+    if (cardKey === 'investigate' && team[0].key === 'archaeologist') resolveGain += 5;
+    if (cardKey === 'combat' && team[0].key === 'soldier') resolveGain += 5;
+    if (cardKey === 'occult' && team[0].key === 'occultist') resolveGain += 5;
+    
+    // 应用效果
+    currentSituation.resolve = Math.min(100, currentSituation.resolve + resolveGain);
+    currentSituation.deterioration = Math.max(0, Math.min(100, currentSituation.deterioration + deterGain));
+    
+    // 更新UI
+    document.getElementById('resolveBar').style.width = currentSituation.resolve + '%';
+    document.getElementById('resolveText').textContent = currentSituation.resolve + '/100';
+    document.getElementById('deteriorationBar').style.width = currentSituation.deterioration + '%';
+    document.getElementById('deteriorationText').textContent = currentSituation.deterioration + '/100';
+    
+    // 显示叙事文本
+    var narratives = {
+        investigate: '你仔细观察周围环境，发现了一些之前忽略的线索。墙壁上的刻痕、地上的脚印、空气中不寻常的气味——每一个细节都可能是关键。',
+        combat: '你握紧武器，准备迎接可能的威胁。肌肉紧绷，感官敏锐，战斗的本能正在苏醒。',
+        negotiate: '你尝试与周围的环境"对话"，寻找共存的可能性。有时候，理解比对抗更重要。',
+        occult: '你感受到深渊能量的波动，那种力量既诱人又危险。你小心翼翼地触碰它，试图理解它的本质。'
+    };
+    
+    var narrativeArea = document.getElementById('narrativeArea');
+    narrativeArea.innerHTML = '<div class="narrative-text">' + narratives[cardKey] + '<br><br><span style="color:#888;">解决度 +' + resolveGain + (deterGain > 0 ? ' | 恶化度 +' + deterGain : deterGain < 0 ? ' | 恶化度 ' + deterGain : '') + '</span></div>';
+    
+    // 恶化度超过阈值时增加SAN
+    if (currentSituation.deterioration >= 50) {
+        addSanity(5);
+    }
+    
+    // 检查情境解决
+    if (currentSituation.resolve >= 100) {
+        document.getElementById('cardGrid').style.display = 'none';
+        document.getElementById('exitArea').style.display = 'block';
+        narrativeArea.innerHTML += '<div class="narrative-text" style="border-color:#27ae60;">情境已解决，你可以离开了。</div>';
+    }
+    
+    // 行动点用完
+    if (currentSituation.actionPoints <= 0 && currentSituation.resolve < 100) {
+        document.getElementById('cardGrid').style.display = 'none';
+        document.getElementById('exitArea').style.display = 'block';
+        narrativeArea.innerHTML += '<div class="narrative-text" style="border-color:#e94560;">行动点耗尽，你不得不离开...</div>';
+        addSanity(10);
     }
 }
 
