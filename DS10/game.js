@@ -246,23 +246,58 @@ const game = {
     
     // 显示职业选择
     showProfessionSelect() {
-        document.getElementById('professionSelect').classList.remove('hidden');
-        document.getElementById('gameUI').classList.add('hidden');
+        console.log('showProfessionSelect called');
+        const selectPanel = document.getElementById('professionSelect');
+        const gamePanel = document.getElementById('gameUI');
+        
+        if (selectPanel) selectPanel.classList.remove('hidden');
+        if (gamePanel) gamePanel.classList.add('hidden');
+        
+        // 重置选择
         this.selectedProfessions = [];
+        
+        // 重置卡片样式
+        document.querySelectorAll('.profession-card').forEach(card => {
+            card.classList.remove('selected');
+            card.style.borderColor = '#2a2a3a';
+            card.style.boxShadow = 'none';
+        });
+        
         this.updateSelectHint();
+        console.log('Profession select ready');
     },
     
     // 选择职业
     selectProfession(key) {
-        if (this.selectedProfessions.includes(key)) return;
-        if (this.selectedProfessions.length >= 2) return;
+        console.log('selectProfession called:', key);
+        
+        // 确保数组已初始化
+        if (!this.selectedProfessions) {
+            this.selectedProfessions = [];
+        }
+        
+        if (this.selectedProfessions.includes(key)) {
+            console.log('Already selected');
+            return;
+        }
+        if (this.selectedProfessions.length >= 2) {
+            console.log('Already have 2');
+            return;
+        }
         
         this.selectedProfessions.push(key);
+        console.log('Selected:', this.selectedProfessions);
+        
         this.updateSelectHint();
         
         // 高亮卡片
         const cards = document.querySelectorAll('.profession-card');
-        cards[this.selectedProfessions.length - 1].classList.add('selected');
+        const idx = this.selectedProfessions.length - 1;
+        if (cards[idx]) {
+            cards[idx].classList.add('selected');
+            cards[idx].style.borderColor = '#27ae60';
+            cards[idx].style.boxShadow = '0 0 15px rgba(39, 174, 96, 0.5)';
+        }
         
         if (this.selectedProfessions.length === 2) {
             setTimeout(() => this.startGame(), 500);
@@ -271,9 +306,14 @@ const game = {
     
     // 更新选择提示
     updateSelectHint() {
+        console.log('updateSelectHint called, count:', this.selectedProfessions ? this.selectedProfessions.length : 0);
         const hint = document.getElementById('selectHint');
         if (hint) {
-            hint.textContent = `点击卡片选择 (${this.selectedProfessions.length}/2)`;
+            const count = this.selectedProfessions ? this.selectedProfessions.length : 0;
+            hint.textContent = `点击卡片选择 (${count}/2)`;
+            hint.style.color = count > 0 ? '#27ae60' : '#666';
+        } else {
+            console.error('selectHint element not found!');
         }
     },
     
