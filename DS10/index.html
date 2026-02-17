@@ -2,1237 +2,138 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DS10 v7 - 深渊编年史</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS10 v0.1 - 深渊编年史</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; font-size: 14px; min-height: 100vh; overflow: hidden; }
+        .hidden { display: none !important; }
         
-        body {
-            background: #0a0a0f;
-            color: #e0e0e0;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            min-height: 100vh;
-            overflow: hidden;
-        }
+        /* 状态栏 */
+        .team-status-bar { background: #1a1a2e; padding: 8px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 2px solid #0f0f1a; }
+        .investigator-status { background: #0f0f1a; border: 2px solid #2a2a3a; border-radius: 6px; padding: 8px; }
+        .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .inv-name { font-size: 12px; font-weight: bold; }
+        .status-label { font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+        .status-label.calm { background: #27ae60; }
+        .status-label.uneasy { background: #f39c12; color: #000; }
+        .status-label.nervous { background: #e67e22; }
+        .status-label.fearful { background: #e94560; }
+        .bar-row { display: flex; align-items: center; gap: 6px; }
+        .bar-label { font-size: 10px; color: #888; width: 24px; }
+        .bar-container { flex: 1; height: 10px; background: #0a0a0f; border: 1px solid #2a2a3a; overflow: hidden; }
+        .bar-fill { height: 100%; background: #e94560; }
+        .bar-fill.sanity { background: #7c3aed; }
+        .bar-value { font-size: 10px; color: #888; width: 40px; text-align: right; }
         
-        /* 双人状态栏 */
-        .team-status-bar {
-            background: #1a1a2e;
-            padding: 8px 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            border-bottom: 2px solid #0f0f1a;
-            flex-shrink: 0;
-        }
-        
-        .investigator-status {
-            background: #0f0f1a;
-            border: 2px solid #2a2a3a;
-            border-radius: 6px;
-            padding: 8px;
-        }
-        
-        .investigator-status.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 8px rgba(233, 69, 96, 0.3);
-        }
-        
-        .inv-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-        
-        .inv-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-        }
-        
-        .status-label {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        
-        .status-label.calm { background: #27ae60; color: white; }
-        .status-label.uneasy { background: #f39c12; color: black; }
-        .status-label.nervous { background: #e67e22; color: white; }
-        .status-label.fearful { background: #e94560; color: white; }
-        .status-label.breaking { background: #7c3aed; color: white; }
-        .status-label.broken { background: #000; color: #e94560; border: 1px solid #e94560; }
-        
-        .inv-bars {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .bar-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .bar-label {
-            font-size: 10px;
-            color: #888;
-            width: 24px;
-        }
-        
-        .bar-container {
-            flex: 1;
-            height: 10px;
-            background: #0a0a0f;
-            border: 1px solid #2a2a3a;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        
-        .bar-container.hp .bar-fill {
-            background: #e94560;
-        }
-        
-        .bar-container.san .bar-fill {
-            background: #7c3aed;
-        }
-        
-        .bar-fill {
-            height: 100%;
-            transition: width 0.3s;
-        }
-        
-        .bar-value {
-            font-size: 10px;
-            color: #aaa;
-            width: 40px;
-            text-align: right;
-        }
-        
-        /* 移动端双人状态栏 */
-        @media (max-width: 768px) {
-            .team-status-bar {
-                padding: 6px 8px;
-                gap: 8px;
-            }
-            
-            .investigator-status {
-                padding: 6px;
-            }
-            
-            .inv-name {
-                font-size: 11px;
-            }
-            
-            .status-label {
-                font-size: 9px;
-                padding: 1px 4px;
-            }
-            
-            .bar-container {
-                height: 8px;
-            }
-            
-            .bar-value {
-                font-size: 9px;
-                width: 35px;
-            }
-        }
+        /* 游戏布局 */
+        .game-layout { display: flex; height: calc(100vh - 70px); }
+        .main-panel { flex: 1; display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow: hidden; }
+        .scene-header { text-align: center; padding: 10px; background: #1a1a2e; border: 2px solid #2a2a3a; }
+        .scene-title { color: #e94560; font-size: 16px; font-weight: bold; }
+        .scene-subtitle { color: #666; font-size: 11px; margin-top: 4px; }
+        .main-content { flex: 1; background: #0f0f1a; border: 3px solid #2a2a3a; overflow-y: auto; padding: 15px; }
+        .log-panel { background: #0a0a0f; border: 2px solid #1a1a2e; padding: 8px; height: 100px; overflow-y: auto; font-size: 11px; }
+        .log-entry { margin-bottom: 4px; padding: 3px 8px; border-left: 3px solid #3a3a4a; }
+        .log-entry.system { border-left-color: #3498db; color: #5dade2; }
         
         /* 职业选择 */
-        .profession-card.selected {
-            border-color: #27ae60;
-            box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
-        }
-        
-        /* 游戏主容器 - 左右分栏（桌面端） */
-        .game-layout {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        
-        @media (max-width: 768px) {
-            .game-layout {
-                flex-direction: column-reverse;
-            }
-        }
-        
-        /* 左侧主画面 */
-        .main-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 12px;
-            gap: 10px;
-            overflow-y: auto;
-            min-width: 0; /* 防止flex子项溢出 */
-        }
-        
-        /* 右侧小地图 */
-        .minimap-panel {
-            width: 140px;
-            background: #0f0f1a;
-            border-left: 3px solid #2a2a3a;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0; /* 防止压缩 */
-        }
-        
-        /* 移动端适配 - 隐藏侧边地图，使用全屏+按钮 */
-        @media (max-width: 768px) {
-            /* 手机端完全隐藏右侧地图面板 */
-            .minimap-panel {
-                display: none;
-            }
-            
-            .main-panel {
-                flex: 1;
-                padding: 6px;
-                gap: 6px;
-                overflow: hidden;
-            }
-            
-            .scene-header {
-                padding: 8px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .scene-title {
-                font-size: 14px;
-            }
-            
-            .scene-subtitle {
-                font-size: 10px;
-            }
-            
-            .log-panel {
-                height: 100px;
-                flex-shrink: 0;
-            }
-            
-            .main-content {
-                flex: 1;
-                min-height: 0;
-                overflow-y: auto;
-            }
-            
-            .action-panel {
-                flex-shrink: 0;
-            }
-            
-            /* 移动端网格地图弹窗 */
-            .mobile-map-btn {
-                display: block !important;
-                background: #2a2a3a;
-                border: 2px solid #3a3a4a;
-                color: #e0e0e0;
-                padding: 6px 12px;
-                font-size: 12px;
-                cursor: pointer;
-            }
-            
-            .mobile-map-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.95);
-                z-index: 1500;
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-            
-            .mobile-map-modal.show {
-                display: flex;
-            }
-            
-            .mobile-map-content {
-                background: #0f0f1a;
-                border: 3px solid #2a2a3a;
-                padding: 20px;
-            }
-            
-            .mobile-map-close {
-                margin-top: 20px;
-                background: #e94560;
-                border: none;
-                color: white;
-                padding: 12px 30px;
-                font-size: 14px;
-                cursor: pointer;
-            }
-        }
-        
-        /* 桌面端隐藏手机地图按钮 */
-        .mobile-map-btn {
-            display: none;
-        }
-        
-        .mobile-map-modal {
-            display: none;
-        }
-        
-        /* 超小屏幕适配 */
-        @media (max-width: 380px) {
-            .status-bar {
-                font-size: 10px;
-                padding: 8px 10px;
-            }
-            
-            .bar-container {
-                width: 40px;
-                height: 10px;
-            }
-            
-            .minimap-panel {
-                height: 100px;
-            }
-            
-            .grid-cell {
-                width: 18px;
-                height: 18px;
-                font-size: 10px;
-            }
-        }
-        
-        .minimap-title {
-            font-size: 11px;
-            color: #888;
-            text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #2a2a3a;
-        }
-        
-        .minimap-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        /* 网格地图 */
-        .grid-map {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-        
-        .grid-row {
-            display: flex;
-            gap: 3px;
-        }
-        
-        .grid-cell {
-            width: 20px;
-            height: 20px;
-            background: #1a1a2e;
-            border: 1px solid #2a2a3a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            flex-shrink: 0;
-        }
-        
-        .grid-cell.empty {
-            background: transparent;
-            border: none;
-        }
-        
-        .grid-cell.current {
-            background: #e94560;
-            border-color: #ff6666;
-            color: white;
-            font-weight: bold;
-            animation: pulse 1s infinite;
-        }
-        
-        .grid-cell.visited {
-            background: #27ae60;
-            border-color: #2ecc71;
-            color: white;
-        }
-        
-        .grid-cell.visible {
-            background: #3a3a4a;
-            border-color: #555;
-            color: #888;
-        }
-        
-        .grid-cell.fog {
-            background: #0a0a0f;
-            border-color: #1a1a2a;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        .map-legend {
-            margin-top: 10px;
-            font-size: 9px;
-            color: #666;
-            text-align: center;
-            line-height: 1.4;
-        }
-        
-        /* 场景标题 */
-        .scene-header {
-            text-align: center;
-            padding: 10px;
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-        }
-        
-        .scene-title {
-            color: #e94560;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        .scene-subtitle {
-            color: #666;
-            font-size: 11px;
-            margin-top: 4px;
-        }
-        
-        /* 主内容区 */
-        .main-content {
-            flex: 1;
-            background: #0f0f1a;
-            border: 3px solid #2a2a3a;
-            overflow-y: auto;
-        }
-        
-        /* 路线选择界面 */
-        .route-view {
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .direction-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            max-width: 280px;
-            margin: 0 auto;
-        }
-        
-        @media (max-width: 768px) {
-            .direction-grid {
-                gap: 8px;
-            }
-            
-            .direction-btn {
-                padding: 12px 8px;
-            }
-            
-            .dir-arrow {
-                font-size: 20px;
-            }
-            
-            .dir-name {
-                font-size: 11px;
-            }
-        }
-        
-        .direction-btn {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            color: #e0e0e0;
-            padding: 15px 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .direction-btn:hover {
-            border-color: #e94560;
-            background: #252538;
-        }
-        
-        .direction-btn.rest {
-            border-color: #27ae60;
-        }
-        
-        /* 事件界面 */
-        .event-view {
-            padding: 20px;
-            text-align: center;
-        }
-
-        .event-desc {
-            font-size: 14px;
-            color: #ccc;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .event-choices {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 280px;
-            margin: 0 auto;
-        }
-
-        /* 剧情房间样式 */
-        .story-room {
-            padding: 15px;
-        }
-
-        .story-desc {
-            background: #1a1a2e;
-            border-left: 3px solid #e94560;
-            padding: 12px 15px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            line-height: 1.8;
-            color: #ccc;
-        }
-
-        .story-dialog {
-            background: #0f0f1a;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-        }
-
-        .dialog-line {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: #1a1a2e;
-            border-radius: 4px;
-        }
-
-        .dialog-speaker {
-            color: #e94560;
-            font-weight: bold;
-            font-size: 11px;
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .dialog-text {
-            color: #aaa;
-            font-size: 12px;
-            font-style: italic;
-        }
-
-        .story-discoveries {
-            margin-bottom: 15px;
-        }
-
-        .discovery-item {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 12px;
-        }
-
-        .discovery-item:hover {
-            border-color: #e94560;
-            background: #2a2a3a;
-        }
-
-        .story-choices {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .story-choices .action-btn {
-            text-align: left;
-            padding: 12px 15px;
-        }
-
-        /* 决心值显示 */
-        .resolve-display {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid #3a3a4a;
-            padding: 8px 12px;
-            font-size: 10px;
-            color: #888;
-            z-index: 100;
-        }
-
-        .dir-arrow {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        
-        .dir-name {
-            font-size: 12px;
-            margin-bottom: 3px;
-        }
-        
-        .dir-cost {
-            font-size: 10px;
-            color: #888;
-        }
-        
-        /* 房间入口 */
-        .room-entry {
-            padding: 20px 15px;
-            text-align: center;
-        }
-        
-        .entry-preview {
-            margin-bottom: 20px;
-        }
-        
-        .preview-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
-        .preview-desc {
-            color: #888;
-            font-size: 12px;
-        }
-        
-        .entry-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-width: 260px;
-            margin: 0 auto;
-        }
-        
-        @media (max-width: 768px) {
-            .room-entry {
-                padding: 15px 10px;
-            }
-            
-            .preview-icon {
-                font-size: 40px;
-            }
-            
-            .entry-actions {
-                max-width: 100%;
-            }
-        }
-        
-        .action-btn.large {
-            padding: 15px;
-            text-align: center;
-        }
-        
-        /* 战斗界面 */
-        .combat-view {
-            padding: 10px;
-        }
-        
-        /* 双人战斗布局 */
-        .team-battle-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .investigator-battle-card {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .investigator-battle-card:hover {
-            border-color: #3a3a4a;
-        }
-        
-        .investigator-battle-card.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 12px rgba(233, 69, 96, 0.4);
-        }
-        
-        .investigator-battle-card.dead {
-            opacity: 0.5;
-            border-color: #333;
-            cursor: not-allowed;
-        }
-        
-        .investigator-battle-card .inv-icon {
-            font-size: 28px;
-            margin-bottom: 4px;
-        }
-        
-        .investigator-battle-card .inv-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #e0e0e0;
-            margin-bottom: 2px;
-        }
-        
-        .investigator-battle-card .inv-status {
-            font-size: 10px;
-            color: #888;
-            margin-bottom: 4px;
-        }
-        
-        .investigator-battle-card .inv-hp,
-        .investigator-battle-card .inv-san {
-            font-size: 10px;
-            color: #aaa;
-        }
-        
-        .investigator-battle-card .inv-affliction {
-            font-size: 9px;
-            color: #e94560;
-            margin-top: 4px;
-        }
-        
-        .investigator-battle-card .inv-virtue {
-            font-size: 9px;
-            color: #f1c40f;
-            margin-top: 4px;
-        }
-        
-        .vs-divider {
-            text-align: center;
-            font-size: 20px;
-            color: #e94560;
-            margin: 10px 0;
-        }
-        
-        /* 房间内容区域 */
-        .room-content-section {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .section-title {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 10px;
-            text-align: center;
-            border-bottom: 1px solid #2a2a3a;
-            padding-bottom: 6px;
-        }
-        
-        .empty-room {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-            padding: 30px 20px;
-        }
-        
-        .target-info {
-            background: #2a2a3a;
-            border: 2px solid #3a3a4a;
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        .target-name {
-            color: #e94560;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        
-        .target-desc {
-            color: #888;
-            font-size: 11px;
-        }
-        
-        .action-hint {
-            color: #888;
-            font-size: 11px;
-            text-align: center;
-            padding: 10px;
-            background: #1a1a2e;
-            border: 1px dashed #3a3a4a;
-            border-radius: 4px;
-        }
-        
-        /* 选中状态 */
-        .enemy-card.selected, .object-card.selected {
-            border-color: #e94560;
-            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
-            transform: scale(1.05);
-        }
-        
-        .enemies-row {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        
-        .enemy-card {
-            background: #1a1a2e;
-            border: 2px solid #e94560;
-            padding: 12px 8px;
-            width: 85px;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        @media (max-width: 768px) {
-            .enemy-card {
-                width: 75px;
-                padding: 10px 5px;
-            }
-            
-            .enemy-icon {
-                font-size: 24px;
-            }
-            
-            .enemy-name {
-                font-size: 10px;
-            }
-            
-            .enemy-hp-text {
-                font-size: 9px;
-            }
-        }
-        
-        .enemy-card:hover {
-            background: #2a1a2e;
-        }
-        
-        .enemy-icon {
-            font-size: 28px;
-            margin-bottom: 6px;
-        }
-        
-        .enemy-name {
-            font-size: 11px;
-            color: #e94560;
-            margin-bottom: 4px;
-        }
-        
-        .enemy-hp-bar {
-            height: 5px;
-            background: #0a0a0f;
-            margin-bottom: 4px;
-        }
-        
-        .enemy-hp-bar div {
-            height: 100%;
-            background: #e94560;
-            transition: width 0.3s;
-        }
-        
-        .enemy-hp-text {
-            font-size: 9px;
-            color: #888;
-        }
-        
-        .objects-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .object-card {
-            background: #1a1a2e;
-            border: 2px solid #3a3a4a;
-            padding: 15px;
-            width: 80px;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        .object-icon {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-        
-        .object-name {
-            font-size: 10px;
-            color: #aaa;
-        }
-        
-        /* 行动按钮 */
-        .action-panel {
-            background: #1a1a2e;
-            border: 2px solid #2a2a3a;
-            padding: 12px;
-        }
-        
-        .action-title {
-            color: #e94560;
-            font-size: 12px;
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #2a2a3a;
-        }
-        
-        .action-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-        
-        .action-btn {
-            background: #252538;
-            border: 2px solid #3a3a4a;
-            color: #e0e0e0;
-            padding: 12px 8px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-family: inherit;
-            text-align: left;
-        }
-        
-        .action-btn:hover {
-            border-color: #e94560;
-        }
-        
-        .action-btn .skill-tag {
-            display: block;
-            font-size: 10px;
-            color: #888;
-            margin-top: 4px;
-        }
-        
-        /* 日志面板 */
-        .log-panel {
-            background: #0a0a0f;
-            border: 2px solid #1a1a2e;
-            padding: 8px;
-            height: 140px;
-            overflow-y: auto;
-            font-size: 11px;
-            line-height: 1.5;
-        }
-        
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 3px 8px;
-            border-left: 3px solid #3a3a4a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .log-entry.success {
-            border-left-color: #27ae60;
-            color: #2ecc71;
-        }
-        
-        .log-entry.failure {
-            border-left-color: #e94560;
-            color: #ff6666;
-        }
-        
-        .log-entry.system {
-            border-left-color: #3498db;
-            color: #5dade2;
-        }
-        
-        .log-entry.damage {
-            border-left-color: #e94560;
-            color: #ff6b6b;
-            background: rgba(233, 69, 96, 0.1);
-        }
-        
-        .log-entry.sanity {
-            border-left-color: #7c3aed;
-            color: #a78bfa;
-            background: rgba(124, 58, 237, 0.1);
-        }
-        
-        .log-entry.combat {
-            border-left-color: #f39c12;
-            color: #f5b041;
-        }
-        
-        .log-entry.reward {
-            border-left-color: #f1c40f;
-            color: #f4d03f;
-            background: rgba(241, 196, 15, 0.1);
-        }
-        
-        /* 职业选择 */
-        .profession-select {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-        
-        .profession-title {
-            color: #e94560;
-            font-size: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .profession-card {
-            background: #1a1a2e;
-            border: 3px solid #2a2a3a;
-            padding: 16px;
-            margin: 8px;
-            width: 100%;
-            max-width: 300px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .profession-card:hover {
-            border-color: #e94560;
-            transform: translateY(-2px);
-        }
-        
-        .profession-name {
-            color: #e94560;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        
-        .profession-stats {
-            font-size: 11px;
-            color: #888;
-        }
+        .profession-select { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 1000; }
+        .profession-title { color: #e94560; font-size: 20px; margin-bottom: 20px; text-align: center; }
+        .profession-card { background: #1a1a2e; border: 3px solid #2a2a3a; padding: 16px; margin: 8px; width: 100%; max-width: 300px; cursor: pointer; }
+        .profession-card.selected { border-color: #27ae60; box-shadow: 0 0 15px rgba(39,174,96,0.5); }
+        .profession-name { color: #e94560; font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+        .profession-stats { font-size: 11px; color: #888; }
+        .hint { color: #666; text-align: center; margin-top: 20px; }
+        
+        /* 房间样式 */
+        .room-container { max-width: 600px; margin: 0 auto; }
+        .room-desc { color: #ccc; line-height: 1.8; margin-bottom: 20px; font-size: 14px; }
+        .discoveries { background: #1a1a2e; border: 2px solid #3a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .discoveries-title { color: #888; font-size: 12px; margin-bottom: 10px; }
+        .discovery-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #0f0f1a; border: 1px solid #2a2a3a; margin-bottom: 8px; cursor: pointer; }
+        .discovery-item:hover { border-color: #e94560; }
+        .discovery-icon { font-size: 20px; }
+        .discovery-name { font-size: 13px; }
+        .room-choices { display: flex; flex-direction: column; gap: 10px; }
+        .choice-btn { background: #1a1a2e; border: 2px solid #3a3a4a; color: #e0e0e0; padding: 15px; cursor: pointer; text-align: left; }
+        .choice-btn:hover { border-color: #e94560; background: #2a1a2e; }
+        .choice-title { font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .choice-desc { font-size: 11px; color: #888; }
         
         /* 弹窗 */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        
-        .modal-overlay.show {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: #1a1a2e;
-            border: 4px solid #e94560;
-            padding: 24px;
-            max-width: 300px;
-            text-align: center;
-        }
-        
-        .modal-title {
-            color: #e94560;
-            font-size: 18px;
-            margin-bottom: 12px;
-        }
-        
-        .modal-text {
-            color: #aaa;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
-        
-        .modal-btn {
-            background: #e94560;
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        /* 滚动条 */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-            background: #0a0a0f;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-            background: #2a2a3a;
-            border-radius: 3px;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: #1a1a2e; border: 4px solid #e94560; padding: 24px; max-width: 300px; text-align: center; }
+        .modal-title { color: #e94560; font-size: 18px; margin-bottom: 12px; }
+        .modal-text { color: #aaa; font-size: 13px; margin-bottom: 20px; }
+        .modal-btn { background: #e94560; border: none; color: white; padding: 12px 24px; cursor: pointer; }
     </style>
 </head>
 <body>
     <!-- 职业选择 -->
     <div id="professionSelect" class="profession-select">
-        <h1 class="profession-title">DS10 v7 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
-
-        <div class="profession-card" data-profession="archaeologist" onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中，请稍候');">
+        <h1 class="profession-title">DS10 v0.1 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
+        <div class="profession-card" id="card1" onclick="selectProf('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
-            <div class="profession-stats">
-                HP: 70 | SAN: 100<br>
-                侦查: 50 | 力量: 30 | 神秘学: 35<br>
-                <span style="color:#27ae60;">精通古代文献，能从符号中发现隐藏信息</span>
-            </div>
+            <div class="profession-stats">HP:70 SAN:100 | 侦查50 力量30 神秘学35<br><span style="color:#27ae60;">精通古代文献，能从符号中发现隐藏信息</span></div>
         </div>
-
-        <div class="profession-card" data-profession="soldier" onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中，请稍候');">
+        <div class="profession-card" id="card2" onclick="selectProf('soldier')">
             <div class="profession-name">⚔️ 前军人</div>
-            <div class="profession-stats">
-                HP: 90 | SAN: 100<br>
-                侦查: 35 | 力量: 55 | 神秘学: 20<br>
-                <span style="color:#27ae60;">实战经验丰富，危机时刻保持冷静</span>
-            </div>
+            <div class="profession-stats">HP:90 SAN:100 | 侦查35 力量55 神秘学20<br><span style="color:#27ae60;">实战经验丰富，危机时刻保持冷静</span></div>
         </div>
-
-        <div class="profession-card" data-profession="occultist" onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中，请稍候');">
+        <div class="profession-card" id="card3" onclick="selectProf('occultist')">
             <div class="profession-name">✦ 神秘学者</div>
-            <div class="profession-stats">
-                HP: 50 | SAN: 100<br>
-                侦查: 40 | 力量: 20 | 神秘学: 55<br>
-                <span style="color:#27ae60;">能感知深渊能量，理解超自然现象</span>
-            </div>
+            <div class="profession-stats">HP:50 SAN:100 | 侦查40 力量20 神秘学55<br><span style="color:#27ae60;">能感知深渊能量，理解超自然现象</span></div>
         </div>
-        
-        <!-- 备用选择按钮（手机端兼容） -->
-        <div style="margin-top:30px;padding:15px;border:2px dashed #666;text-align:center;">
-            <div style="color:#888;margin-bottom:10px;">如果上方卡片无法点击，请使用下方按钮：</div>
-            <button onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#1a3a2e;color:#27ae60;border:2px solid #27ae60;">考古学家</button>
-            <button onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#3a2a1a;color:#e67e22;border:2px solid #e67e22;">前军人</button>
-            <button onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#2a1a3a;color:#7c3aed;border:2px solid #7c3aed;">神秘学者</button>
-        </div>
-        
-        <div id="debug-info" style="margin-top:20px;color:#666;font-size:11px;">调试信息...</div>
+        <div class="hint" id="selectHint">点击卡片选择 (0/2)</div>
     </div>
 
     <!-- 游戏主界面 -->
-    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
-        <!-- 双人状态栏 -->
+    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh;">
         <div class="team-status-bar">
-            <!-- 调查员A -->
-            <div class="investigator-status" id="invStatus0">
+            <div class="investigator-status">
                 <div class="inv-header">
-                    <span class="inv-name">调查员A</span>
-                    <span class="status-label calm" id="statusLabel0">冷静</span>
+                    <span class="inv-name" id="name0">调查员A</span>
+                    <span class="status-label calm" id="status0">冷静</span>
                 </div>
-                <div class="inv-bars">
-                    <div class="bar-row">
-                        <span class="bar-label">HP</span>
-                        <div class="bar-container hp">
-                            <div class="bar-fill" id="hpBar0" style="width:100%"></div>
-                        </div>
-                        <span class="bar-value" id="hpText0">70/70</span>
-                    </div>
-                    <div class="bar-row">
-                        <span class="bar-label">SAN</span>
-                        <div class="bar-container san">
-                            <div class="bar-fill sanity" id="sanBar0" style="width:0%"></div>
-                        </div>
-                        <span class="bar-value" id="sanText0">0</span>
-                    </div>
+                <div class="bar-row">
+                    <span class="bar-label">HP</span>
+                    <div class="bar-container"><div class="bar-fill" id="hpBar0" style="width:100%"></div></div>
+                    <span class="bar-value" id="hp0">70/70</span>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">SAN</span>
+                    <div class="bar-container"><div class="bar-fill sanity" id="sanBar0" style="width:0%"></div></div>
+                    <span class="bar-value" id="san0">0</span>
                 </div>
             </div>
-            
-            <!-- 调查员B -->
-            <div class="investigator-status" id="invStatus1">
+            <div class="investigator-status">
                 <div class="inv-header">
-                    <span class="inv-name">调查员B</span>
-                    <span class="status-label calm" id="statusLabel1">冷静</span>
+                    <span class="inv-name" id="name1">调查员B</span>
+                    <span class="status-label calm" id="status1">冷静</span>
                 </div>
-                <div class="inv-bars">
-                    <div class="bar-row">
-                        <span class="bar-label">HP</span>
-                        <div class="bar-container hp">
-                            <div class="bar-fill" id="hpBar1" style="width:100%"></div>
-                        </div>
-                        <span class="bar-value" id="hpText1">70/70</span>
-                    </div>
-                    <div class="bar-row">
-                        <span class="bar-label">SAN</span>
-                        <div class="bar-container san">
-                            <div class="bar-fill sanity" id="sanBar1" style="width:0%"></div>
-                        </div>
-                        <span class="bar-value" id="sanText1">0</span>
-                    </div>
+                <div class="bar-row">
+                    <span class="bar-label">HP</span>
+                    <div class="bar-container"><div class="bar-fill" id="hpBar1" style="width:100%"></div></div>
+                    <span class="bar-value" id="hp1">70/70</span>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">SAN</span>
+                    <div class="bar-container"><div class="bar-fill sanity" id="sanBar1" style="width:0%"></div></div>
+                    <span class="bar-value" id="san1">0</span>
                 </div>
             </div>
         </div>
-
-        <!-- 游戏布局 - 左右分栏 -->
         <div class="game-layout">
-            <!-- 左侧主画面 -->
             <div class="main-panel">
                 <div class="scene-header">
-                    <div>
-                        <div class="scene-title" id="sceneTitle">准备</div>
-                        <div class="scene-subtitle" id="sceneSubtitle">选择调查员</div>
-                    </div>
-                    <button class="mobile-map-btn" id="mobileMapBtn" onclick="game.showMobileMap()">🗺️ 地图</button>
+                    <div class="scene-title" id="roomTitle">准备</div>
+                    <div class="scene-subtitle" id="roomSub">选择调查员</div>
                 </div>
-                
                 <div class="main-content" id="mainContent"></div>
-                
-                <div class="action-panel" id="actionPanel" style="display:none;">
-                    <div class="action-title">行动</div>
-                    <div class="action-grid" id="actionButtons"></div>
-                </div>
-                
                 <div class="log-panel" id="logPanel">
-                    <div class="log-entry system">DS10 v7 - 深渊编年史 (已修复)</div>
-                </div>
-
-                <!-- 决心值显示 -->
-                <div class="resolve-display" id="resolveDisplay">
-                    阻止:0 真相:0 保护:0
-                </div>
-            </div>
-            
-            <!-- 右侧小地图 -->
-            <div class="minimap-panel">
-                <div class="minimap-title">地图</div>
-                <div class="minimap-content" id="minimapContent">
-                    <div class="grid-map">
-                        <div style="color:#666;text-align:center;padding:20px;">选择职业开始...</div>
-                    </div>
+                    <div class="log-entry system">DS10 v0.1 - 13房间完整叙事版</div>
                 </div>
             </div>
         </div>
@@ -1243,18 +144,335 @@
         <div class="modal-content">
             <div class="modal-title" id="modalTitle">标题</div>
             <div class="modal-text" id="modalText">内容</div>
-            <button class="modal-btn" onclick="game.closeModal()">确定</button>
+            <button class="modal-btn" onclick="closeModal()">确定</button>
         </div>
     </div>
 
-    <!-- 手机端地图弹窗 -->
-    <div class="mobile-map-modal" id="mobileMapModal">
-        <div class="mobile-map-content" id="mobileMapContent"></div>
-        <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
-    </div>
+<script>
+// ========== 游戏数据 ==========
+var selectedProfs = [];
+var team = [];
+var currentRoomIdx = 0;
+var clues = [];
 
+var professions = {
+    archaeologist: { name: '考古学家', hp: 70, maxHp: 70, san: 0, skills: {侦查:50,力量:30,神秘学:35} },
+    soldier: { name: '前军人', hp: 90, maxHp: 90, san: 0, skills: {侦查:35,力量:55,神秘学:20} },
+    occultist: { name: '神秘学者', hp: 50, maxHp: 50, san: 0, skills: {侦查:40,力量:20,神秘学:55} }
+};
+
+// 13个房间完整数据
+var rooms = [
+    {
+        id: 'entrance',
+        name: '矿坑入口',
+        type: 'main',
+        desc: '寒风裹挟着腐朽的气息从黑暗中涌出。\n\n手电筒的光束在锈迹斑斑的铁轨上摇晃，照亮了前方坍塌的通道。你们站在深渊裂隙的入口，作为DIA第9小队，任务是找到失踪的第7小队并阻止某种"仪式"。\n\n身后的通讯车里，指挥部最后的声音还在回响："如果48小时内没有回应，我们将封锁这个区域。祝你们好运。"',
+        discoveries: [
+            { id: 'mission', icon: '📋', name: '任务简报', text: 'DIA第7小队3天前在此失联。最后通讯提到"主教"、"仪式"、"深渊之主"。' }
+        ],
+        choices: [
+            { text: '进入矿坑', next: 1, desc: '开始探索深渊' }
+        ]
+    },
+    {
+        id: 'collapse',
+        name: '塌陷通道',
+        type: 'main',
+        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。\n\n你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。\n\n"这是拉丁语\'危险\'的意思，"考古学家低声说，"但最后一个字母被人改成了\'邀请\'..."',
+        discoveries: [
+            { id: 'symbols', icon: '✏️', name: '刻痕符号', text: '拉丁语"危险"被改成了"邀请"。有人——或者某种东西——在诱导后来者深入。' }
+        ],
+        choices: [
+            { text: '强行通过窄缝', next: 2, desc: '快速但可能有风险', san: 5 },
+            { text: '寻找其他路径', next: 3, desc: '安全但耗时' }
+        ]
+    },
+    {
+        id: 'equipment',
+        name: '遗弃装备室',
+        type: 'side',
+        desc: '一个侧室，显然是第7小队留下的临时补给点。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧，仿佛主人只是暂时离开...',
+        discoveries: [
+            { id: 'note', icon: '📄', name: '马库斯的便条', text: '"如果我们没回来，不要深入。主教已经不是人了。——马库斯"' },
+            { id: 'supplies', icon: '💊', name: '医疗物资', text: '2支镇静剂。标签上写着"SAN稳定剂，紧急情况使用"。' }
+        ],
+        choices: [
+            { text: '拿走物资继续前进', next: 4, desc: '获得镇静剂×2' },
+            { text: '不碰任何东西直接离开', next: 4, desc: '避免潜在诅咒' }
+        ]
+    },
+    {
+        id: 'mural',
+        name: '诡异壁画厅',
+        type: 'side',
+        desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。\n\n画中人们围着一个黑色裂隙，似乎在...献祭？壁画的风格不属于任何已知的古代文明。',
+        discoveries: [
+            { id: 'mural', icon: '🎨', name: '古老壁画', text: '描绘深渊仪式的场景。比任何已知记录都要古老。' }
+        ],
+        choices: [
+            { text: '研究壁画', next: 4, desc: '获得深渊知识', san: 10 },
+            { text: '快速离开', next: 4, desc: '安全保守', san: 3 }
+        ]
+    },
+    {
+        id: 'camp',
+        name: '第7小队营地【主轴】',
+        type: 'main',
+        desc: '一个相对开阔的洞室，显然是第7小队的临时营地。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...\n\n马库斯队长的日记就摊开在桌上。',
+        discoveries: [
+            { id: 'diary', icon: '📖', name: '马库斯的日记', text: '"11月15日：我们找到了埃德蒙·布莱克伍德主教。他说深渊不是威胁，而是屏障。深渊之主正在苏醒，唯一的生存机会是成为守门人而非祭品。11月16日：我必须阻止他。"' }
+        ],
+        choices: [
+            { text: '"我们必须阻止仪式！"', next: 5, desc: '决心+阻止' },
+            { text: '"他说的是真的吗？"', next: 5, desc: '决心+真相' }
+        ]
+    },
+    {
+        id: 'whisper',
+        name: '低语回廊',
+        type: 'main',
+        desc: '通道变得狭窄，墙壁上渗出水珠。\n\n你们听到了...低语声？像是有人在你们耳边说话，但听不清内容。声音似乎在诱导你们——"来吧...看看真相...""放弃吧...太迟了..."',
+        discoveries: [
+            { id: 'whispers', icon: '👂', name: '深渊低语', text: '无法理解的语言，但 somehow 能明白意思。它在说："守门人必须自愿..."' }
+        ],
+        choices: [
+            { text: '捂住耳朵快速通过', next: 6, desc: '减少SAN伤害', san: 5 },
+            { text: '试图理解低语', next: 6, desc: '可能获得情报', san: 15 }
+        ]
+    },
+    {
+        id: 'fork',
+        name: '矿道分叉【抉择】',
+        type: 'main',
+        desc: '通道在这里分成两条路。\n\n左边通向仪式准备区，你们隐约看到火光和人声。\n\n右边通向深渊边缘，传来不祥的能量波动...',
+        choices: [
+            { text: '⬆️ 前往教导厅（上分支）', next: 7, desc: '了解仪式的秘密' },
+            { text: '⬇️ 前往深渊边缘（下分支）', next: 9, desc: '寻找第7小队' }
+        ]
+    },
+    // 上分支
+    {
+        id: 'teaching',
+        name: '教导厅',
+        type: 'side',
+        desc: '一个昏暗的大厅，墙上刻满了你们不认识的符号。\n\n几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。',
+        discoveries: [
+            { id: 'notes', icon: '📚', name: '埃德蒙的笔记', text: '"深渊之主不是神，是法则。当足够多的人意识到它，封印就会松动。唯一的方法是成为守门人——以一个人的意识为代价。"' }
+        ],
+        choices: [
+            { text: '继续前往藏书室', next: 8, desc: '了解埃德蒙的过去' }
+        ]
+    },
+    {
+        id: 'library',
+        name: '藏书室【主轴】',
+        type: 'main',
+        desc: '埃德蒙·布莱克伍德的私人空间，墙上贴满了研究报告和...照片？\n\n是DIA成立初期的合影，年轻的埃德蒙站在中央，笑容自信。另一张照片上，他和一个年轻女子——艾琳娜。\n\n照片背面写着："艾琳娜，愿深渊永远封印。"日期是...2年前？',
+        discoveries: [
+            { id: 'photo', icon: '🖼️', name: '旧照片', text: '埃德蒙和他的妻子艾琳娜。照片背面写着"愿深渊永远封印"，日期是2年前——艾琳娜"死亡"之后。' }
+        ],
+        choices: [
+            { text: '前往仪式大厅', next: 11, desc: '最终决战' }
+        ]
+    },
+    // 下分支
+    {
+        id: 'pit',
+        name: '牺牲坑道',
+        type: 'side',
+        desc: '向下的斜坡，空气中弥漫着血腥味。\n\n你们看到了...手术台？这是埃德蒙"处理"那些"不适合参与仪式"的人的地方。',
+        discoveries: [
+            { id: 'survivor', icon: '😰', name: '幸存村民', text: '"埃德蒙说我们不纯净，不能被深渊接受，所以他...研究我们..."' }
+        ],
+        choices: [
+            { text: '给他解脱', next: 10, desc: '道德灰色' },
+            { text: '尝试救治', next: 10, desc: '消耗药品' }
+        ]
+    },
+    {
+        id: 'abyss',
+        name: '深渊边缘【主轴】',
+        type: 'main',
+        desc: '你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头。\n\n在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着。\n\n"听着...埃德蒙...他不是坏人...他只是...想救他的妻子..."\n\n"艾琳娜...被困在深渊边缘...2年了...守门人...必须自愿..."',
+        discoveries: [
+            { id: 'symbol', icon: '✋', name: '保护符号', text: '马库斯用最后的力气画下的符号。不知道有什么用，但感觉...温暖。' }
+        ],
+        choices: [
+            { text: '前往仪式大厅', next: 11, desc: '为马库斯报仇' }
+        ]
+    },
+    // 终局
+    {
+        id: 'ritual',
+        name: '仪式大厅【终局】',
+        type: 'main',
+        desc: '终于来到了核心区域。仪式正在进行——\n\n黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。\n\n在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中...\n\n埃德蒙转身："你们来了...我等待着有人能理解我...或者，至少...能阻止我。"',
+        choices: [
+            { text: '💬 尝试说服', ending: 'truth', desc: '利用了解的情报' },
+            { text: '⚔️ 强行阻止', ending: 'hero', desc: '与埃德蒙战斗' },
+            { text: '✨ 自愿牺牲', ending: 'sacrifice', desc: '替代艾琳娜' }
+        ]
+    }
+];
+
+// ========== 游戏函数 ==========
+function selectProf(key) {
+    if (selectedProfs.indexOf(key) >= 0) return;
+    if (selectedProfs.length >= 2) return;
+    
+    selectedProfs.push(key);
+    document.getElementById('selectHint').textContent = '已选择: ' + selectedProfs.length + '/2';
+    document.getElementById('selectHint').style.color = '#27ae60';
+    
+    // 高亮
+    var ids = { archaeologist: 'card1', soldier: 'card2', occultist: 'card3' };
+    var card = document.getElementById(ids[key]);
+    if (card) {
+        card.style.borderColor = '#27ae60';
+        card.style.backgroundColor = '#1a3a2e';
+    }
+    
+    if (selectedProfs.length === 2) {
+        setTimeout(startGame, 500);
+    }
+}
+
+function startGame() {
+    team = [
+        { key: selectedProfs[0], ...professions[selectedProfs[0]] },
+        { key: selectedProfs[1], ...professions[selectedProfs[1]] }
+    ];
+    
+    document.getElementById('professionSelect').classList.add('hidden');
+    document.getElementById('gameUI').classList.remove('hidden');
+    
+    updateStatus();
+    enterRoom(0);
+}
+
+function enterRoom(idx) {
+    currentRoomIdx = idx;
+    var room = rooms[idx];
+    
+    document.getElementById('roomTitle').textContent = room.name;
+    document.getElementById('roomSub').textContent = '房间 ' + (idx + 1) + '/13';
+    
+    var html = '<div class="room-container">';
+    
+    // 描述
+    html += '<div class="room-desc">' + room.desc.replace(/\n/g, '<br>') + '</div>';
+    
+    // 发现物
+    if (room.discoveries && room.discoveries.length > 0) {
+        html += '<div class="discoveries">';
+        html += '<div class="discoveries-title">发现物（点击阅读）</div>';
+        room.discoveries.forEach(function(d) {
+            html += '<div class="discovery-item" onclick="readDiscovery(' + idx + ', \'' + d.id + '\')">';
+            html += '<span class="discovery-icon">' + d.icon + '</span>';
+            html += '<span class="discovery-name">' + d.name + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    
+    // 选择
+    html += '<div class="room-choices">';
+    room.choices.forEach(function(c) {
+        var onclick = '';
+        if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
+        else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
+        
+        html += '<button class="choice-btn" ' + onclick + '>';
+        html += '<span class="choice-title">' + c.text + '</span>';
+        if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
+        html += '</button>';
+    });
+    html += '</div>';
+    
+    html += '</div>';
+    
+    document.getElementById('mainContent').innerHTML = html;
+    
+    // SAN伤害
+    if (room.choices && room.choices[0].san) {
+        addSanity(room.choices[0].san);
+    }
+}
+
+function readDiscovery(roomIdx, id) {
+    var room = rooms[roomIdx];
+    var d = room.discoveries.find(function(x) { return x.id === id; });
+    if (d && clues.indexOf(d.name) < 0) {
+        clues.push(d.name);
+        alert(d.icon + ' ' + d.name + '\n\n' + d.text);
+    }
+}
+
+function addSanity(amount) {
+    team.forEach(function(inv) {
+        inv.san = Math.min(100, inv.san + amount);
+    });
+    updateStatus();
+}
+
+function updateStatus() {
+    team.forEach(function(inv, idx) {
+        var el = document.getElementById('name' + idx);
+        if (el) el.textContent = inv.name;
+        
+        el = document.getElementById('hp' + idx);
+        if (el) el.textContent = inv.hp + '/' + inv.maxHp;
+        
+        el = document.getElementById('hpBar' + idx);
+        if (el) el.style.width = (inv.hp / inv.maxHp * 100) + '%';
+        
+        el = document.getElementById('sanBar' + idx);
+        if (el) el.style.width = (inv.san / 100 * 100) + '%';
+        
+        el = document.getElementById('san' + idx);
+        if (el) el.textContent = inv.san;
+        
+        // 状态标签
+        el = document.getElementById('status' + idx);
+        if (el) {
+            var state = 'calm', text = '冷静';
+            if (inv.san > 30) { state = 'uneasy'; text = '不安'; }
+            if (inv.san > 50) { state = 'nervous'; text = '紧张'; }
+            if (inv.san > 70) { state = 'fearful'; text = '恐惧'; }
+            if (inv.san > 85) { state = 'breaking'; text = '崩溃'; }
+            el.className = 'status-label ' + state;
+            el.textContent = text;
+        }
+    });
+}
+
+function showEnding(type) {
+    var endings = {
+        truth: { title: '📚 真相结局', text: '你说服了埃德蒙，一起找到了让深渊沉睡而不需要牺牲的方法。艾琳娜被释放，而埃德蒙选择继续研究深渊，寻找更好的解决方案。' },
+        hero: { title: '🏆 英雄结局', text: '你击败了埃德蒙，阻止了仪式。但艾琳娜永远困在了深渊边缘，而埃德蒙在最后时刻醒悟，用自己的生命强化了封印。' },
+        sacrifice: { title: '😢 牺牲结局', text: '一名调查员自愿替代艾琳娜成为守门人，永远困在深渊边缘。其他人回到地面，但永远无法忘记那个身影。' }
+    };
+    
+    var end = endings[type];
+    document.getElementById('modalTitle').textContent = end.title;
+    document.getElementById('modalText').innerHTML = end.text + '<br><br><button onclick="location.reload()" style="padding:10px 20px;background:#e94560;color:white;border:none;cursor:pointer;">再玩一次</button>';
+    document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+}
+
+// 日志
+function log(text) {
+    var panel = document.getElementById('logPanel');
+    var entry = document.createElement('div');
+    entry.className = 'log-entry system';
+    entry.textContent = text;
+    panel.appendChild(entry);
+    panel.scrollTop = panel.scrollHeight;
+}
+</script>
 </body>
-    <script src="game.js?v=25"></script>
-</body>
-</html>
 </html>
