@@ -232,7 +232,25 @@ const game = {
                         btn.style.cssText = 'margin-top:30px;padding:15px 40px;background:#e94560;color:white;border:none;font-size:16px;cursor:pointer;';
                         btn.onclick = () => this.showProfessionSelect();
                         container.appendChild(btn);
+                        
+                        // 同时添加跳过按钮
+                        const skipBtn = document.createElement('button');
+                        skipBtn.textContent = '跳过介绍';
+                        skipBtn.style.cssText = 'margin-top:15px;padding:10px 30px;background:#2a2a3a;color:#888;border:none;font-size:12px;cursor:pointer;';
+                        skipBtn.onclick = () => this.showProfessionSelect();
+                        container.appendChild(skipBtn);
                     }, 500);
+                }
+                
+                // 任何时候都可以点击跳过
+                if (idx === 0) {
+                    setTimeout(() => {
+                        const skipDiv = document.createElement('div');
+                        skipDiv.textContent = '点击任意处跳过';
+                        skipDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;color:#666;font-size:12px;cursor:pointer;padding:10px;';
+                        skipDiv.onclick = () => this.showProfessionSelect();
+                        document.body.appendChild(skipDiv);
+                    }, 2000);
                 }
             }, delay);
             
@@ -242,12 +260,29 @@ const game = {
     
     // 显示职业选择
     showProfessionSelect() {
+        console.log('showProfessionSelect called');
+        
+        // 清除开场动画容器（如果存在）
+        const introContainer = document.getElementById('intro-container');
+        if (introContainer) {
+            introContainer.style.display = 'none';
+        }
+        
         // 显示选择界面
         const selectPanel = document.getElementById('professionSelect');
         const gamePanel = document.getElementById('gameUI');
         
-        if (selectPanel) selectPanel.classList.remove('hidden');
-        if (gamePanel) gamePanel.classList.add('hidden');
+        console.log('selectPanel:', selectPanel);
+        console.log('gamePanel:', gamePanel);
+        
+        if (selectPanel) {
+            selectPanel.classList.remove('hidden');
+            selectPanel.style.display = 'flex';
+        }
+        if (gamePanel) {
+            gamePanel.classList.add('hidden');
+            gamePanel.style.display = 'none';
+        }
         
         // 重置选择状态
         this.selectedProfessions = [];
@@ -255,12 +290,15 @@ const game = {
         // 重置所有卡片样式
         document.querySelectorAll('.profession-card').forEach(c => {
             c.classList.remove('selected');
-            c.style.borderColor = '';
-            c.style.boxShadow = '';
+            c.style.borderColor = '#2a2a3a';
+            c.style.boxShadow = 'none';
+            c.style.opacity = '1';
         });
         
-        this.log('系统', '=== 选择2名调查员组成第9小队 ===');
-        this.log('系统', '点击卡片选择（1/2）');
+        // 显示提示
+        alert('选择2名调查员组成小队\n点击卡片进行选择（需要选2个）');
+        
+        console.log('Profession select shown');
     },
     
     // 选择职业
