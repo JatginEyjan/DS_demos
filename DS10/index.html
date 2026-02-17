@@ -110,20 +110,37 @@ var rooms = [
 
 // 选择职业
 function sel(key) {
-    if (selProfs.indexOf(key) >= 0) return;
-    if (selProfs.length >= 2) return;
+    alert('点击: ' + key); // 调试
+    
+    if (selProfs.indexOf(key) >= 0) {
+        alert('已经选过了');
+        return;
+    }
+    if (selProfs.length >= 2) {
+        alert('已经选了两个');
+        return;
+    }
     
     selProfs.push(key);
-    document.getElementById('hint').textContent = '已选择: ' + selProfs.length + '/2';
-    document.getElementById('hint').style.color = '#27ae60';
+    alert('当前选择: ' + selProfs.length + '/2'); // 调试
+    
+    var hintEl = document.getElementById('hint');
+    if (hintEl) {
+        hintEl.textContent = '已选择: ' + selProfs.length + '/2';
+        hintEl.style.color = '#27ae60';
+    }
     
     // 高亮
     var btnId = key === 'archaeologist' ? 'btn1' : key === 'soldier' ? 'btn2' : 'btn3';
-    document.getElementById(btnId).style.borderColor = '#27ae60';
-    document.getElementById(btnId).style.background = '#1a3a2e';
+    var btn = document.getElementById(btnId);
+    if (btn) {
+        btn.style.borderColor = '#27ae60';
+        btn.style.background = '#1a3a2e';
+    }
     
     if (selProfs.length === 2) {
-        setTimeout(start, 300);
+        alert('准备开始游戏!'); // 调试
+        setTimeout(start, 500);
     }
 }
 
