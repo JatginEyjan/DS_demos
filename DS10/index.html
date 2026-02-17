@@ -1106,7 +1106,7 @@
     <div id="professionSelect" class="profession-select">
         <h1 class="profession-title">DS10 v7 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
 
-        <div class="profession-card" data-profession="archaeologist" onclick="game.selectProfession('archaeologist')">
+        <div class="profession-card" data-profession="archaeologist" onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中，请稍候');">
             <div class="profession-name">🔍 考古学家</div>
             <div class="profession-stats">
                 HP: 70 | SAN: 100<br>
@@ -1115,7 +1115,7 @@
             </div>
         </div>
 
-        <div class="profession-card" data-profession="soldier" onclick="game.selectProfession('soldier')">
+        <div class="profession-card" data-profession="soldier" onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中，请稍候');">
             <div class="profession-name">⚔️ 前军人</div>
             <div class="profession-stats">
                 HP: 90 | SAN: 100<br>
@@ -1124,7 +1124,7 @@
             </div>
         </div>
 
-        <div class="profession-card" data-profession="occultist" onclick="game.selectProfession('occultist')">
+        <div class="profession-card" data-profession="occultist" onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中，请稍候');">
             <div class="profession-name">✦ 神秘学者</div>
             <div class="profession-stats">
                 HP: 50 | SAN: 100<br>
@@ -1132,6 +1132,16 @@
                 <span style="color:#27ae60;">能感知深渊能量，理解超自然现象</span>
             </div>
         </div>
+        
+        <!-- 备用选择按钮（手机端兼容） -->
+        <div style="margin-top:30px;padding:15px;border:2px dashed #666;text-align:center;">
+            <div style="color:#888;margin-bottom:10px;">如果上方卡片无法点击，请使用下方按钮：</div>
+            <button onclick="if(window.game)game.selectProfession('archaeologist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#1a3a2e;color:#27ae60;border:2px solid #27ae60;">考古学家</button>
+            <button onclick="if(window.game)game.selectProfession('soldier');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#3a2a1a;color:#e67e22;border:2px solid #e67e22;">前军人</button>
+            <button onclick="if(window.game)game.selectProfession('occultist');else alert('游戏加载中');" style="padding:10px 20px;margin:5px;background:#2a1a3a;color:#7c3aed;border:2px solid #7c3aed;">神秘学者</button>
+        </div>
+        
+        <div id="debug-info" style="margin-top:20px;color:#666;font-size:11px;">调试信息...</div>
     </div>
 
     <!-- 游戏主界面 -->
@@ -1243,6 +1253,6 @@
         <button class="mobile-map-close" onclick="game.hideMobileMap()">关闭地图</button>
     </div>
 
-    <script src="game.js?v=9"></script>
+    <script src="game.js?v=10"></script>
 </body>
 </html>

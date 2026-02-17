@@ -169,7 +169,21 @@ const game = {
     },
     
     init() {
+        console.log('Game init started');
+        
+        // 更新调试信息
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            debugInfo.textContent = '游戏初始化中...';
+        }
+        
         this.showIntro();
+        
+        // 标记游戏已加载
+        window.gameLoaded = true;
+        if (debugInfo) {
+            debugInfo.textContent = '游戏已加载，等待开场动画结束...';
+        }
     },
     
     // 显示世界观开场
@@ -305,6 +319,12 @@ const game = {
     selectProfession(key) {
         console.log('selectProfession called with:', key);
         
+        // 更新调试信息
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            debugInfo.textContent = `选择职业: ${key}...`;
+        }
+        
         // 确保数组已初始化
         if (!this.selectedProfessions) {
             this.selectedProfessions = [];
@@ -313,20 +333,25 @@ const game = {
         // 检查是否已选择该职业
         if (this.selectedProfessions.includes(key)) {
             this.log('系统', '该职业已被选择');
-            alert('该职业已被选择，请选择其他职业');
+            if (debugInfo) debugInfo.textContent = '该职业已被选择';
             return;
         }
         
         // 检查是否已满2人
         if (this.selectedProfessions.length >= 2) {
             this.log('系统', '队伍已满');
-            alert('队伍已满（2/2），准备进入游戏...');
+            if (debugInfo) debugInfo.textContent = '队伍已满，准备进入...';
             this.confirmTeam();
             return;
         }
         
         this.selectedProfessions.push(key);
         console.log('selectedProfessions:', this.selectedProfessions);
+        
+        // 更新调试信息
+        if (debugInfo) {
+            debugInfo.textContent = `已选择: ${this.professions[key].name} (${this.selectedProfessions.length}/2)`;
+        }
         
         // 高亮选中的卡片
         const card = document.querySelector(`.profession-card[data-profession="${key}"]`);
@@ -338,19 +363,14 @@ const game = {
             console.log('Card highlighted:', key);
         }
         
-        alert(`已选择: ${this.professions[key].name}\n当前: ${this.selectedProfessions.length}/2`);
-        
         // 选择2个后自动确认
         if (this.selectedProfessions.length === 2) {
             this.log('系统', '队伍组成完毕，准备进入...');
-            alert('队伍组成完毕！\n' + this.professions[this.selectedProfessions[0]].name + ' + ' + this.professions[this.selectedProfessions[1]].name);
+            if (debugInfo) debugInfo.textContent = '队伍组成完毕，准备进入游戏...';
             setTimeout(() => {
                 console.log('Calling confirmTeam...');
                 this.confirmTeam();
             }, 500);
-        } else {
-            this.log('系统', '请选择第二名调查员');
-            alert('请选择第二名调查员');
         }
     },
     
