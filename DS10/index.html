@@ -1396,13 +1396,30 @@
                 this.updateMinimap();
             },
             
+            // 敌人数据
+            enemies: {
+                guard: { name: '腐化守卫', hp: 40, maxHp: 40, damage: 10, fear: 8 },
+                deep_one: { name: '深潜者', hp: 50, maxHp: 50, damage: 12, fear: 10 },
+                trap_spirit: { name: '陷阱精灵', hp: 35, maxHp: 35, damage: 8, fear: 12 },
+                bishop: { name: '邪教主教', hp: 80, maxHp: 80, damage: 15, fear: 15, isBoss: true }
+            },
+            
+            // 当前战斗状态
+            combatState: null,
+            
             // 进入房间
             enterRoom: function(roomId) {
                 const mainContent = document.getElementById('mainContent');
                 const sceneTitle = document.getElementById('sceneTitle');
                 const sceneSubtitle = document.getElementById('sceneSubtitle');
                 
+                // 随机遭遇战判定（非主轴房间有30%概率遭遇敌人）
                 if (roomId === 'collapse') {
+                    if (Math.random() < 0.3) {
+                        this.startCombat('guard');
+                        return;
+                    }
+                    
                     if (sceneTitle) sceneTitle.textContent = '塌陷通道';
                     if (sceneSubtitle) sceneSubtitle.textContent = '通道被碎石堵塞';
                     
@@ -1432,6 +1449,12 @@
                             </div>
                         `;
                     }
+                } else if (roomId === 'combat_upper') {
+                    this.startCombat('deep_one');
+                    return;
+                } else if (roomId === 'combat_lower') {
+                    this.startCombat('trap_spirit');
+                    return;
                 } else if (roomId === 'camp') {
                     if (sceneTitle) sceneTitle.textContent = '第7小队营地';
                     if (sceneSubtitle) sceneSubtitle.textContent = '失踪小队的临时营地';
@@ -1547,48 +1570,106 @@
                 const sceneSubtitle = document.getElementById('sceneSubtitle');
                 
                 if (branch === 'upper') {
-                    // 上分支 - 教导厅
-                    if (sceneTitle) sceneTitle.textContent = '教导厅';
-                    if (sceneSubtitle) sceneSubtitle.textContent = '主教教导村民的地方';
+                    // 上分支 - 先战斗再剧情
+                    if (sceneTitle) sceneTitle.textContent = '准备区';
+                    if (sceneSubtitle) sceneSubtitle.textContent = '有守卫巡逻';
                     
                     if (mainContent) {
                         mainContent.innerHTML = `
                             <div class="story-room">
                                 <div class="story-desc">
-                                    一个昏暗的大厅，墙上刻满了你们不认识的符号。<br><br>
-                                    几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。<br><br>
-                                    在讲台上，你们发现了一本翻开的笔记...
+                                    你们接近了仪式准备区，但前方有守卫在巡逻。<br><br>
+                                    一个被深渊腐蚀的守卫挡在路中间，他的眼睛泛着不自然的红光...
                                 </div>
                                 <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.readEdmundNotes()">
-                                        阅读笔记
-                                        <span class="skill-tag">埃德蒙·布莱克伍德的研究</span>
+                                    <button class="action-btn large" onclick="window.game.startCombat('guard')">
+                                        ⚔️ 正面迎战
+                                        <span class="skill-tag">击败守卫进入教导厅</span>
+                                    </button>
+                                    <button class="action-btn large" onclick="window.game.startCombat('guard')">
+                                        👁️ 潜行偷袭
+                                        <span class="skill-tag">侦查检定，成功先手</span>
                                     </button>
                                 </div>
                             </div>
                         `;
                     }
                 } else {
-                    // 下分支 - 深渊边缘
-                    if (sceneTitle) sceneTitle.textContent = '深渊边缘';
-                    if (sceneSubtitle) sceneSubtitle.textContent = '空间裂隙的边界';
+                    // 下分支 - 先战斗再剧情
+                    if (sceneTitle) sceneTitle.textContent = '实验场';
+                    if (sceneSubtitle) sceneContent = '深渊人体实验的现场';
                     
                     if (mainContent) {
                         mainContent.innerHTML = `
                             <div class="story-room">
                                 <div class="story-desc">
-                                    你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头，散发着无法理解的"光芒"。<br><br>
-                                    在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着...
+                                    你们闯入了深渊人体实验的现场。一个扭曲的生物从阴影中现身——<br><br>
+                                    那是陷阱精灵，由深渊能量和受害者的怨念构成的怪物！
                                 </div>
                                 <div class="story-choices">
-                                    <button class="action-btn large" onclick="window.game.marcusFinalWords()">
-                                        听他的遗言
-                                        <span class="skill-tag">了解最终真相</span>
+                                    <button class="action-btn large" onclick="window.game.startCombat('trap_spirit')">
+                                        ⚔️ 迎战陷阱精灵
+                                        <span class="skill-tag">高SAN伤害，小心应对</span>
                                     </button>
                                 </div>
                             </div>
                         `;
                     }
+                }
+            },
+            
+            // 进入教导厅（战斗胜利后）
+            enterTeachingHall: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (sceneTitle) sceneTitle.textContent = '教导厅';
+                if (sceneSubtitle) sceneSubtitle.textContent = '主教教导村民的地方';
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc">
+                                一个昏暗的大厅，墙上刻满了你们不认识的符号。<br><br>
+                                几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。<br><br>
+                                在讲台上，你们发现了一本翻开的笔记...
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.readEdmundNotes()">
+                                    阅读笔记
+                                    <span class="skill-tag">埃德蒙·布莱克伍德的研究</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            
+            // 进入深渊边缘（战斗胜利后）
+            enterAbyssEdge: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                
+                if (sceneTitle) sceneTitle.textContent = '深渊边缘';
+                if (sceneSubtitle) sceneSubtitle.textContent = '空间裂隙的边界';
+                
+                if (mainContent) {
+                    mainContent.innerHTML = `
+                        <div class="story-room">
+                            <div class="story-desc">
+                                你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头，散发着无法理解的"光芒"。<br><br>
+                                在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着...
+                            </div>
+                            <div class="story-choices">
+                                <button class="action-btn large" onclick="window.game.marcusFinalWords()">
+                                    听他的遗言
+                                    <span class="skill-tag">了解最终真相</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
                 }
             },
             
@@ -1718,6 +1799,12 @@
             
             // 最终选择
             finalChoice: function(type) {
+                if (type === 'fight') {
+                    // 进入Boss战
+                    this.startCombat('bishop');
+                    return;
+                }
+                
                 const r = this.state.resolve;
                 let ending = '';
                 let desc = '';
@@ -1725,7 +1812,7 @@
                 if (type === 'sacrifice' && r.protect >= 30) {
                     ending = '😢 牺牲结局';
                     desc = '一名调查员自愿替代艾琳娜成为守门人，永远困在深渊边缘。其他人回到地面，但永远无法忘记那个身影。艾琳娜终于被释放，而埃德蒙...他选择了自我了断。';
-                } else if (type === 'talk' && (r.seekTruth >= 30 || r.cooperate)) {
+                } else if (type === 'talk' && (r.seekTruth >= 30)) {
                     ending = '📚 真相结局';
                     desc = '你们说服了埃德蒙，一起找到了第三种方法——让深渊沉睡，而不需要守门人。代价是你们永远无法完全理解深渊的本质，但世界安全了。';
                 } else if (r.stopRitual >= 40 && this.team.every(i => i.hp > 50)) {
@@ -1741,6 +1828,22 @@
                 
                 // 显示结局
                 this.showEnding(ending, desc);
+            },
+            
+            // Boss战结束
+            endBossCombat: function(victory) {
+                this.combatState = null;
+                
+                if (victory) {
+                    const r = this.state.resolve;
+                    if (r.stopRitual >= 40) {
+                        this.showEnding('🏆 英雄结局', '你们成功击败了埃德蒙，阻止了仪式，救出了艾琳娜。埃德蒙在最后时刻醒悟，用自己的生命强化了封印。');
+                    } else {
+                        this.showEnding('😢 悲剧结局', '你们击败了埃德蒙，但仪式已经无法逆转。艾琳娜永远困在深渊边缘，而你们...只能带着这份遗憾离开。');
+                    }
+                } else {
+                    this.showEnding('💀 末日结局', '你们失败了。深渊之主苏醒，世界陷入黑暗...');
+                }
             },
             
             // 显示结局
@@ -1769,6 +1872,200 @@
                 if (document.getElementById('sanText1')) document.getElementById('sanText1').textContent = inv1.sanity;
                 if (document.getElementById('hpBar1')) document.getElementById('hpBar1').style.width = (inv1.hp / inv1.maxHp * 100) + '%';
                 if (document.getElementById('sanBar1')) document.getElementById('sanBar1').style.width = (inv1.sanity / 100 * 100) + '%';
+            },
+            
+            // 开始战斗
+            startCombat: function(enemyType) {
+                const enemy = this.enemies[enemyType];
+                if (!enemy) return;
+                
+                this.combatState = {
+                    enemy: { ...enemy },
+                    turn: 0,
+                    log: []
+                };
+                
+                this.renderCombat();
+            },
+            
+            // 渲染战斗界面
+            renderCombat: function() {
+                const mainContent = document.getElementById('mainContent');
+                const sceneTitle = document.getElementById('sceneTitle');
+                const sceneSubtitle = document.getElementById('sceneSubtitle');
+                const state = this.combatState;
+                
+                if (!state) return;
+                
+                if (sceneTitle) sceneTitle.textContent = '战斗中！';
+                if (sceneSubtitle) sceneSubtitle.textContent = 'vs ' + state.enemy.name;
+                
+                // 检查战斗是否结束
+                if (state.enemy.hp <= 0) {
+                    this.endCombat(true);
+                    return;
+                }
+                
+                // 检查玩家是否全灭
+                const aliveTeam = this.team.filter(i => i.hp > 0);
+                if (aliveTeam.length === 0) {
+                    this.showEnding('💀 全员阵亡', '你们的尸体将永远留在这个深渊之中...');
+                    return;
+                }
+                
+                if (mainContent) {
+                    let html = '<div class="combat-view">';
+                    
+                    // 敌人信息
+                    html += `
+                        <div class="enemy-card" style="margin:0 auto 20px;max-width:200px;text-align:center;padding:15px;background:#1a1a2e;border:2px solid #e94560;">
+                            <div style="font-size:32px;margin-bottom:5px;">👹</div>
+                            <div style="color:#e94560;font-weight:bold;margin-bottom:5px;">${state.enemy.name}</div>
+                            <div style="background:#0a0a0f;height:10px;margin-bottom:5px;">
+                                <div style="background:#e94560;height:100%;width:${(state.enemy.hp/state.enemy.maxHp)*100}%"></div>
+                            </div>
+                            <div style="font-size:11px;color:#888;">HP: ${state.enemy.hp}/${state.enemy.maxHp}</div>
+                        </div>
+                    `;
+                    
+                    // 调查员状态
+                    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">';
+                    this.team.forEach((inv, idx) => {
+                        if (inv.hp > 0) {
+                            html += `
+                                <div style="background:#1a1a2e;border:2px solid ${idx === 0 ? '#3498db' : '#e67e22'};padding:10px;text-align:center;cursor:pointer;" onclick="window.game.selectCombatInvestigator(${idx})">
+                                    <div style="font-size:20px;margin-bottom:3px;">${idx === 0 ? '👤' : '👥'}</div>
+                                    <div style="font-size:12px;font-weight:bold;">${inv.name}</div>
+                                    <div style="font-size:10px;color:#888;">HP: ${inv.hp}/${inv.maxHp} | SAN: ${inv.sanity}</div>
+                                </div>
+                            `;
+                        }
+                    });
+                    html += '</div>';
+                    
+                    // 战斗选项
+                    html += '<div style="display:flex;gap:10px;justify-content:center;">';
+                    html += `<button class="action-btn" onclick="window.game.combatAttack()" style="flex:1;">⚔️ 攻击</button>`;
+                    html += `<button class="action-btn" onclick="window.game.combatUseItem()" style="flex:1;">💊 使用镇静剂</button>`;
+                    html += '</div>';
+                    
+                    // 战斗日志
+                    if (state.log.length > 0) {
+                        html += '<div style="margin-top:15px;padding:10px;background:#0a0a0f;border:1px solid #2a2a3a;font-size:11px;">';
+                        state.log.slice(-5).forEach(log => {
+                            html += `<div style="margin-bottom:3px;color:${log.color || '#aaa'};">${log.text}</div>`;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                    mainContent.innerHTML = html;
+                }
+            },
+            
+            // 战斗攻击
+            combatAttack: function() {
+                const state = this.combatState;
+                if (!state) return;
+                
+                const inv = this.team[this.state.selectedInvestigator || 0];
+                if (!inv || inv.hp <= 0) {
+                    // 切换到有HP的调查员
+                    const aliveIdx = this.team.findIndex(i => i.hp > 0);
+                    if (aliveIdx >= 0) {
+                        this.state.selectedInvestigator = aliveIdx;
+                    }
+                    return;
+                }
+                
+                // 玩家攻击
+                const damage = inv.skills.力量 + Math.floor(Math.random() * 10);
+                state.enemy.hp -= damage;
+                state.log.push({ text: `${inv.name} 造成 ${damage} 伤害！`, color: '#2ecc71' });
+                
+                // 检查敌人是否死亡
+                if (state.enemy.hp <= 0) {
+                    state.log.push({ text: `${state.enemy.name} 被击败了！`, color: '#f1c40f' });
+                    this.renderCombat();
+                    return;
+                }
+                
+                // 敌人反击
+                setTimeout(() => {
+                    this.enemyAttack();
+                }, 500);
+            },
+            
+            // 敌人攻击
+            enemyAttack: function() {
+                const state = this.combatState;
+                if (!state) return;
+                
+                const aliveTeam = this.team.filter(i => i.hp > 0);
+                if (aliveTeam.length === 0) return;
+                
+                // 随机选择目标
+                const target = aliveTeam[Math.floor(Math.random() * aliveTeam.length)];
+                const damage = state.enemy.damage + Math.floor(Math.random() * 5);
+                
+                target.hp -= damage;
+                state.log.push({ text: `${state.enemy.name} 对 ${target.name} 造成 ${damage} 伤害！`, color: '#e94560' });
+                
+                // SAN伤害
+                this.addSanity(target, state.enemy.fear);
+                state.log.push({ text: `${target.name} 因恐惧 SAN+${state.enemy.fear}`, color: '#7c3aed' });
+                
+                // 更新状态
+                this.updateStatus();
+                
+                // 重新渲染
+                this.renderCombat();
+            },
+            
+            // 使用物品
+            combatUseItem: function() {
+                const inv = this.team[this.state.selectedInvestigator || 0];
+                if (!inv || inv.inventory.sedative <= 0) {
+                    alert('没有镇静剂了！');
+                    return;
+                }
+                
+                inv.inventory.sedative--;
+                this.reduceSanity(inv, 15);
+                this.combatState.log.push({ text: `${inv.name} 使用镇静剂，SAN-15`, color: '#3498db' });
+                this.updateStatus();
+                this.renderCombat();
+            },
+            
+            // 结束战斗
+            endCombat: function(victory) {
+                const state = this.combatState;
+                const isBoss = state && state.enemy && state.enemy.isBoss;
+                
+                if (isBoss) {
+                    this.endBossCombat(victory);
+                    return;
+                }
+                
+                if (victory) {
+                    alert('战斗胜利！获得10金币');
+                    // 奖励
+                    this.team.forEach(inv => {
+                        inv.inventory.gold += 10;
+                    });
+                }
+                this.combatState = null;
+                
+                // 根据当前场景决定下一步
+                const sceneTitle = document.getElementById('sceneTitle');
+                if (sceneTitle && sceneTitle.textContent.includes('准备区')) {
+                    this.enterTeachingHall();
+                } else if (sceneTitle && sceneTitle.textContent.includes('实验场')) {
+                    this.enterAbyssEdge();
+                } else {
+                    // 继续剧情
+                    this.showRouteChoice();
+                }
             },
             
             // 更新小地图
