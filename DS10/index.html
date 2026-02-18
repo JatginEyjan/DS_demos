@@ -278,6 +278,109 @@ var professions = {
 
 // ========== 13房间完整对象模板 ==========
 var objectTemplates = {
+    // ========== 1. 矿坑入口 (entrance) ==========
+    'entrance_debris': {
+        id: 'entrance_debris',
+        name: '碎石堆',
+        type: 'filler',
+        icon: '🪨',
+        desc: '通道入口被部分碎石堵塞，但并不完全阻隔通行。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'push_debris',
+                name: '推开碎石',
+                desc: '用蛮力清理通道',
+                cost: 1,
+                roll: { type: 'skill', skill: '力量', base: 30 },
+                results: {
+                    fumble: { text: '你被碎石砸中手臂，鲜血直流，碎石反而滑落堵住更多空间。', san: 5, deterioration: 15 },
+                    fail: { text: '碎石太重了，你只能勉强清出一条窄缝，花费了大量体力。', san: 2, deterioration: 5, resolve: 5 },
+                    success: { text: '你用尽全力推开碎石，清理出一条可容人通过的通道。', san: 0, resolve: 20 },
+                    crit: { text: '你巧妙地利用杠杆原理，碎石轰然倒塌，露出一个隐藏的侧洞！里面似乎有前人留下的东西。', san: 0, resolve: 30, bonus: '发现侧洞' }
+                }
+            },
+            {
+                id: 'bypass_debris',
+                name: '绕过碎石',
+                desc: '从缝隙中挤过去（无需判定）',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你从碎石间的窄缝中挤了过去，虽然狼狈但安全通过。', san: 0, resolve: 10 }
+                }
+            }
+        ]
+    },
+    'rail_tracks': {
+        id: 'rail_tracks',
+        name: '废弃铁轨',
+        type: 'filler',
+        icon: '🛤️',
+        desc: '锈迹斑斑的铁轨延伸至黑暗深处，上面似乎有新鲜的痕迹。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'track_footprints',
+                name: '追踪脚印',
+                desc: '侦查判定寻找踪迹',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 35 },
+                results: {
+                    fumble: { text: '你专注于脚印，没注意到脚下的铁轨凸起，重重摔了一跤。', san: 8, deterioration: 15 },
+                    fail: { text: '铁轨上的痕迹太混乱了，你无法确定脚印的方向。', san: 0, deterioration: 5, resolve: 5 },
+                    success: { text: '你发现了新鲜的脚印，至少有3-4人不久前经过这里，方向是深入矿坑。', san: 3, resolve: 20, clue: '第7小队踪迹' },
+                    crit: { text: '你不仅发现了脚印，还辨认出其中一人脚步踉跄，似乎是受伤或疲惫之人。墙边还有用匕首匆忙刻下的记号。', san: 0, resolve: 30, clue: '马库斯记号' }
+                }
+            },
+            {
+                id: 'check_rust',
+                name: '检查锈迹',
+                desc: '观察铁轨的腐蚀程度',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '铁轨锈迹深厚，至少有十年以上的历史。但有些地方的锈迹被蹭掉了，说明近期有人使用过。', san: 0, resolve: 10 }
+                }
+            }
+        ]
+    },
+    'entrance_symbol': {
+        id: 'entrance_symbol',
+        name: '入口符号',
+        type: 'key',
+        icon: '✏️',
+        desc: '岩壁上刻着古老的符号，似乎是某种警告或标记。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'interpret_symbol',
+                name: '解读符号',
+                desc: '考古学家或神秘学判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 35 },
+                results: {
+                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧笼罩心头。那符号似乎在"看着"你。', san: 10, deterioration: 15 },
+                    fail: { text: '符号的风格很古老，但你无法确定其确切含义。只能辨认出这是某种警告。', san: 3, deterioration: 5, resolve: 5 },
+                    success: { text: '你认出这是古拉丁语的变体："深入者将付出代价"。这是一个古老的警告。', san: 5, resolve: 20, clue: '古老警告' },
+                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息——那是后来的刻痕："主教已不再是他自己，不要相信他说的话。——马库斯"', san: 0, resolve: 30, clue: '马库斯警告' }
+                }
+            },
+            {
+                id: 'archaeologist_read',
+                name: '考古学解读',
+                desc: '考古学家专长（若有考古学家则必成功）',
+                cost: 1,
+                roll: { type: 'auto', condition: 'archaeologist' },
+                results: {
+                    success: { text: '作为考古学家，你熟悉这种古罗马矿井的标记系统。符号意思是"前方危险，禁止深入"，但被人为修改过。', san: 0, resolve: 25, clue: '考古发现' },
+                    fail: { text: '队伍中没有考古学家，你无法确定符号的年代和含义。', san: 0, resolve: 5 }
+                }
+            }
+        ]
+    },
+
+    // ========== 2. 塌陷通道 (collapse) - 已有示例 ==========
     'debris': {
         id: 'debris',
         name: '碎石堆',
@@ -430,60 +533,53 @@ var rooms = [
         id: 'equipment',
         name: '遗弃装备室',
         type: 'side',
+        objectSystem: true,
         desc: '一个侧室，显然是第7小队留下的临时补给点。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧，仿佛主人只是暂时离开...',
-        discoveries: [
-            { id: 'note', icon: '📄', name: '马库斯的便条', text: '"如果我们没回来，不要深入。主教已经不是人了。——马库斯"' },
-            { id: 'supplies', icon: '💊', name: '医疗物资', text: '2支镇静剂。标签上写着"SAN稳定剂，紧急情况使用"。' }
-        ],
+        objects: ['supply_box', 'oil_lamp', 'marcus_note'],
         choices: [
-            { text: '拿走物资继续前进', next: 4, desc: '获得镇静剂×2' },
-            { text: '不碰任何东西直接离开', next: 4, desc: '避免潜在诅咒' }
+            { text: '前往第7小队营地', next: 4, desc: '继续前进' }
         ]
     },
     {
         id: 'mural',
         name: '诡异壁画厅',
         type: 'side',
+        objectSystem: true,
         desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。\n\n画中人们围着一个黑色裂隙，似乎在...献祭？壁画的风格不属于任何已知的古代文明。',
-        discoveries: [
-            { id: 'mural', icon: '🎨', name: '古老壁画', text: '描绘深渊仪式的场景。比任何已知记录都要古老。' }
-        ],
+        objects: ['mural_left', 'mural_center', 'mural_right'],
         choices: [
-            { text: '研究壁画', next: 4, desc: '获得深渊知识', san: 10 },
-            { text: '快速离开', next: 4, desc: '安全保守', san: 3 }
+            { text: '前往第7小队营地', next: 4, desc: '继续前进' }
         ]
     },
     {
         id: 'camp',
         name: '第7小队营地【主轴】',
         type: 'main',
+        objectSystem: true,
         desc: '一个相对开阔的洞室，显然是第7小队的临时营地。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...\n\n马库斯队长的日记就摊开在桌上。',
-        discoveries: [
-            { id: 'diary', icon: '📖', name: '马库斯的日记', text: '"11月15日：我们找到了埃德蒙·布莱克伍德主教。他说深渊不是威胁，而是屏障。深渊之主正在苏醒，唯一的生存机会是成为守门人而非祭品。11月16日：我必须阻止他。"' }
-        ],
+        objects: ['camp_bed', 'camp_case', 'marcus_diary', 'camp_lamp'],
         choices: [
-            { text: '"我们必须阻止仪式！"', next: 5, desc: '决心+阻止' },
-            { text: '"他说的是真的吗？"', next: 5, desc: '决心+真相' }
+            { text: '前往低语回廊', next: 5, desc: '继续前进' }
         ]
     },
     {
         id: 'whisper',
         name: '低语回廊',
         type: 'main',
+        objectSystem: true,
         desc: '通道变得狭窄，墙壁上渗出水珠。\n\n你们听到了...低语声？像是有人在你们耳边说话，但听不清内容。声音似乎在诱导你们——"来吧...看看真相...""放弃吧...太迟了..."',
-        discoveries: [
-            { id: 'whispers', icon: '👂', name: '深渊低语', text: '无法理解的语言，但 somehow 能明白意思。它在说："守门人必须自愿..."' }
-        ],
+        objects: ['wall_whisper', 'water_drops', 'shadow_corner'],
         choices: [
-            { text: '捂住耳朵快速通过', next: 6, desc: '减少SAN伤害', san: 5 },
-            { text: '试图理解低语', next: 6, desc: '可能获得情报', san: 15 }
+            { text: '前往矿道分叉', next: 6, desc: '继续前进' }
         ]
     },
     {
         id: 'fork',
         name: '矿道分叉【抉择】',
         type: 'main',
+        objectSystem: true,
         desc: '通道在这里分成两条路。\n\n左边通向仪式准备区，你们隐约看到火光和人声。\n\n右边通向深渊边缘，传来不祥的能量波动...',
+        objects: ['upper_path', 'lower_path', 'middle_sign'],
         choices: [
             { text: '⬆️ 前往教导厅（上分支）', next: 7, desc: '了解仪式的秘密' },
             { text: '⬇️ 前往深渊边缘（下分支）', next: 9, desc: '寻找第7小队' }
@@ -494,10 +590,9 @@ var rooms = [
         id: 'teaching',
         name: '教导厅',
         type: 'side',
+        objectSystem: true,
         desc: '一个昏暗的大厅，墙上刻满了你们不认识的符号。\n\n几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。',
-        discoveries: [
-            { id: 'notes', icon: '📚', name: '埃德蒙的笔记', text: '"深渊之主不是神，是法则。当足够多的人意识到它，封印就会松动。唯一的方法是成为守门人——以一个人的意识为代价。"' }
-        ],
+        objects: ['villagers', 'podium_notes', 'wall_symbols'],
         choices: [
             { text: '继续前往藏书室', next: 8, desc: '了解埃德蒙的过去' }
         ]
@@ -506,10 +601,9 @@ var rooms = [
         id: 'library',
         name: '藏书室【主轴】',
         type: 'main',
+        objectSystem: true,
         desc: '埃德蒙·布莱克伍德的私人空间，墙上贴满了研究报告和...照片？\n\n是DIA成立初期的合影，年轻的埃德蒙站在中央，笑容自信。另一张照片上，他和一个年轻女子——艾琳娜。\n\n照片背面写着："艾琳娜，愿深渊永远封印。"日期是...2年前？',
-        discoveries: [
-            { id: 'photo', icon: '🖼️', name: '旧照片', text: '埃德蒙和他的妻子艾琳娜。照片背面写着"愿深渊永远封印"，日期是2年前——艾琳娜"死亡"之后。' }
-        ],
+        objects: ['research_papers', 'group_photo', 'elena_photo', 'edmund_desk'],
         choices: [
             { text: '前往仪式大厅', next: 11, desc: '最终决战' }
         ]
@@ -519,23 +613,20 @@ var rooms = [
         id: 'pit',
         name: '牺牲坑道',
         type: 'side',
+        objectSystem: true,
         desc: '向下的斜坡，空气中弥漫着血腥味。\n\n你们看到了...手术台？这是埃德蒙"处理"那些"不适合参与仪式"的人的地方。',
-        discoveries: [
-            { id: 'survivor', icon: '😰', name: '幸存村民', text: '"埃德蒙说我们不纯净，不能被深渊接受，所以他...研究我们..."' }
-        ],
+        objects: ['surgery_table', 'mad_villager', 'blood_trail'],
         choices: [
-            { text: '给他解脱', next: 10, desc: '道德灰色' },
-            { text: '尝试救治', next: 10, desc: '消耗药品' }
+            { text: '前往深渊边缘', next: 10, desc: '继续前进' }
         ]
     },
     {
         id: 'abyss',
         name: '深渊边缘【主轴】',
         type: 'main',
+        objectSystem: true,
         desc: '你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头。\n\n在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着。\n\n"听着...埃德蒙...他不是坏人...他只是...想救他的妻子..."\n\n"艾琳娜...被困在深渊边缘...2年了...守门人...必须自愿..."',
-        discoveries: [
-            { id: 'symbol', icon: '✋', name: '保护符号', text: '马库斯用最后的力气画下的符号。不知道有什么用，但感觉...温暖。' }
-        ],
+        objects: ['abyss_rift', 'dying_marcus', 'protective_symbol'],
         choices: [
             { text: '前往仪式大厅', next: 11, desc: '为马库斯报仇' }
         ]
@@ -545,7 +636,9 @@ var rooms = [
         id: 'ritual',
         name: '仪式大厅【终局】',
         type: 'main',
+        objectSystem: true,
         desc: '终于来到了核心区域。仪式正在进行——\n\n黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。\n\n在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中...\n\n埃德蒙转身："你们来了...我等待着有人能理解我...或者，至少...能阻止我。"',
+        objects: ['ritual_pillar', 'edmund_figure', 'elenia_figure', 'energy_column'],
         choices: [
             { text: '💬 尝试说服', ending: 'truth', desc: '利用了解的情报' },
             { text: '⚔️ 强行阻止', ending: 'hero', desc: '与埃德蒙战斗' },
