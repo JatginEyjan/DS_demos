@@ -496,6 +496,314 @@ var objectTemplates = {
                 }
             }
         ]
+    },
+
+    // ========== 3. 遗弃装备室 (equipment) ==========
+    'supply_box': {
+        id: 'supply_box',
+        name: '装备箱',
+        type: 'filler',
+        icon: '📦',
+        desc: 'DIA标准的装备补给箱，锁扣已经损坏，可以轻松打开。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'open_box',
+                name: '打开装备箱',
+                desc: '获取里面的补给品',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你打开装备箱，发现2支镇静剂、1个急救包和一把手电筒。第7小队显然走得匆忙，这些物资都没带走。', san: 0, resolve: 15, item: '镇静剂x2' }
+                }
+            },
+            {
+                id: 'check_trap',
+                name: '检查陷阱',
+                desc: '侦查判定确认是否安全',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你检查时触发了隐藏的绊线，一阵刺耳的警报声在洞室中回荡！随后是死寂...', san: 10, deterioration: 20 },
+                    fail: { text: '你仔细检查后认为安全，但打开时还是有轻微的异常——箱底有些黏稠的液体。', san: 5, deterioration: 5, resolve: 10, item: '镇静剂x1' },
+                    success: { text: '你发现箱盖上连着一根细线，小心解除后才打开。里面物资完好。', san: 0, resolve: 20, item: '镇静剂x2' },
+                    crit: { text: '你不仅发现了陷阱，还看出这是马库斯设置的预警装置。解除后，你在箱底暗格发现额外的弹药和一张手写便条。', san: 0, resolve: 30, item: '镇静剂x2+便条', clue: '马库斯便条' }
+                }
+            }
+        ]
+    },
+    'oil_lamp': {
+        id: 'oil_lamp',
+        name: '煤油灯',
+        type: 'story',
+        icon: '🪔',
+        desc: '一盏仍在微微燃烧的煤油灯，仿佛主人只是暂时离开...',
+        visible: 'always',
+        actions: [
+            {
+                id: 'check_lamp',
+                name: '检查灯芯',
+                desc: '观察火焰的异常',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你靠近煤油灯，发现火焰的颜色不太对——它泛着淡淡的蓝色，像是被什么东西影响着。灯座下压着一张纸条。', san: 3, resolve: 20, clue: '灯座便条' }
+                }
+            },
+            {
+                id: 'extinguish',
+                name: '熄灭油灯',
+                desc: '吹灭这诡异的火焰',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你吹灭了油灯，黑暗瞬间吞噬了洞室。但在灯芯熄灭前的最后一刻，你似乎看到了...什么影子在墙角移动？', san: 10, resolve: 10, deterioration: 10 }
+                }
+            },
+            {
+                id: 'take_lamp',
+                name: '带走油灯',
+                desc: '这可能在后面有用',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你小心地提起煤油灯，发现它比看起来要冷得多，仿佛火焰的热量被什么东西吸走了。', san: 5, resolve: 10, item: '诡异油灯' }
+                }
+            }
+        ]
+    },
+    'marcus_note': {
+        id: 'marcus_note',
+        name: '马库斯的便条',
+        type: 'story',
+        icon: '📄',
+        desc: '一张仓促写下的便条，字迹潦草但还能辨认。',
+        visible: 'item:oil_lamp',
+        actions: [
+            {
+                id: 'read_note',
+                name: '阅读便条',
+                desc: '了解马库斯的警告',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '"如果我们没回来，不要深入。主教已经不是人了。不要相信他的话，不要直视他的眼睛。——马库斯"', san: 8, resolve: 25, clue: '主教真相' }
+                }
+            },
+            {
+                id: 'burn_note',
+                name: '烧毁便条',
+                desc: '销毁这不祥的记录',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '火焰吞噬了便条，但那些字迹已经刻在你的脑海里。主教...已经不是人了...', san: 12, resolve: 10 }
+                }
+            }
+        ]
+    },
+
+    // ========== 4. 诡异壁画厅 (mural) ==========
+    'mural_left': {
+        id: 'mural_left',
+        name: '左侧壁画',
+        type: 'key',
+        icon: '🎨',
+        desc: '描绘着一群人跪拜在深渊裂隙前的场景。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_left',
+                name: '仔细观察',
+                desc: '考古学或神秘学判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 35 },
+                results: {
+                    fumble: { text: '你盯着壁画看得太久，那些跪拜的人似乎在动...他们的头...转向了...你...', san: 15, deterioration: 15 },
+                    fail: { text: '壁画的风格很古老，颜料中混杂着某种发光的矿物质，但你无法理解其含义。', san: 5, resolve: 5 },
+                    success: { text: '你认出这是某种仪式场景。跪拜者不是被迫的——他们是自愿的，甚至是狂热的。', san: 5, resolve: 20, clue: '狂热信徒' },
+                    crit: { text: '你不仅看懂了画面，还辨认出跪拜者穿着的服饰——那是DIA早期探险队的制服！他们在...崇拜深渊？', san: 0, resolve: 30, clue: 'DIA叛徒' }
+                }
+            }
+        ]
+    },
+    'mural_center': {
+        id: 'mural_center',
+        name: '中央壁画',
+        type: 'key',
+        icon: '🎨',
+        desc: '描绘着一个巨大的黑色裂隙，像是空间的伤口。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_center',
+                name: '直视深渊',
+                desc: '神秘学判定，高风险高回报',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 40 },
+                results: {
+                    fumble: { text: '你凝视着中央的黑色裂隙，突然意识到它也在凝视着你。一种无法名状的恐惧攫住了你的心脏。你跪倒在地，呕吐起来。', san: 20, deterioration: 20 },
+                    fail: { text: '你盯着壁画中央的黑暗看了一会儿，感到一阵眩晕。那黑暗...似乎在扩散？', san: 10, deterioration: 10, resolve: 5 },
+                    success: { text: '你强迫自己分析壁画的构图。那裂隙不是被画出来的——它是被"封印"在壁画中的。古人用某种方法把深渊的一部分困在了这里。', san: 8, resolve: 25, clue: '封印壁画' },
+                    crit: { text: '你突然理解了这幅壁画的真正目的——它不是记录，是警告，也是教程。古人留下了对抗深渊的方法：守门人仪式。', san: 0, resolve: 35, clue: '守门人秘密' }
+                }
+            }
+        ]
+    },
+    'mural_right': {
+        id: 'mural_right',
+        name: '右侧壁画',
+        type: 'story',
+        icon: '🎨',
+        desc: '这部分壁画被刻意破坏了，只剩下碎片。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_right',
+                name: '拼凑碎片',
+                desc: '侦查判定还原内容',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你试图移动壁画碎片，但碎片突然脱落，在你手上划出一道伤口。血滴落在壁画上，诡异的是，那血迹...消失了。', san: 10, deterioration: 15 },
+                    fail: { text: '破坏太严重了，你只能辨认出一些零散的符号，无法理解整体内容。', san: 0, resolve: 5 },
+                    success: { text: '你小心地拼凑碎片，辨认出一句话："守门人必须是自愿的，否则封印将成为召唤。"', san: 5, resolve: 20, clue: '自愿原则' },
+                    crit: { text: '你不仅拼凑出文字，还发现被破坏的痕迹很新——不到一周。有人不想让后来者看到这部分。马库斯？还是...埃德蒙？', san: 0, resolve: 30, clue: '破坏者身份' }
+                }
+            }
+        ]
+    },
+
+    // ========== 5. 第7小队营地 (camp) ==========
+    'camp_bed': {
+        id: 'camp_bed',
+        name: '床铺',
+        type: 'filler',
+        icon: '🛏️',
+        desc: '简陋的行军床，被子叠得整整齐齐，像是主人刚离开不久。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'check_bed',
+                name: '检查床铺',
+                desc: '寻找隐藏物品',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 35 },
+                results: {
+                    fumble: { text: '你掀起床垫时，一只硕大的黑色甲虫窜了出来，直冲你的脸！你惊叫一声后退，撞翻了煤油灯。', san: 10, deterioration: 10 },
+                    fail: { text: '床铺很整洁，但没有发现什么特别的东西。', san: 0, resolve: 5 },
+                    success: { text: '你在枕头下发现了一张照片——年轻的马库斯和一个女孩，背景是DIA总部。背面写着："艾拉，等我回来。"', san: 0, resolve: 15, clue: '马库斯的艾拉' },
+                    crit: { text: '你仔细检查床铺的每个角落，在床垫的破洞中发现了一个防水袋，里面是一本个人日记和一把军用匕首。', san: 0, resolve: 25, item: '军用匕首', clue: '个人日记' }
+                }
+            },
+            {
+                id: 'rest',
+                name: '短暂休息',
+                desc: '恢复一些状态',
+                cost: 2,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你坐在行军床上短暂休息，虽然环境阴森，但至少比站着强。你感觉稍微恢复了一些体力。', san: -5, resolve: 10, hp: 10 }
+                }
+            }
+        ]
+    },
+    'camp_case': {
+        id: 'camp_case',
+        name: '装备箱',
+        type: 'key',
+        icon: '💼',
+        desc: '一个上锁的金属箱子，上面贴着"机密"的标签。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'force_case',
+                name: '强行撬开',
+                desc: '力量判定，可能损坏内容',
+                cost: 1,
+                roll: { type: 'skill', skill: '力量', base: 40 },
+                results: {
+                    fumble: { text: '你用匕首撬锁时，箱子突然弹开，一股刺鼻的化学烟雾喷涌而出！你的眼睛火辣辣地疼。', san: 15, deterioration: 15 },
+                    fail: { text: '锁太坚固了，你只能撬开一条缝隙，里面的东西似乎被困住了。', san: 0, deterioration: 5, resolve: 5 },
+                    success: { text: '你成功撬开了锁，发现里面是DIA的机密文件和一台损坏的录音机。', san: 0, resolve: 20, item: '机密文件', clue: 'DIA机密' },
+                    crit: { text: '你完美地撬开了锁，箱子里的东西完好无损。机密文件、录音机，还有一张手绘地图——标记着"仪式地点"。', san: 0, resolve: 30, item: '机密文件+地图', clue: '仪式地点' }
+                }
+            },
+            {
+                id: 'unlock_case',
+                name: '寻找钥匙',
+                desc: '侦查判定找钥匙',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    success: { text: '你在床铺的金属框架上发现了用胶带粘着的钥匙。马库斯显然不想让别人轻易打开这个箱子。', san: 0, resolve: 25, item: '机密文件+录音机' },
+                    fail: { text: '你找了半天也没找到钥匙。', san: 0, resolve: 0 }
+                }
+            }
+        ]
+    },
+    'marcus_diary': {
+        id: 'marcus_diary',
+        name: '马库斯日记',
+        type: 'story',
+        icon: '📖',
+        desc: '摊开在桌上的日记，字迹从工整变得潦草，最后几页几乎是在颤抖中写下的。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'read_diary',
+                name: '阅读日记',
+                desc: '了解第7小队的遭遇',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '日记记载："11月14日：找到深渊入口。11月15日：找到埃德蒙主教，他说深渊是屏障而非威胁。11月16日：他说需要3个媒介完成守门人仪式。我们必须阻止他，即使...代价是我无法承受的。"', san: 10, resolve: 30, clue: '守门人仪式' }
+                }
+            },
+            {
+                id: 'take_diary',
+                name: '带走日记',
+                desc: '作为证据',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你合上日记，小心地收好。这是马库斯留下的最后记录。', san: 0, resolve: 10, item: '马库斯日记' }
+                }
+            },
+            {
+                id: 'burn_diary',
+                name: '烧毁日记',
+                desc: '让秘密随火焰消逝',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你点燃日记，看着火焰吞噬马库斯的字迹。但在最后一页烧毁前，你瞥见一句话："如果看到这本日记，去救艾琳娜——她在深渊边缘。"', san: 15, resolve: 5, clue: '艾琳娜存活' }
+                }
+            }
+        ]
+    },
+    'camp_lamp': {
+        id: 'camp_lamp',
+        name: '燃烧的灯',
+        type: 'story',
+        icon: '🪔',
+        desc: '一盏仍在燃烧的煤油灯，在死寂的洞室中发出诡异的微光。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'investigate_lamp',
+                name: '检查异常',
+                desc: '神秘学判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 35 },
+                results: {
+                    fumble: { text: '你靠近油灯时，火焰突然变成绿色，一个声音在你脑海中低语："留下...成为一部分..."你尖叫着后退。', san: 20, deterioration: 20 },
+                    fail: { text: '油灯看起来很正常，只是燃烧的时间长得不正常。', san: 5, resolve: 5 },
+                    success: { text: '你注意到油灯的燃料不是普通的煤油——它混合了某种...血液？这是某种"长明灯"仪式。', san: 8, resolve: 20, clue: '血祭燃料' },
+                    crit: { text: '你不仅发现了血祭燃料，还看出灯芯的编织方式——那是用人的头发编成的。这是囚禁灵魂的古老仪式，灯里困着一个人。', san: 0, resolve: 30, clue: '灵魂囚禁' }
+                }
+            }
+        ]
     }
 };
 
