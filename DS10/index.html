@@ -1831,14 +1831,14 @@ function executeActionResult(rollData) {
             if (!currentRoomState.solvedObjects.includes(result.solveObject)) {
                 currentRoomState.solvedObjects.push(result.solveObject);
             }
-        } else if (selectedObject.type === 'obstacle' && !currentRoomState.solvedObjects.includes(selectedObject.id)) {
+        }
+        // 标记当前对象为已解决（所有类型的对象）
+        if (!currentRoomState.solvedObjects.includes(selectedObject.id)) {
             currentRoomState.solvedObjects.push(selectedObject.id);
         }
         
-        // v0.3 如果是障碍对象或解决了对象，检查并解锁关联出口
-        if (selectedObject.type === 'obstacle' || result.solveObject) {
-            checkAndUnlockExits();
-        }
+        // v0.3 检查并解锁关联出口
+        checkAndUnlockExits();
         
         // v0.3 如果有next属性，延迟后跳转到下一房间
         if (result.next !== undefined) {
