@@ -681,6 +681,25 @@ var objectTemplates = {
             }
         ]
     },
+    'exit_equipment': {
+        id: 'exit_equipment',
+        name: '离开装备室',
+        type: 'exit',
+        icon: '🚪',
+        desc: '装备室的门敞开着，前方通道通向更深的矿坑。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_camp',
+                name: '前往第7小队营地',
+                desc: '继续前进',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你整理好装备，离开补给点，沿着通道向营地走去...', next: 4 }
+                }
+            }
+        ]
+    },
 
     // ========== 4. 诡异壁画厅 (mural) ==========
     'mural_left': {
@@ -748,6 +767,25 @@ var objectTemplates = {
                     fail: { text: '破坏太严重了，你只能辨认出一些零散的符号，无法理解整体内容。' },
                     success: { text: '你小心地拼凑碎片，辨认出一句话："守门人必须是自愿的，否则封印将成为召唤。"', san: 5, clue: '自愿原则' },
                     crit: { text: '你不仅拼凑出文字，还发现被破坏的痕迹很新——不到一周。有人不想让后来者看到这部分。马库斯？还是...埃德蒙？', clue: '破坏者身份' }
+                }
+            }
+        ]
+    },
+    'exit_mural': {
+        id: 'exit_mural',
+        name: '离开壁画厅',
+        type: 'exit',
+        icon: '🚪',
+        desc: '前方的通道通向更深的矿坑，空气中弥漫着某种古老的气息。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_camp_from_mural',
+                name: '前往第7小队营地',
+                desc: '继续前进',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你记下壁画的关键信息，离开壁画厅，沿着通道向营地走去...', next: 4 }
                 }
             }
         ]
@@ -1206,7 +1244,7 @@ var rooms = [
         type: 'side',
         objectSystem: true,
         desc: '一个侧室，显然是第7小队留下的临时补给点。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧，仿佛主人只是暂时离开...',
-        objects: ['supply_box', 'oil_lamp', 'marcus_note'],
+        objects: ['supply_box', 'oil_lamp', 'marcus_note', 'exit_equipment'],
         choices: [
             { text: '前往第7小队营地', next: 4, desc: '继续前进' }
         ]
@@ -1217,7 +1255,7 @@ var rooms = [
         type: 'side',
         objectSystem: true,
         desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。\n\n画中人们围着一个黑色裂隙，似乎在...献祭？壁画的风格不属于任何已知的古代文明。',
-        objects: ['mural_left', 'mural_center', 'mural_right'],
+        objects: ['mural_left', 'mural_center', 'mural_right', 'exit_mural'],
         choices: [
             { text: '前往第7小队营地', next: 4, desc: '继续前进' }
         ]
