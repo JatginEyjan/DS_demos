@@ -1571,6 +1571,18 @@ function performRoll(action) {
     
     currentRoll = { action: action, rate: rate };
     
+    // v0.3 必成功选项直接显示结果，跳过判定动画
+    if (rate === 100 && roll.type === 'auto') {
+        // 直接执行成功结果
+        var autoResult = action.results.success || action.results[0];
+        if (autoResult) {
+            currentRoll.resultType = 'success';
+            currentRoll.resultData = autoResult;
+            executeActionResult(currentRoll);
+        }
+        return;
+    }
+    
     // 显示判定动画
     var overlay = document.getElementById('rollOverlay');
     var display = document.getElementById('rollDisplay');
