@@ -255,15 +255,10 @@ var selectedProfs = [];
 var team = [];
 var currentRoomIdx = 0;
 var clues = [];
-var currentSituation = { resolve: 0, deterioration: 0, actionPoints: 3 };
+var turnCount = 0;  // 回合计数
+var currentRoomState = {};  // 当前房间状态（对象解决状态等）
 
-// 行动卡牌定义
-var actionCards = {
-    investigate: { name: '侦查', icon: '🔍', resolve: 20, deterioration: 0, desc: '解决度+20' },
-    combat: { name: '战斗', icon: '⚔️', resolve: 25, deterioration: 10, desc: '解决度+25 恶化度+10' },
-    negotiate: { name: '交涉', icon: '💬', resolve: 15, deterioration: -5, desc: '解决度+15 恶化度-5' },
-    occult: { name: '神秘学', icon: '✦', resolve: 35, deterioration: 20, desc: '解决度+35 恶化度+20' }
-};
+// v0.3 简化系统 - 移除行动卡牌和解决度/恶化度系统
 
 var professions = {
     archaeologist: { name: '考古学家', hp: 70, maxHp: 70, san: 0, skills: {侦查:50,力量:30,神秘学:35} },
@@ -272,9 +267,10 @@ var professions = {
 };
 
 // ========== 对象系统 ==========
-// 对象类型: 'filler'(基础填充) / 'key'(基础关键) / 'story'(剧情)
+// v0.3 对象类型: 'obstacle'(障碍) / 'info'(情报) / 'story'(剧情) / 'exit'(出口)
 // 判定方式: 'auto'(自动) / 'skill:技能名'(技能判定) / 'item:道具名'(需要道具)
 // 结果库格式: { 'fumble':大失败文本, 'fail':失败文本, 'success':成功文本, 'crit':大成功文本 }
+// 出口对象添加 unlockConditions 字段，指定需要解决的对象ID数组
 
 // ========== 13房间完整对象模板 ==========
 var objectTemplates = {
