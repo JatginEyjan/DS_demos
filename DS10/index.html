@@ -26,6 +26,10 @@
         .bar-fill.sanity { background: #7c3aed; }
         .bar-value { font-size: 10px; color: #888; width: 40px; text-align: right; }
         
+        /* v0.3 对象解决状态 */
+        .object-item.solved { opacity: 0.6; border-color: #27ae60; }
+        .object-item.type-exit { border-left: 4px solid #e94560; }
+        
         /* 游戏布局 */
         .game-layout { display: flex; height: calc(100vh - 70px); }
         .main-panel { flex: 1; display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow: hidden; }
@@ -61,26 +65,7 @@
         .choice-title { font-size: 14px; font-weight: bold; display: block; margin-bottom: 5px; }
         .choice-desc { font-size: 11px; color: #888; }
         
-        /* v0.2 情境系统 */
-        .situation-panel { background: #1a1a2e; border: 2px solid #3a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .situation-title { color: #e94560; font-size: 12px; margin-bottom: 10px; font-weight: bold; }
-        .situation-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-        .situation-label { font-size: 11px; width: 50px; color: #888; }
-        .situation-bar-fill { flex: 1; height: 12px; background: #0a0a0f; border: 1px solid #2a2a3a; overflow: hidden; border-radius: 2px; }
-        .situation-fill { height: 100%; transition: width 0.3s; }
-        .situation-fill.resolve { background: linear-gradient(90deg, #27ae60, #2ecc71); }
-        .situation-fill.deterioration { background: linear-gradient(90deg, #e94560, #c0392b); }
-        .action-points { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a2a3a; }
-        .ap-label { font-size: 11px; color: #888; }
-        .ap-dot { width: 12px; height: 12px; border-radius: 50%; background: #27ae60; border: 2px solid #1a3a2e; }
-        .ap-dot.used { background: #2a2a3a; border-color: #3a3a4a; }
-        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .card-btn { background: #1a1a2e; border: 2px solid #3a3a4a; color: #e0e0e0; padding: 12px; cursor: pointer; text-align: center; border-radius: 6px; }
-        .card-btn:hover:not(:disabled) { border-color: #e94560; transform: translateY(-2px); }
-        .card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .card-icon { font-size: 24px; display: block; margin-bottom: 5px; }
-        .card-name { font-size: 13px; font-weight: bold; }
-        .card-effect { font-size: 10px; color: #888; margin-top: 3px; }
+        /* v0.3 简化系统 - 移除解决度/恶化度/AP样式 */
         .narrative-text { background: #0f0f1a; border-left: 3px solid #e94560; padding: 12px; margin: 15px 0; color: #ccc; font-size: 13px; line-height: 1.6; }
         
         /* 对象系统样式 */
@@ -94,9 +79,10 @@
         }
         .object-item:hover { border-color: #e94560; background: #1a1a2e; }
         .object-item.selected { border-color: #27ae60; background: #1a3a2e; }
-        .object-item.type-filler { border-left-color: #666; }
-        .object-item.type-key { border-left-color: #f39c12; }
-        .object-item.type-story { border-left-color: #e94560; }
+        .object-item.type-obstacle { border-left: 4px solid #e94560; }
+        .object-item.type-info { border-left: 4px solid #3498db; }
+        .object-item.type-story { border-left: 4px solid #f39c12; }
+        .object-item.type-exit { border-left: 4px solid #27ae60; }
         .object-icon { font-size: 18px; }
         .object-name { font-size: 12px; }
         .object-type { font-size: 9px; color: #666; margin-left: 4px; }
@@ -115,8 +101,8 @@
         .action-name { font-size: 13px; font-weight: bold; }
         .action-desc { font-size: 10px; color: #888; }
         .action-meta { display: flex; gap: 8px; font-size: 10px; }
-        .action-cost { color: #f39c12; }
         .action-rate { color: #27ae60; }
+        .turn-counter { font-size: 11px; color: #888; text-align: center; padding: 5px; }
         
         /* 判定动画样式 */
         .roll-overlay { 
@@ -278,7 +264,7 @@ var objectTemplates = {
     'entrance_debris': {
         id: 'entrance_debris',
         name: '碎石堆',
-        type: 'filler',
+        type: 'obstacle',
         icon: '🪨',
         desc: '通道入口被部分碎石堵塞，但并不完全阻隔通行。',
         visible: 'always',
@@ -290,10 +276,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '力量', base: 30 },
                 results: {
-                    fumble: { text: '你被碎石砸中手臂，鲜血直流，碎石反而滑落堵住更多空间。', san: 5, deterioration: 15 },
-                    fail: { text: '碎石太重了，你只能勉强清出一条窄缝，花费了大量体力。', san: 2, deterioration: 5, resolve: 5 },
-                    success: { text: '你用尽全力推开碎石，清理出一条可容人通过的通道。', san: 0, resolve: 20 },
-                    crit: { text: '你巧妙地利用杠杆原理，碎石轰然倒塌，露出一个隐藏的侧洞！里面似乎有前人留下的东西。', san: 0, resolve: 30, bonus: '发现侧洞' }
+                    fumble: { text: '你被碎石砸中手臂，鲜血直流，碎石反而滑落堵住更多空间。', san: 5 },
+                    fail: { text: '碎石太重了，你只能勉强清出一条窄缝，花费了大量体力。', san: 2 },
+                    success: { text: '你用尽全力推开碎石，清理出一条可容人通过的通道。', bonus: '通道已清理' },
+                    crit: { text: '你巧妙地利用杠杆原理，碎石轰然倒塌，露出一个隐藏的侧洞！里面似乎有前人留下的东西。', item: '前人遗物', bonus: '发现侧洞' }
                 }
             },
             {
@@ -311,7 +297,7 @@ var objectTemplates = {
     'rail_tracks': {
         id: 'rail_tracks',
         name: '废弃铁轨',
-        type: 'filler',
+        type: 'info',
         icon: '🛤️',
         desc: '锈迹斑斑的铁轨延伸至黑暗深处，上面似乎有新鲜的痕迹。',
         visible: 'always',
@@ -323,10 +309,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '侦查', base: 35 },
                 results: {
-                    fumble: { text: '你专注于脚印，没注意到脚下的铁轨凸起，重重摔了一跤。', san: 8, deterioration: 15 },
-                    fail: { text: '铁轨上的痕迹太混乱了，你无法确定脚印的方向。', san: 0, deterioration: 5, resolve: 5 },
-                    success: { text: '你发现了新鲜的脚印，至少有3-4人不久前经过这里，方向是深入矿坑。', san: 3, resolve: 20, clue: '第7小队踪迹' },
-                    crit: { text: '你不仅发现了脚印，还辨认出其中一人脚步踉跄，似乎是受伤或疲惫之人。墙边还有用匕首匆忙刻下的记号。', san: 0, resolve: 30, clue: '马库斯记号' }
+                    fumble: { text: '你专注于脚印，没注意到脚下的铁轨凸起，重重摔了一跤。', san: 8 },
+                    fail: { text: '铁轨上的痕迹太混乱了，你无法确定脚印的方向。' },
+                    success: { text: '你发现了新鲜的脚印，至少有3-4人不久前经过这里，方向是深入矿坑。', san: 3, clue: '第7小队踪迹' },
+                    crit: { text: '你不仅发现了脚印，还辨认出其中一人脚步踉跄，似乎是受伤或疲惫之人。墙边还有用匕首匆忙刻下的记号。', clue: '马库斯记号' }
                 }
             },
             {
@@ -344,7 +330,7 @@ var objectTemplates = {
     'entrance_symbol': {
         id: 'entrance_symbol',
         name: '入口符号',
-        type: 'key',
+        type: 'info',
         icon: '✏️',
         desc: '岩壁上刻着古老的符号，似乎是某种警告或标记。',
         visible: 'always',
@@ -356,10 +342,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
-                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧笼罩心头。那符号似乎在"看着"你。', san: 10, deterioration: 15 },
-                    fail: { text: '符号的风格很古老，但你无法确定其确切含义。只能辨认出这是某种警告。', san: 3, deterioration: 5, resolve: 5 },
-                    success: { text: '你认出这是古拉丁语的变体："深入者将付出代价"。这是一个古老的警告。', san: 5, resolve: 20, clue: '古老警告' },
-                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息——那是后来的刻痕："主教已不再是他自己，不要相信他说的话。——马库斯"', san: 0, resolve: 30, clue: '马库斯警告' }
+                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧笼罩心头。那符号似乎在"看着"你。', san: 10 },
+                    fail: { text: '符号的风格很古老，但你无法确定其确切含义。只能辨认出这是某种警告。', san: 3 },
+                    success: { text: '你认出这是古拉丁语的变体："深入者将付出代价"。这是一个古老的警告。', san: 5, clue: '古老警告' },
+                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息——那是后来的刻痕："主教已不再是他自己，不要相信他说的话。——马库斯"', clue: '马库斯警告' }
                 }
             },
             {
@@ -380,7 +366,7 @@ var objectTemplates = {
     'debris': {
         id: 'debris',
         name: '碎石堆',
-        type: 'filler',
+        type: 'obstacle',
         icon: '🪨',
         desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。',
         visible: 'always',
@@ -392,10 +378,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '力量', base: 30 },
                 results: {
-                    fumble: { text: '你被碎石划伤，手臂渗出血迹。', san: 5, resolve: 0 },
-                    fail: { text: '碎石太重了，你只能勉强挤出一条缝隙。', san: 3, resolve: 10 },
-                    success: { text: '你用尽全力推开碎石，通道变宽了一些。', san: 0, resolve: 25 },
-                    crit: { text: '你找到完美的发力点，碎石轰然倒塌，露出隐藏的通道！', san: 0, resolve: 40, bonus: '发现隐藏通道' }
+                    fumble: { text: '你被碎石划伤，手臂渗出血迹。', san: 5 },
+                    fail: { text: '碎石太重了，你只能勉强挤出一条缝隙。', san: 3 },
+                    success: { text: '你用尽全力推开碎石，通道变宽了一些。' },
+                    crit: { text: '你找到完美的发力点，碎石轰然倒塌，露出隐藏的通道！', item: '隐藏通道入口', bonus: '发现隐藏通道' }
                 }
             },
             {
@@ -414,7 +400,7 @@ var objectTemplates = {
     'symbols': {
         id: 'symbols',
         name: '刻痕',
-        type: 'key',
+        type: 'info',
         icon: '✏️',
         desc: '墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。',
         visible: 'always',
@@ -426,10 +412,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
-                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧。', san: 10, resolve: 0 },
-                    fail: { text: '你只能辨认出这是拉丁语，但具体含义难以理解。', san: 3, resolve: 10 },
-                    success: { text: '你认出这是"危险"被改成了"邀请"。有人——或者某种东西——在诱导后来者深入。', san: 5, resolve: 25, clue: '符号真相' },
-                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息："主教已不再是他自己。"', san: 0, resolve: 35, clue: '主教真相' }
+                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧。', san: 10 },
+                    fail: { text: '你只能辨认出这是拉丁语，但具体含义难以理解。', san: 3 },
+                    success: { text: '你认出这是"危险"被改成了"邀请"。有人——或者某种东西——在诱导后来者深入。', san: 5, clue: '符号真相' },
+                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息："主教已不再是他自己。"', clue: '主教真相' }
                 }
             },
             {
@@ -463,7 +449,7 @@ var objectTemplates = {
                 results: {
                     success: { 
                         text: '日记记载："11月14日：我们找到了深渊入口。11月15日：马库斯队长说这里不对劲...11月16日：我必须藏起来，他们已经不是人了。——DIA第7小队成员科林"',
-                        san: 10, resolve: 30, clue: '科林的日记'
+                        san: 10, clue: '科林的日记'
                     }
                 },
                 branches: [
@@ -498,7 +484,7 @@ var objectTemplates = {
     'supply_box': {
         id: 'supply_box',
         name: '装备箱',
-        type: 'filler',
+        type: 'info',
         icon: '📦',
         desc: 'DIA标准的装备补给箱，锁扣已经损坏，可以轻松打开。',
         visible: 'always',
@@ -510,7 +496,7 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你打开装备箱，发现2支镇静剂、1个急救包和一把手电筒。第7小队显然走得匆忙，这些物资都没带走。', san: 0, resolve: 15, item: '镇静剂x2' }
+                    success: { text: '你打开装备箱，发现2支镇静剂、1个急救包和一把手电筒。第7小队显然走得匆忙，这些物资都没带走。', item: '镇静剂x2' }
                 }
             },
             {
@@ -520,10 +506,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '侦查', base: 40 },
                 results: {
-                    fumble: { text: '你检查时触发了隐藏的绊线，一阵刺耳的警报声在洞室中回荡！随后是死寂...', san: 10, deterioration: 20 },
-                    fail: { text: '你仔细检查后认为安全，但打开时还是有轻微的异常——箱底有些黏稠的液体。', san: 5, deterioration: 5, resolve: 10, item: '镇静剂x1' },
-                    success: { text: '你发现箱盖上连着一根细线，小心解除后才打开。里面物资完好。', san: 0, resolve: 20, item: '镇静剂x2' },
-                    crit: { text: '你不仅发现了陷阱，还看出这是马库斯设置的预警装置。解除后，你在箱底暗格发现额外的弹药和一张手写便条。', san: 0, resolve: 30, item: '镇静剂x2+便条', clue: '马库斯便条' }
+                    fumble: { text: '你检查时触发了隐藏的绊线，一阵刺耳的警报声在洞室中回荡！随后是死寂...', san: 10 },
+                    fail: { text: '你仔细检查后认为安全，但打开时还是有轻微的异常——箱底有些黏稠的液体。', san: 5, item: '镇静剂x1' },
+                    success: { text: '你发现箱盖上连着一根细线，小心解除后才打开。里面物资完好。', item: '镇静剂x2' },
+                    crit: { text: '你不仅发现了陷阱，还看出这是马库斯设置的预警装置。解除后，你在箱底暗格发现额外的弹药和一张手写便条。', item: '镇静剂x2+便条', clue: '马库斯便条' }
                 }
             }
         ]
@@ -543,7 +529,7 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你靠近煤油灯，发现火焰的颜色不太对——它泛着淡淡的蓝色，像是被什么东西影响着。灯座下压着一张纸条。', san: 3, resolve: 20, clue: '灯座便条' }
+                    success: { text: '你靠近煤油灯，发现火焰的颜色不太对——它泛着淡淡的蓝色，像是被什么东西影响着。灯座下压着一张纸条。', san: 3, clue: '灯座便条' }
                 }
             },
             {
@@ -553,7 +539,7 @@ var objectTemplates = {
                 cost: 0,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你吹灭了油灯，黑暗瞬间吞噬了洞室。但在灯芯熄灭前的最后一刻，你似乎看到了...什么影子在墙角移动？', san: 10, resolve: 10, deterioration: 10 }
+                    success: { text: '你吹灭了油灯，黑暗瞬间吞噬了洞室。但在灯芯熄灭前的最后一刻，你似乎看到了...什么影子在墙角移动？', san: 10 }
                 }
             },
             {
@@ -563,7 +549,7 @@ var objectTemplates = {
                 cost: 0,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你小心地提起煤油灯，发现它比看起来要冷得多，仿佛火焰的热量被什么东西吸走了。', san: 5, resolve: 10, item: '诡异油灯' }
+                    success: { text: '你小心地提起煤油灯，发现它比看起来要冷得多，仿佛火焰的热量被什么东西吸走了。', san: 5, item: '诡异油灯' }
                 }
             }
         ]
@@ -571,7 +557,7 @@ var objectTemplates = {
     'marcus_note': {
         id: 'marcus_note',
         name: '马库斯的便条',
-        type: 'story',
+        type: 'info',
         icon: '📄',
         desc: '一张仓促写下的便条，字迹潦草但还能辨认。',
         visible: 'item:oil_lamp',
@@ -583,7 +569,7 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '"如果我们没回来，不要深入。主教已经不是人了。不要相信他的话，不要直视他的眼睛。——马库斯"', san: 8, resolve: 25, clue: '主教真相' }
+                    success: { text: '"如果我们没回来，不要深入。主教已经不是人了。不要相信他的话，不要直视他的眼睛。——马库斯"', san: 8, clue: '主教真相' }
                 }
             },
             {
@@ -603,7 +589,7 @@ var objectTemplates = {
     'mural_left': {
         id: 'mural_left',
         name: '左侧壁画',
-        type: 'key',
+        type: 'info',
         icon: '🎨',
         desc: '描绘着一群人跪拜在深渊裂隙前的场景。',
         visible: 'always',
@@ -615,10 +601,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
-                    fumble: { text: '你盯着壁画看得太久，那些跪拜的人似乎在动...他们的头...转向了...你...', san: 15, deterioration: 15 },
-                    fail: { text: '壁画的风格很古老，颜料中混杂着某种发光的矿物质，但你无法理解其含义。', san: 5, resolve: 5 },
-                    success: { text: '你认出这是某种仪式场景。跪拜者不是被迫的——他们是自愿的，甚至是狂热的。', san: 5, resolve: 20, clue: '狂热信徒' },
-                    crit: { text: '你不仅看懂了画面，还辨认出跪拜者穿着的服饰——那是DIA早期探险队的制服！他们在...崇拜深渊？', san: 0, resolve: 30, clue: 'DIA叛徒' }
+                    fumble: { text: '你盯着壁画看得太久，那些跪拜的人似乎在动...他们的头...转向了...你...', san: 15 },
+                    fail: { text: '壁画的风格很古老，颜料中混杂着某种发光的矿物质，但你无法理解其含义。', san: 5 },
+                    success: { text: '你认出这是某种仪式场景。跪拜者不是被迫的——他们是自愿的，甚至是狂热的。', san: 5, clue: '狂热信徒' },
+                    crit: { text: '你不仅看懂了画面，还辨认出跪拜者穿着的服饰——那是DIA早期探险队的制服！他们在...崇拜深渊？', clue: 'DIA叛徒' }
                 }
             }
         ]
@@ -626,7 +612,7 @@ var objectTemplates = {
     'mural_center': {
         id: 'mural_center',
         name: '中央壁画',
-        type: 'key',
+        type: 'info',
         icon: '🎨',
         desc: '描绘着一个巨大的黑色裂隙，像是空间的伤口。',
         visible: 'always',
@@ -638,10 +624,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 40 },
                 results: {
-                    fumble: { text: '你凝视着中央的黑色裂隙，突然意识到它也在凝视着你。一种无法名状的恐惧攫住了你的心脏。你跪倒在地，呕吐起来。', san: 20, deterioration: 20 },
-                    fail: { text: '你盯着壁画中央的黑暗看了一会儿，感到一阵眩晕。那黑暗...似乎在扩散？', san: 10, deterioration: 10, resolve: 5 },
-                    success: { text: '你强迫自己分析壁画的构图。那裂隙不是被画出来的——它是被"封印"在壁画中的。古人用某种方法把深渊的一部分困在了这里。', san: 8, resolve: 25, clue: '封印壁画' },
-                    crit: { text: '你突然理解了这幅壁画的真正目的——它不是记录，是警告，也是教程。古人留下了对抗深渊的方法：守门人仪式。', san: 0, resolve: 35, clue: '守门人秘密' }
+                    fumble: { text: '你凝视着中央的黑色裂隙，突然意识到它也在凝视着你。一种无法名状的恐惧攫住了你的心脏。你跪倒在地，呕吐起来。', san: 20 },
+                    fail: { text: '你盯着壁画中央的黑暗看了一会儿，感到一阵眩晕。那黑暗...似乎在扩散？', san: 10 },
+                    success: { text: '你强迫自己分析壁画的构图。那裂隙不是被画出来的——它是被"封印"在壁画中的。古人用某种方法把深渊的一部分困在了这里。', san: 8, clue: '封印壁画' },
+                    crit: { text: '你突然理解了这幅壁画的真正目的——它不是记录，是警告，也是教程。古人留下了对抗深渊的方法：守门人仪式。', clue: '守门人秘密' }
                 }
             }
         ]
@@ -661,10 +647,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '侦查', base: 40 },
                 results: {
-                    fumble: { text: '你试图移动壁画碎片，但碎片突然脱落，在你手上划出一道伤口。血滴落在壁画上，诡异的是，那血迹...消失了。', san: 10, deterioration: 15 },
-                    fail: { text: '破坏太严重了，你只能辨认出一些零散的符号，无法理解整体内容。', san: 0, resolve: 5 },
-                    success: { text: '你小心地拼凑碎片，辨认出一句话："守门人必须是自愿的，否则封印将成为召唤。"', san: 5, resolve: 20, clue: '自愿原则' },
-                    crit: { text: '你不仅拼凑出文字，还发现被破坏的痕迹很新——不到一周。有人不想让后来者看到这部分。马库斯？还是...埃德蒙？', san: 0, resolve: 30, clue: '破坏者身份' }
+                    fumble: { text: '你试图移动壁画碎片，但碎片突然脱落，在你手上划出一道伤口。血滴落在壁画上，诡异的是，那血迹...消失了。', san: 10 },
+                    fail: { text: '破坏太严重了，你只能辨认出一些零散的符号，无法理解整体内容。' },
+                    success: { text: '你小心地拼凑碎片，辨认出一句话："守门人必须是自愿的，否则封印将成为召唤。"', san: 5, clue: '自愿原则' },
+                    crit: { text: '你不仅拼凑出文字，还发现被破坏的痕迹很新——不到一周。有人不想让后来者看到这部分。马库斯？还是...埃德蒙？', clue: '破坏者身份' }
                 }
             }
         ]
@@ -674,7 +660,7 @@ var objectTemplates = {
     'camp_bed': {
         id: 'camp_bed',
         name: '床铺',
-        type: 'filler',
+        type: 'info',
         icon: '🛏️',
         desc: '简陋的行军床，被子叠得整整齐齐，像是主人刚离开不久。',
         visible: 'always',
@@ -686,10 +672,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '侦查', base: 35 },
                 results: {
-                    fumble: { text: '你掀起床垫时，一只硕大的黑色甲虫窜了出来，直冲你的脸！你惊叫一声后退，撞翻了煤油灯。', san: 10, deterioration: 10 },
-                    fail: { text: '床铺很整洁，但没有发现什么特别的东西。', san: 0, resolve: 5 },
-                    success: { text: '你在枕头下发现了一张照片——年轻的马库斯和一个女孩，背景是DIA总部。背面写着："艾拉，等我回来。"', san: 0, resolve: 15, clue: '马库斯的艾拉' },
-                    crit: { text: '你仔细检查床铺的每个角落，在床垫的破洞中发现了一个防水袋，里面是一本个人日记和一把军用匕首。', san: 0, resolve: 25, item: '军用匕首', clue: '个人日记' }
+                    fumble: { text: '你掀起床垫时，一只硕大的黑色甲虫窜了出来，直冲你的脸！你惊叫一声后退，撞翻了煤油灯。', san: 10 },
+                    fail: { text: '床铺很整洁，但没有发现什么特别的东西。' },
+                    success: { text: '你在枕头下发现了一张照片——年轻的马库斯和一个女孩，背景是DIA总部。背面写着："艾拉，等我回来。"', clue: '马库斯的艾拉' },
+                    crit: { text: '你仔细检查床铺的每个角落，在床垫的破洞中发现了一个防水袋，里面是一本个人日记和一把军用匕首。', item: '军用匕首', clue: '个人日记' }
                 }
             },
             {
@@ -699,7 +685,7 @@ var objectTemplates = {
                 cost: 2,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你坐在行军床上短暂休息，虽然环境阴森，但至少比站着强。你感觉稍微恢复了一些体力。', san: -5, resolve: 10, hp: 10 }
+                    success: { text: '你坐在行军床上短暂休息，虽然环境阴森，但至少比站着强。你感觉稍微恢复了一些体力。', san: -5, hp: 10 }
                 }
             }
         ]
@@ -707,7 +693,7 @@ var objectTemplates = {
     'camp_case': {
         id: 'camp_case',
         name: '装备箱',
-        type: 'key',
+        type: 'obstacle',
         icon: '💼',
         desc: '一个上锁的金属箱子，上面贴着"机密"的标签。',
         visible: 'always',
@@ -719,10 +705,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '力量', base: 40 },
                 results: {
-                    fumble: { text: '你用匕首撬锁时，箱子突然弹开，一股刺鼻的化学烟雾喷涌而出！你的眼睛火辣辣地疼。', san: 15, deterioration: 15 },
-                    fail: { text: '锁太坚固了，你只能撬开一条缝隙，里面的东西似乎被困住了。', san: 0, deterioration: 5, resolve: 5 },
-                    success: { text: '你成功撬开了锁，发现里面是DIA的机密文件和一台损坏的录音机。', san: 0, resolve: 20, item: '机密文件', clue: 'DIA机密' },
-                    crit: { text: '你完美地撬开了锁，箱子里的东西完好无损。机密文件、录音机，还有一张手绘地图——标记着"仪式地点"。', san: 0, resolve: 30, item: '机密文件+地图', clue: '仪式地点' }
+                    fumble: { text: '你用匕首撬锁时，箱子突然弹开，一股刺鼻的化学烟雾喷涌而出！你的眼睛火辣辣地疼。', san: 15 },
+                    fail: { text: '锁太坚固了，你只能撬开一条缝隙，里面的东西似乎被困住了。' },
+                    success: { text: '你成功撬开了锁，发现里面是DIA的机密文件和一台损坏的录音机。', item: '机密文件', clue: 'DIA机密' },
+                    crit: { text: '你完美地撬开了锁，箱子里的东西完好无损。机密文件、录音机，还有一张手绘地图——标记着"仪式地点"。', item: '机密文件+地图', clue: '仪式地点' }
                 }
             },
             {
@@ -732,8 +718,8 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '侦查', base: 40 },
                 results: {
-                    success: { text: '你在床铺的金属框架上发现了用胶带粘着的钥匙。马库斯显然不想让别人轻易打开这个箱子。', san: 0, resolve: 25, item: '机密文件+录音机' },
-                    fail: { text: '你找了半天也没找到钥匙。', san: 0, resolve: 0 }
+                    success: { text: '你在床铺的金属框架上发现了用胶带粘着的钥匙。马库斯显然不想让别人轻易打开这个箱子。', item: '机密文件+录音机' },
+                    fail: { text: '你找了半天也没找到钥匙。' }
                 }
             }
         ]
@@ -753,7 +739,7 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '日记记载："11月14日：找到深渊入口。11月15日：找到埃德蒙主教，他说深渊是屏障而非威胁。11月16日：他说需要3个媒介完成守门人仪式。我们必须阻止他，即使...代价是我无法承受的。"', san: 10, resolve: 30, clue: '守门人仪式' }
+                    success: { text: '日记记载："11月14日：找到深渊入口。11月15日：找到埃德蒙主教，他说深渊是屏障而非威胁。11月16日：他说需要3个媒介完成守门人仪式。我们必须阻止他，即使...代价是我无法承受的。"', san: 10, clue: '守门人仪式' }
                 }
             },
             {
@@ -763,7 +749,7 @@ var objectTemplates = {
                 cost: 0,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你合上日记，小心地收好。这是马库斯留下的最后记录。', san: 0, resolve: 10, item: '马库斯日记' }
+                    success: { text: '你合上日记，小心地收好。这是马库斯留下的最后记录。', item: '马库斯日记' }
                 }
             },
             {
@@ -773,7 +759,7 @@ var objectTemplates = {
                 cost: 0,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你点燃日记，看着火焰吞噬马库斯的字迹。但在最后一页烧毁前，你瞥见一句话："如果看到这本日记，去救艾琳娜——她在深渊边缘。"', san: 15, resolve: 5, clue: '艾琳娜存活' }
+                    success: { text: '你点燃日记，看着火焰吞噬马库斯的字迹。但在最后一页烧毁前，你瞥见一句话："如果看到这本日记，去救艾琳娜——她在深渊边缘。"', san: 15, clue: '艾琳娜存活' }
                 }
             }
         ]
@@ -793,10 +779,10 @@ var objectTemplates = {
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
-                    fumble: { text: '你靠近油灯时，火焰突然变成绿色，一个声音在你脑海中低语："留下...成为一部分..."你尖叫着后退。', san: 20, deterioration: 20 },
-                    fail: { text: '油灯看起来很正常，只是燃烧的时间长得不正常。', san: 5, resolve: 5 },
-                    success: { text: '你注意到油灯的燃料不是普通的煤油——它混合了某种...血液？这是某种"长明灯"仪式。', san: 8, resolve: 20, clue: '血祭燃料' },
-                    crit: { text: '你不仅发现了血祭燃料，还看出灯芯的编织方式——那是用人的头发编成的。这是囚禁灵魂的古老仪式，灯里困着一个人。', san: 0, resolve: 30, clue: '灵魂囚禁' }
+                    fumble: { text: '你靠近油灯时，火焰突然变成绿色，一个声音在你脑海中低语："留下...成为一部分..."你尖叫着后退。', san: 20 },
+                    fail: { text: '油灯看起来很正常，只是燃烧的时间长得不正常。', san: 5 },
+                    success: { text: '你注意到油灯的燃料不是普通的煤油——它混合了某种...血液？这是某种"长明灯"仪式。', san: 8, clue: '血祭燃料' },
+                    crit: { text: '你不仅发现了血祭燃料，还看出灯芯的编织方式——那是用人的头发编成的。这是囚禁灵魂的古老仪式，灯里困着一个人。', clue: '灵魂囚禁' }
                 }
             }
         ]
@@ -991,8 +977,8 @@ function enterRoom(idx) {
     var room = rooms[idx];
     selectedObject = null;
     
-    // 初始化情境
-    currentSituation = { resolve: 0, deterioration: room.type === 'main' ? 10 : 0, actionPoints: 3 };
+    // v0.3 初始化房间状态（对象解决状态）
+    currentRoomState = { solvedObjects: [], unlockedExits: false };
     
     document.getElementById('roomTitle').textContent = room.name;
     document.getElementById('roomSub').textContent = '房间 ' + (idx + 1) + '/13';
@@ -1002,43 +988,9 @@ function enterRoom(idx) {
     // 描述
     html += '<div class="room-desc">' + room.desc.replace(/\n/g, '<br>') + '</div>';
     
-    // v0.2 情境面板
-    if (room.type !== 'main' || idx === 0) {
-        // 非情境房间直接显示选择
-        // 选择
-        html += '<div class="room-choices">';
-        room.choices.forEach(function(c) {
-            var onclick = '';
-            if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
-            else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
-            
-            html += '<button class="choice-btn" ' + onclick + '>';
-            html += '<span class="choice-title">' + c.text + '</span>';
-            if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
-            html += '</button>';
-        });
-        html += '</div>';
-    } else if (room.objectSystem) {
-        // ========== 对象系统房间 ==========
-        html += '<div class="situation-panel">';
-        html += '<div class="situation-title">⚠️ 情境</div>';
-        html += '<div class="situation-bar">';
-        html += '<span class="situation-label">解决度</span>';
-        html += '<div class="situation-bar-fill"><div class="situation-fill resolve" id="resolveBar" style="width:0%"></div></div>';
-        html += '<span class="bar-value" id="resolveText">0/100</span>';
-        html += '</div>';
-        html += '<div class="situation-bar">';
-        html += '<span class="situation-label">恶化度</span>';
-        html += '<div class="situation-bar-fill"><div class="situation-fill deterioration" id="deteriorationBar" style="width:' + currentSituation.deterioration + '%"></div></div>';
-        html += '<span class="bar-value" id="deteriorationText">' + currentSituation.deterioration + '/100</span>';
-        html += '</div>';
-        html += '<div class="action-points">';
-        html += '<span class="ap-label">行动点</span>';
-        for (var i = 0; i < 3; i++) {
-            html += '<div class="ap-dot" id="ap' + i + '"></div>';
-        }
-        html += '</div>';
-        html += '</div>';
+    // v0.3 简化版房间渲染
+    if (room.objectSystem) {
+        // v0.3 对象系统房间 - 简化版（无解决度/恶化度/AP）
         
         // 叙事文本区域
         html += '<div id="narrativeArea"></div>';
@@ -1049,11 +1001,18 @@ function enterRoom(idx) {
         html += '<div class="object-list" id="objectList">';
         room.objects.forEach(function(objId, i) {
             var obj = objectTemplates[objId];
-            var typeText = { 'filler': '【填充】', 'key': '【关键】', 'story': '【剧情】' }[obj.type];
-            html += '<div class="object-item type-' + obj.type + '" id="obj_' + objId + '" onclick="selectObject(\'' + objId + '\')">';
+            if (!obj) return;
+            var typeText = { 'obstacle': '【障碍】', 'info': '【情报】', 'story': '【剧情】', 'exit': '【出口】' }[obj.type] || '';
+            var isSolved = currentRoomState.solvedObjects.includes(objId);
+            var isLockedExit = obj.type === 'exit' && !currentRoomState.unlockedExits;
+            
+            html += '<div class="object-item type-' + obj.type + (isSolved ? ' solved' : '') + '" id="obj_' + objId + '" onclick="selectObject(\'' + objId + '\')">';
             html += '<span class="object-icon">' + obj.icon + '</span>';
-            html += '<span class="object-name">' + obj.name + '</span>';
+            html += '<span class="object-name">' + obj.name + (isSolved ? ' ✓' : '') + '</span>';
             html += '<span class="object-type">' + typeText + '</span>';
+            if (isLockedExit && obj.unlockConditions) {
+                html += '<span style="font-size:10px;color:#e94560;margin-left:5px;">🔒</span>';
+            }
             html += '</div>';
         });
         html += '</div>';
@@ -1072,9 +1031,9 @@ function enterRoom(idx) {
         // 结果反馈区域
         html += '<div id="resultFeedback"></div>';
         
-        // 出口按钮（初始隐藏）
+        // 出口按钮（当出口解锁时显示）
         html += '<div id="exitArea" style="display:none;margin-top:15px;">';
-        html += '<div style="color:#27ae60;text-align:center;margin-bottom:10px;">✓ 情境解决</div>';
+        html += '<div style="color:#27ae60;text-align:center;margin-bottom:10px;">✓ 出口已解锁</div>';
         room.choices.forEach(function(c) {
             var onclick = '';
             if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
@@ -1086,64 +1045,13 @@ function enterRoom(idx) {
         });
         html += '</div>';
     } else {
-        // ========== 旧版情境房间 ==========
-        // 情境房间显示情境系统
-        html += '<div class="situation-panel">';
-        html += '<div class="situation-title">⚠️ 情境</div>';
-        html += '<div class="situation-bar">';
-        html += '<span class="situation-label">解决度</span>';
-        html += '<div class="situation-bar-fill"><div class="situation-fill resolve" id="resolveBar" style="width:0%"></div></div>';
-        html += '<span class="bar-value" id="resolveText">0/100</span>';
-        html += '</div>';
-        html += '<div class="situation-bar">';
-        html += '<span class="situation-label">恶化度</span>';
-        html += '<div class="situation-bar-fill"><div class="situation-fill deterioration" id="deteriorationBar" style="width:' + currentSituation.deterioration + '%"></div></div>';
-        html += '<span class="bar-value" id="deteriorationText">' + currentSituation.deterioration + '/100</span>';
-        html += '</div>';
-        html += '<div class="action-points">';
-        html += '<span class="ap-label">行动点</span>';
-        for (var i = 0; i < 3; i++) {
-            html += '<div class="ap-dot" id="ap' + i + '"></div>';
-        }
-        html += '</div>';
-        html += '</div>';
-        
-        // 叙事文本区域
-        html += '<div id="narrativeArea"></div>';
-        
-        // 发现物
-        if (room.discoveries && room.discoveries.length > 0) {
-            html += '<div class="discoveries">';
-            html += '<div class="discoveries-title">发现物（点击阅读）</div>';
-            room.discoveries.forEach(function(d) {
-                html += '<div class="discovery-item" onclick="readDiscovery(' + idx + ', \'' + d.id + '\')">';
-                html += '<span class="discovery-icon">' + d.icon + '</span>';
-                html += '<span class="discovery-name">' + d.name + '</span>';
-                html += '</div>';
-            });
-            html += '</div>';
-        }
-        
-        // 行动卡牌
-        html += '<div class="card-grid" id="cardGrid">';
-        var cards = ['investigate', 'combat', 'negotiate', 'occult'];
-        cards.forEach(function(cardKey) {
-            var card = actionCards[cardKey];
-            html += '<button class="card-btn" onclick="playCard(\'' + cardKey + '\')" id="card_' + cardKey + '">';
-            html += '<span class="card-icon">' + card.icon + '</span>';
-            html += '<span class="card-name">' + card.name + '</span>';
-            html += '<span class="card-effect">' + card.desc + '</span>';
-            html += '</button>';
-        });
-        html += '</div>';
-        
-        // 出口按钮（初始隐藏）
-        html += '<div id="exitArea" style="display:none;margin-top:15px;">';
-        html += '<div style="color:#27ae60;text-align:center;margin-bottom:10px;">✓ 情境解决</div>';
+        // 普通房间直接显示选择
+        html += '<div class="room-choices">';
         room.choices.forEach(function(c) {
             var onclick = '';
             if (c.next !== undefined) onclick = 'onclick="enterRoom(' + c.next + ')"';
             else if (c.ending) onclick = 'onclick="showEnding(\'' + c.ending + '\')"';
+            
             html += '<button class="choice-btn" ' + onclick + '>';
             html += '<span class="choice-title">' + c.text + '</span>';
             if (c.desc) html += '<span class="choice-desc">' + c.desc + '</span>';
@@ -1157,77 +1065,7 @@ function enterRoom(idx) {
     document.getElementById('mainContent').innerHTML = html;
 }
 
-// 打出行动卡牌
-function playCard(cardKey) {
-    if (currentSituation.actionPoints <= 0) return;
-    if (currentSituation.resolve >= 100) return;
-    
-    var card = actionCards[cardKey];
-    var room = rooms[currentRoomIdx];
-    
-    // 消耗行动点
-    currentSituation.actionPoints--;
-    document.getElementById('ap' + currentSituation.actionPoints).classList.add('used');
-    
-    // 计算效果
-    var resolveGain = card.resolve;
-    var deterGain = card.deterioration;
-    
-    // 职业加成
-    if (cardKey === 'investigate' && team[0].key === 'archaeologist') resolveGain += 5;
-    if (cardKey === 'combat' && team[0].key === 'soldier') resolveGain += 5;
-    if (cardKey === 'occult' && team[0].key === 'occultist') resolveGain += 5;
-    
-    // 应用效果
-    currentSituation.resolve = Math.min(100, currentSituation.resolve + resolveGain);
-    currentSituation.deterioration = Math.max(0, Math.min(100, currentSituation.deterioration + deterGain));
-    
-    // 更新UI
-    document.getElementById('resolveBar').style.width = currentSituation.resolve + '%';
-    document.getElementById('resolveText').textContent = currentSituation.resolve + '/100';
-    document.getElementById('deteriorationBar').style.width = currentSituation.deterioration + '%';
-    document.getElementById('deteriorationText').textContent = currentSituation.deterioration + '/100';
-    
-    // 显示叙事文本
-    var narratives = {
-        investigate: '你仔细观察周围环境，发现了一些之前忽略的线索。墙壁上的刻痕、地上的脚印、空气中不寻常的气味——每一个细节都可能是关键。',
-        combat: '你握紧武器，准备迎接可能的威胁。肌肉紧绷，感官敏锐，战斗的本能正在苏醒。',
-        negotiate: '你尝试与周围的环境"对话"，寻找共存的可能性。有时候，理解比对抗更重要。',
-        occult: '你感受到深渊能量的波动，那种力量既诱人又危险。你小心翼翼地触碰它，试图理解它的本质。'
-    };
-    
-    var narrativeArea = document.getElementById('narrativeArea');
-    narrativeArea.innerHTML = '<div class="narrative-text">' + narratives[cardKey] + '<br><br><span style="color:#888;">解决度 +' + resolveGain + (deterGain > 0 ? ' | 恶化度 +' + deterGain : deterGain < 0 ? ' | 恶化度 ' + deterGain : '') + '</span></div>';
-    
-    // 恶化度超过阈值时增加SAN
-    if (currentSituation.deterioration >= 50) {
-        addSanity(5);
-    }
-    
-    // 检查情境解决
-    if (currentSituation.resolve >= 100) {
-        document.getElementById('cardGrid').style.display = 'none';
-        document.getElementById('exitArea').style.display = 'block';
-        narrativeArea.innerHTML += '<div class="narrative-text" style="border-color:#27ae60;">情境已解决，你可以离开了。</div>';
-    }
-    
-    // 行动点用完
-    if (currentSituation.actionPoints <= 0 && currentSituation.resolve < 100) {
-        document.getElementById('cardGrid').style.display = 'none';
-        document.getElementById('exitArea').style.display = 'block';
-        narrativeArea.innerHTML += '<div class="narrative-text" style="border-color:#e94560;">行动点耗尽，你不得不离开...</div>';
-        addSanity(10);
-    }
-}
-
-function readDiscovery(roomIdx, id) {
-    var room = rooms[roomIdx];
-    var d = room.discoveries.find(function(x) { return x.id === id; });
-    if (d && clues.indexOf(d.name) < 0) {
-        clues.push(d.name);
-        alert(d.icon + ' ' + d.name + '\n\n' + d.text);
-    }
-}
+// v0.3 移除 playCard 和 readDiscovery 函数
 
 function addSanity(amount) {
     team.forEach(function(inv) {
@@ -1265,6 +1103,12 @@ function updateStatus() {
             el.textContent = text;
         }
     });
+    
+    // v0.3 更新回合显示
+    var roomSub = document.getElementById('roomSub');
+    if (roomSub) {
+        roomSub.textContent = '房间 ' + (currentRoomIdx + 1) + '/13 | 回合 ' + turnCount;
+    }
 }
 
 function showEnding(type) {
@@ -1359,10 +1203,30 @@ function renderActions() {
     if (!selectedObject) return;
     
     var html = '';
+    var isSolved = currentRoomState.solvedObjects.includes(selectedObject.id);
+    
+    // v0.3 如果对象已解决，显示完成状态
+    if (isSolved) {
+        html += '<div style="text-align:center;padding:15px;color:#27ae60;">✓ 该对象已解决</div>';
+        document.getElementById('actionList').innerHTML = html;
+        return;
+    }
+    
+    // v0.3 如果是锁定的出口，显示解锁条件
+    if (selectedObject.type === 'exit' && !currentRoomState.unlockedExits) {
+        var conditionText = selectedObject.unlockConditions ? 
+            '需要: ' + selectedObject.unlockConditions.map(function(id) {
+                var obj = objectTemplates[id];
+                return obj ? obj.name : id;
+            }).join('、') : '条件未满足';
+        html += '<div style="text-align:center;padding:15px;color:#e94560;">🔒 ' + conditionText + '</div>';
+        document.getElementById('actionList').innerHTML = html;
+        return;
+    }
+    
     selectedObject.actions.forEach(function(action) {
         var rate = calculateSuccessRate(action.roll);
-        var hasAP = currentSituation.actionPoints >= action.cost;
-        var canDo = hasAP && rate > 0;
+        var canDo = rate > 0;
         
         var rateText = rate === 100 ? '必成功' : rate + '%成功率';
         if (rate === 0) rateText = '缺少道具';
@@ -1373,7 +1237,6 @@ function renderActions() {
         html += '<span class="action-desc">' + action.desc + '</span>';
         html += '</div>';
         html += '<div class="action-meta">';
-        html += '<span class="action-cost">' + action.cost + 'AP</span>';
         html += '<span class="action-rate">' + rateText + '</span>';
         html += '</div>';
         html += '</button>';
@@ -1385,20 +1248,13 @@ function renderActions() {
 // 执行行动
 function executeAction(actionId) {
     if (!selectedObject) return;
-    if (currentSituation.actionPoints <= 0) return;
-    if (currentSituation.resolve >= 100) return;
     
     var action = selectedObject.actions.find(function(a) { return a.id === actionId; });
     if (!action) return;
     
-    // 消耗行动点
-    currentSituation.actionPoints -= action.cost;
-    for (var i = 0; i < 3; i++) {
-        var apEl = document.getElementById('ap' + i);
-        if (apEl) {
-            apEl.classList.toggle('used', i >= currentSituation.actionPoints);
-        }
-    }
+    // v0.3 增加回合计数
+    turnCount++;
+    updateStatus();
     
     // 执行判定
     performRoll(action);
@@ -1511,17 +1367,22 @@ function executeActionResult(rollData) {
     var result = rollData.resultData;
     var action = rollData.action;
     
-    // 应用效果
+    // v0.3 应用效果（移除解决度，保留SAN和线索）
     if (result.san) {
         addSanity(result.san);
     }
-    if (result.resolve) {
-        currentSituation.resolve = Math.min(100, currentSituation.resolve + result.resolve);
-        document.getElementById('resolveBar').style.width = currentSituation.resolve + '%';
-        document.getElementById('resolveText').textContent = currentSituation.resolve + '/100';
-    }
     if (result.clue && clues.indexOf(result.clue) < 0) {
         clues.push(result.clue);
+    }
+    
+    // v0.3 标记对象为已解决
+    if (!currentRoomState.solvedObjects.includes(selectedObject.id)) {
+        currentRoomState.solvedObjects.push(selectedObject.id);
+    }
+    
+    // v0.3 如果是障碍对象，检查并解锁关联出口
+    if (selectedObject.type === 'obstacle') {
+        checkAndUnlockExits();
     }
     
     // 三层叙事反馈
@@ -1532,9 +1393,9 @@ function executeActionResult(rollData) {
     
     // 显示效果
     var effects = [];
-    if (result.resolve) effects.push('解决度 +' + result.resolve);
     if (result.san) effects.push('理智 +' + result.san);
     if (result.clue) effects.push('获得线索: ' + result.clue);
+    if (result.item) effects.push('获得物品: ' + result.item);
     if (result.bonus) effects.push('额外: ' + result.bonus);
     if (effects.length > 0) {
         feedbackHtml += '<div style="margin-top:8px;font-size:11px;color:#27ae60;">' + effects.join(' | ') + '</div>';
@@ -1544,23 +1405,74 @@ function executeActionResult(rollData) {
     
     document.getElementById('resultFeedback').innerHTML = feedbackHtml;
     
-    // 更新行动列表（刷新可用状态）
+    // 刷新对象列表显示
+    refreshObjectList();
+    
+    // 更新行动列表
     renderActions();
     
-    // 检查情境解决
-    if (currentSituation.resolve >= 100) {
-        document.getElementById('actionPanel').style.display = 'none';
-        document.getElementById('objectDesc').innerHTML += '<br><span style="color:#27ae60;">✓ 情境已解决</span>';
+    // 检查出口是否已解锁
+    if (currentRoomState.unlockedExits) {
         document.getElementById('exitArea').style.display = 'block';
     }
+}
+
+// v0.3 新增：检查并解锁出口
+function checkAndUnlockExits() {
+    var room = rooms[currentRoomIdx];
+    if (!room || !room.objects) return;
     
-    // 行动点用完
-    if (currentSituation.actionPoints <= 0 && currentSituation.resolve < 100) {
-        document.getElementById('actionPanel').style.display = 'none';
-        document.getElementById('objectDesc').innerHTML += '<br><span style="color:#e94560;">✗ 行动点耗尽</span>';
-        document.getElementById('exitArea').style.display = 'block';
-        addSanity(10);
+    // 获取所有障碍对象ID
+    var obstacleIds = room.objects.filter(function(id) {
+        var obj = objectTemplates[id];
+        return obj && obj.type === 'obstacle';
+    });
+    
+    // 检查是否所有障碍都已解决
+    var allObstaclesSolved = obstacleIds.every(function(id) {
+        return currentRoomState.solvedObjects.includes(id);
+    });
+    
+    if (allObstaclesSolved && obstacleIds.length > 0) {
+        currentRoomState.unlockedExits = true;
     }
+}
+
+// v0.3 新增：刷新对象列表显示
+function refreshObjectList() {
+    var room = rooms[currentRoomIdx];
+    if (!room || !room.objects) return;
+    
+    room.objects.forEach(function(objId) {
+        var objEl = document.getElementById('obj_' + objId);
+        if (!objEl) return;
+        
+        var obj = objectTemplates[objId];
+        if (!obj) return;
+        
+        var isSolved = currentRoomState.solvedObjects.includes(objId);
+        var isLockedExit = obj.type === 'exit' && !currentRoomState.unlockedExits;
+        
+        // 更新解决状态标记
+        var nameEl = objEl.querySelector('.object-name');
+        if (nameEl && isSolved) {
+            if (!nameEl.textContent.includes('✓')) {
+                nameEl.textContent += ' ✓';
+            }
+            objEl.classList.add('solved');
+        }
+        
+        // 更新出口锁定标记
+        if (isLockedExit && obj.unlockConditions) {
+            if (!objEl.querySelector('.lock-indicator')) {
+                var lockSpan = document.createElement('span');
+                lockSpan.className = 'lock-indicator';
+                lockSpan.style.cssText = 'font-size:10px;color:#e94560;margin-left:5px;';
+                lockSpan.textContent = '🔒';
+                objEl.appendChild(lockSpan);
+            }
+        }
+    });
 }
 
 // 获取判定结果文本
