@@ -364,119 +364,114 @@ var objectTemplates = {
         ]
     },
 
-    // ========== 2. 塌陷通道 (collapse) - 已有示例 ==========
+    // ========== 2. 塌陷通道 (collapse) - 教学关卡 ==========
     'debris': {
         id: 'debris',
-        name: '碎石堆',
+        name: '堵塞通道的碎石堆',
         type: 'obstacle',
         icon: '🪨',
-        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。',
+        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。碎石堆上覆盖着新鲜的灰尘和抓痕，看起来是近期形成的坍塌。',
         visible: 'always',
         actions: [
             {
-                id: 'force',
+                id: 'force_push',
                 name: '强行推开',
-                desc: '用蛮力推开碎石，可能受伤',
+                desc: '用蛮力清理通道（力量判定）',
                 cost: 1,
                 roll: { type: 'skill', skill: '力量', base: 30 },
                 results: {
-                    fumble: { text: '你被碎石划伤，手臂渗出血迹。', san: 5 },
-                    fail: { text: '碎石太重了，你只能勉强挤出一条缝隙。', san: 3 },
-                    success: { text: '你用尽全力推开碎石，通道变宽了一些。' },
-                    crit: { text: '你找到完美的发力点，碎石轰然倒塌，露出隐藏的通道！', item: '隐藏通道入口', bonus: '发现隐藏通道' }
+                    fumble: { text: '你被碎石砸中手臂，鲜血直流。更糟糕的是，你触动了不稳定的结构，碎石反而滑落堵住更多空间。疼痛和挫败感同时袭来。', san: 5, hp: -10 },
+                    fail: { text: '碎石太重了，你的努力收效甚微。最后你只能勉强清出一条窄缝，狼狈地挤了过去，衣服被划破了好几处。', san: 2 },
+                    success: { text: '你用尽全力推开碎石，手臂肌肉因用力而颤抖。随着最后一块大石头被移开，一条可容人通过的通道终于显露出来。碎石堆的状态已被更新。', solveObject: 'debris' },
+                    crit: { text: '你找到完美的发力点，利用杠杆原理巧妙施力。碎石轰然倒塌，不仅露出完整的通道，你还发现石块后面藏着一个小空间——里面有一把生锈的匕首和半包压缩饼干！前人留下的物资也许能派上用场。', solveObject: 'debris', item: '生锈匕首' }
                 }
             },
             {
-                id: 'lever',
-                name: '寻找支点',
-                desc: '侦查或军人可以必成功找到支点',
+                id: 'find_weakpoint',
+                name: '寻找稳固点',
+                desc: '侦查结构弱点（侦查判定，军人/考古学家优势）',
                 cost: 1,
-                roll: { type: 'auto', condition: 'archaeologist_or_soldier' },
+                roll: { type: 'skill', skill: '侦查', base: 35 },
                 results: {
-                    success: { text: '你仔细观察碎石结构，找到完美的支点。用杠杆原理轻松移开石块。', san: 0, resolve: 30 },
-                    fail: { text: '你没有相关经验，只能尝试蛮力。', san: 0, resolve: 0, redirect: 'force' }
+                    fumble: { text: '你的观察让你过于专注，没注意到头顶的碎石正在松动。一块石头砸在你的肩膀上，疼痛让你倒吸一口冷气。', san: 5, hp: -5 },
+                    fail: { text: '你观察了半天也没找到好办法。碎石的堆积方式看起来杂乱无章，你无法判断哪里是安全的着力点。看来只能尝试蛮力了。', redirect: 'force_push' },
+                    success: { text: '你蹲下身仔细观察碎石堆的重心位置，发现几块关键石头支撑着整个结构。你巧妙地撬动这些支点，碎石堆像 puzzle 一样层层倒塌，通道顺利打开了。', solveObject: 'debris' },
+                    crit: { text: '你的专业眼光立刻锁定了几处关键支点。在撬动石块的过程中，你注意到碎石堆后面藏着一个小空间——里面有一把生锈的匕首！这显然是前人留下的，匕首柄上刻着"DIA-7"的字样。', solveObject: 'debris', item: '生锈匕首' }
                 }
             }
         ]
     },
     'symbols': {
         id: 'symbols',
-        name: '刻痕',
+        name: '墙上的刻痕',
         type: 'info',
         icon: '✏️',
-        desc: '墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。',
+        desc: '墙上有新鲜的划痕——有人用匕首刻下了符号。刻痕很深，力度不均，显示出刻写者当时情绪激动或时间紧迫。符号周围还有一些褐色的污渍，可能是血迹。',
         visible: 'always',
         actions: [
             {
-                id: 'interpret',
+                id: 'interpret_symbols',
                 name: '解读符号',
-                desc: '神秘学判定理解符号含义',
+                desc: '尝试理解这些标记（神秘学判定）',
                 cost: 1,
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
-                    fumble: { text: '你误解了符号的含义，感到一阵莫名的恐惧。', san: 10 },
-                    fail: { text: '你只能辨认出这是拉丁语，但具体含义难以理解。', san: 3 },
-                    success: { text: '你认出这是"危险"被改成了"邀请"。有人——或者某种东西——在诱导后来者深入。', san: 5, clue: '符号真相' },
-                    crit: { text: '你不仅读懂了符号，还发现隐藏的第二层信息："主教已不再是他自己。"', clue: '主教真相' }
-                }
-            },
-            {
-                id: 'photo',
-                name: '拍照记录',
-                desc: '需要相机道具（如有则必成功）',
-                cost: 1,
-                roll: { type: 'item', item: '相机' },
-                results: {
-                    success: { text: '你用相机记录下符号细节，可以回去后慢慢研究。', san: 0, resolve: 20 },
-                    fail: { text: '你没有相机，只能凭记忆描述符号。', san: 0, resolve: 5 }
+                    fumble: { text: '你盯着符号看得太久，突然感到一阵眩晕...那些线条似乎在蠕动，像是有生命的触须。当你回过神来，发现手指不自觉地在自己的手臂上划动，留下浅浅的血痕。某种东西透过符号触碰了你。', san: 10 },
+                    fail: { text: '符号的风格很古老，带有拉丁语的特征，但你无法确定其确切含义。你依稀辨认出几个字母，但组合在一起却不构成有意义的词汇。你决定记录下来，也许后面会有用。', clue: '未知符号' },
+                    success: { text: '你辨认出这是拉丁语的变体，原本的意思是"危险"，但被人刻意修改成了"邀请"。刻痕的深浅和角度显示这是同一把匕首所为——有人诱导后来者深入。这个发现让你感到一阵寒意。', clue: '诱导标记' },
+                    crit: { text: '你不仅读懂了符号的表面含义，还发现了隐藏的密码规律。第7个字母被人为替换，指向"第7小队"。这是马库斯留下的警告！他试图用只有DIA内部人员能看懂的方式传递信息：前方是陷阱，不要相信任何"邀请"。', clue: '马库斯密码' }
                 }
             }
         ]
     },
     'diary': {
         id: 'diary',
-        name: '日记',
+        name: '墙角的日记',
         type: 'story',
         icon: '📖',
-        desc: '一本破旧的日记，似乎属于之前的探险者。',
+        desc: '一本破旧的日记，被随意丢在墙角。封面已经被血浸透了一半，纸页在潮湿的环境中微微卷曲。日记的主人显然走得非常匆忙，最后几页几乎是撕扯下来的。',
         visible: 'always',
         actions: [
             {
-                id: 'read',
+                id: 'read_diary',
                 name: '阅读日记',
-                desc: '了解之前发生的故事（必成功，分支剧情）',
+                desc: '了解之前发生了什么',
                 cost: 1,
                 roll: { type: 'auto' },
-                branch: true,
                 results: {
-                    success: { 
-                        text: '日记记载："11月14日：我们找到了深渊入口。11月15日：马库斯队长说这里不对劲...11月16日：我必须藏起来，他们已经不是人了。——DIA第7小队成员科林"',
-                        san: 10, clue: '科林的日记'
-                    }
-                },
-                branches: [
-                    { id: 'continue', name: '继续深入调查', desc: '寻找更多线索', resolve: 10 },
-                    { id: 'caution', name: '提高警惕', desc: '小心行事', san: -5 }
-                ]
-            },
-            {
-                id: 'take',
-                name: '带走日记',
-                desc: '将日记放入背包',
-                cost: 0,
-                roll: { type: 'auto' },
-                results: {
-                    success: { text: '你将日记小心地收好。', item: '旧日记', resolve: 5 }
+                    success: { text: '你小心翼翼地翻开日记："11月14日：找到深渊入口，一切正常。11月15日：马库斯队长说这里不对劲，埃德蒙主教的行为很奇怪。11月16日：我必须藏起来，他们已经不再是我认识的队友了。我听到他们在讨论'献祭'和'仪式'。如果有人看到这本日记，请告诉艾拉——我爱她。——科林，DIA第7小队考古学家" 日记到这里戛然而止，最后几页被撕掉了。', san: 5, clue: '科林的日记' }
                 }
             },
             {
-                id: 'burn',
-                name: '烧毁日记',
-                desc: '销毁这本不祥的记录',
+                id: 'take_diary',
+                name: '带走日记',
+                desc: '作为证据保存',
                 cost: 0,
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '火焰吞噬了日记，但某种感觉告诉你，这只是开始...', san: 15, resolve: 10 }
+                    success: { text: '你将日记小心地收好，用防水袋包裹起来。这本日记是第7小队遭遇的重要证据，也许能在后续的调查中派上用场。科林提到的"艾拉"可能是关键人物。', item: '科林的日记' }
+                }
+            }
+        ]
+    },
+    'exit_narrow': {
+        id: 'exit_narrow',
+        name: '狭窄的通道',
+        type: 'exit',
+        icon: '🚪',
+        desc: '通往深处的通道，黑暗中传来微弱的气流。通道的岩壁上有新鲜的刮擦痕迹，显示近期有人经过。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'object_solved', target: 'debris' }],
+        lockedText: '🔒 碎石堆挡住了去路',
+        unlockedText: '✓ 通道已清理',
+        actions: [
+            {
+                id: 'go_equipment',
+                name: '前往遗弃装备室',
+                desc: '继续探索',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你小心地穿过清理后的通道，脚步声在狭窄的岩壁间回荡。前方隐约传来微弱的光亮...' }
                 }
             }
         ]
@@ -810,6 +805,269 @@ var objectTemplates = {
                 }
             }
         ]
+    },
+
+    // ========== 6. 矿道分叉 (fork) - 分支选择 ==========
+    'upper_path': {
+        id: 'upper_path',
+        name: '上路火光',
+        type: 'info',
+        icon: '🔥',
+        desc: '左边的通道尽头有微弱的火光闪烁，在潮湿的岩壁上投下诡异的影子。隐约能听到低沉的人声，像是某种诵经或仪式。火光的颜色不太正常，带着淡淡的绿色调，这可能是某种特殊的燃料。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'scout_upper',
+                name: '侦查上路',
+                desc: '侦查判定观察情况（考古学家优势+10%）',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你探头查看时，脚下的石头滚落，发出清脆的响声。火光处的人声突然停止了，紧接着是死一般的寂静。你感到多双眼睛正在黑暗中注视着你，某种被猎食者盯上的本能恐惧涌上心头。', san: 10 },
+                    fail: { text: '距离太远，火光摇曳不定，你只能看到模糊的人影轮廓，无法确定具体人数。人声断断续续，你听不清他们在说什么，但能感受到那种狂热的语调。情报不足，你无法判断上路是否安全。' },
+                    success: { text: '你仔细观察，辨认出那是教导厅的方向。至少有5-6个村民围坐在一起，他们的姿态僵硬而统一，似乎在反复背诵某种祷词或咒语。空气中弥漫着一种狂热而压抑的氛围。如果选择这条路，你可能会获得更多关于埃德蒙计划的知识，但也意味着更大的理智风险。', clue: '教导厅情报' },
+                    crit: { text: '你不仅看到了村民，还发现了一个穿黑袍的身影——埃德蒙主教！他正在向村民们讲解什么，手势激烈，神情癫狂。村民们虔诚地仰望着他，眼中闪烁着非人的光芒。你注意到他们手中都拿着某种发光的物体，可能是深渊的碎片。如果选择上路，你将直接面对埃德蒙的教化，获得更多知识，但也意味着直面深渊的真相。', clue: '埃德蒙位置' }
+                }
+            }
+        ]
+    },
+    'lower_path': {
+        id: 'lower_path',
+        name: '下路能量',
+        type: 'info',
+        icon: '⚡',
+        desc: '右边的通道传来不祥的能量波动，空气都在微微震颤。越靠近这个方向，温度就越低，呼出的气息凝结成白色的雾气。岩壁上出现了奇怪的结晶，在黑暗中发出微弱的荧光，像是被某种力量侵蚀的痕迹。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'sense_energy',
+                name: '感知能量',
+                desc: '神秘学判定理解波动（神秘学者优势+10%）',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 40 },
+                results: {
+                    fumble: { text: '你试图感知能量，却被一股无形的力量猛烈冲击。脑海中响起刺耳的尖啸，像是千万个声音同时在尖叫。你的视野边缘开始出现黑色的裂纹，仿佛现实本身正在崩解。当你回过神来，发现自己已经跪倒在地，鼻腔流出温热的血液。', san: 15 },
+                    fail: { text: '能量波动很强烈，像是一阵阵无形的热浪拍打在你的皮肤上，但那种"热"是冰冷的。你努力尝试理解这种能量的性质，但它超出了你的认知范围。你只能确定这股能量的源头就在通道深处，而且它正在逐渐增强。', san: 5 },
+                    success: { text: '你感受到那是深渊裂隙的边缘，能量不稳定但可以被利用。这股能量带着某种"饥饿"的特质，像是活物在呼吸。你意识到那里可能保存着第7小队留下的线索，甚至是幸存者的踪迹。但同时，这种接近深渊的行为意味着更大的身体风险。选择下路，你可能会找到马库斯或其他队员，但要做好战斗准备。', clue: '深渊边缘情报' },
+                    crit: { text: '你不仅感知到能量，还察觉到其中夹杂着...人类的意识？那是一个痛苦而坚韧的灵魂，在深渊边缘挣扎着保持清醒。有人在深渊边缘，而且还活着！你感受到那个存在正在试图与你建立联系，传递某种信息。这是一个惊人的发现——第7小队可能还有幸存者！如果选择下路，你将有机会找到并拯救这个人，但深渊的力量会对你的身体造成直接威胁。', clue: '深渊幸存者' }
+                }
+            }
+        ]
+    },
+    'middle_sign': {
+        id: 'middle_sign',
+        name: '中间标记',
+        type: 'info',
+        icon: '🗺️',
+        desc: '岔路口中央的石柱上刻着古老的标记，似乎是某种指示牌。石柱表面风化严重，但核心的符号仍然清晰可辨。标记使用的颜料中混杂着某种发光的矿物质，在手电筒的光照下微微闪烁。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'read_sign',
+                name: '解读标记',
+                desc: '考古学专长判定（考古学家必成功）',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 30 },
+                results: {
+                    fumble: { text: '你试图解读标记时，手指不小心划过一道深深的刻痕。突然，你的脑海中响起了一个古老的声音，用一种你无法理解的语言低语着什么。你感到头晕目眩，某种知识正在强行涌入你的大脑，但你的意识无法承受。', san: 12 },
+                    fail: { text: '标记已经风化严重，加上你不熟悉古代符号系统，只能辨认出一些零散的图案。你看到左边似乎代表着某种"聚集"或"学习"的概念，右边则与"深渊"或"凝视"有关。但具体含义仍然模糊不清，无法为你提供明确的选择依据。' },
+                    success: { text: '你认出这是古罗马矿井的标记系统，结合你在考古学方面的知识，成功解读了主要内容。左边通向"教导之所"，那是埃德蒙向信徒传授深渊知识的地方；右边通向"深渊凝视"，是矿坑最深处的裂隙边缘。标记底部还有一句警告："知识带来疯狂，凝视带来湮灭。"这句话让你意识到两条路都有其危险，但性质不同。', clue: '路径警告' },
+                    crit: { text: '作为考古学家，你不仅能读懂标记的字面意思，还看出了符号之间的隐含关联。左边代表"教导厅"，是埃德蒙进行洗脑仪式的地方，去那里可以了解更多关于守门人仪式的知识，但会面临更大的理智考验；右边代表"深渊边缘"，是物理上最接近深渊的地方，去那里可能找到第7小队的幸存者或遗物，但会对身体造成直接伤害。标记的最下方，你发现了后来添加的刻痕——是马库斯的笔迹："上路寻真相，下路救生命。——M"', clue: '马库斯指引' }
+                }
+            }
+        ]
+    },
+    'exit_upper': {
+        id: 'exit_upper',
+        name: '上路出口',
+        type: 'exit',
+        icon: '⬆️',
+        desc: '通往教导厅的通道，火光在尽头摇曳。空气中飘荡着某种 incense 的气味，让人感到昏昏欲睡。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '教导厅情报' }],
+        lockedText: '🔒 需要先侦查上路情况',
+        unlockedText: '✓ 已了解上路情况',
+        actions: [
+            {
+                id: 'go_teaching',
+                name: '前往教导厅',
+                desc: '探索上分支',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你沿着通道向火光处走去，诵经声越来越清晰。空气中弥漫着某种 incense 的味道，让你的头脑有些昏沉。教导厅就在前方...' }
+                }
+            }
+        ]
+    },
+    'exit_lower': {
+        id: 'exit_lower',
+        name: '下路出口',
+        type: 'exit',
+        icon: '⬇️',
+        desc: '通往深渊边缘的通道，能量波动让人不安。越往里走，温度越低，岩壁上的结晶发出诡异的荧光。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '深渊边缘情报' }],
+        lockedText: '🔒 需要先感知下路能量',
+        unlockedText: '✓ 已了解下情情况',
+        actions: [
+            {
+                id: 'go_pit',
+                name: '前往牺牲坑道',
+                desc: '探索下分支',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你沿着通道向下走去，温度越来越低，岩壁上的结晶发出诡异的荧光。深渊的力量在召唤着你...' }
+                }
+            }
+        ]
+    },
+
+    // ========== 12. 仪式大厅 (ritual) - 多结局 ==========
+    'edmund_figure': {
+        id: 'edmund_figure',
+        name: '埃德蒙·布莱克伍德',
+        type: 'obstacle',
+        icon: '👤',
+        desc: '埃德蒙站在能量柱中央，他的身体已经开始与深渊同化。他的半边脸仍然是那个理性的DIA首席研究员，但另外半边已经变成了由黑暗和星光构成的非人形态。他的眼神中既有疯狂，也有深深的悲哀。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'talk_edmund',
+                name: '尝试对话',
+                desc: '利用已有线索说服埃德蒙（需要特定线索）',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你向埃德蒙喊话，试图唤醒他的理智。他的非人那边脸微微颤动，仿佛在聆听。' }
+                }
+            },
+            {
+                id: 'fight_edmund',
+                name: '强行阻止',
+                desc: '力量判定，与埃德蒙战斗',
+                cost: 1,
+                roll: { type: 'skill', skill: '力量', base: 45 },
+                results: {
+                    fumble: { text: '你冲向埃德蒙，却被能量柱的力量弹开。你的身体在空中翻转，重重撞在岩壁上。埃德蒙甚至没有转身，只是轻轻抬手，你就感到内脏像是被无形的力量挤压。当你爬起来时，发现自己吐出的血中带黑色的颗粒。', san: 15, hp: -20 },
+                    fail: { text: '你试图攻击埃德蒙，但他身边的能量场形成了一层护盾。你的攻击被弹开，冲击力让你的手臂发麻。埃德蒙叹了口气："暴力解决不了问题，年轻人。"', san: 5, hp: -10 },
+                    success: { text: '你抓住机会冲向埃德蒙，在他施法的间隙突破了他的防御。你的攻击让他踉跄了一下，能量柱出现了短暂的波动。埃德蒙转过身来，眼中的疯狂消退了一些，取而代之的是一种解脱般的平静："终于...有人来阻止我了..."', clue: '战斗胜利' },
+                    crit: { text: '你以雷霆之势冲向埃德蒙，精准地找到了能量场的薄弱点。你的攻击不仅突破了防御，还打断了他的施法仪式。能量柱剧烈震颤，埃德蒙跪倒在地。当他抬起头时，眼中已经恢复了人类的清明："谢谢你...让我从疯狂中解脱。但艾琳娜...她还被困在里面...请救救她..."', clue: '埃德蒙清醒' }
+                }
+            }
+        ]
+    },
+    'energy_column': {
+        id: 'energy_column',
+        name: '深渊能量柱',
+        type: 'info',
+        icon: '⚡',
+        desc: '黑色的能量柱从裂隙中升起，连接着深渊和现实世界。能量柱内部有一个人形轮廓，若隐若现。能量本身似乎有生命，不断蠕动、膨胀，像是在呼吸。靠近能量柱会让人感到强烈的压迫感，仿佛灵魂都要被吸走。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'analyze_energy',
+                name: '分析能量结构',
+                desc: '神秘学判定理解能量本质（神秘学者优势）',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 50 },
+                results: {
+                    fumble: { text: '你试图分析能量结构，却感到意识被一股强大的力量拉扯。你看到了深渊的内部——无数星辰在黑暗中旋转，但它们不是发光体，而是吞噬光的存在。当你回过神来，发现自己已经跪倒在地，口中喃喃着无法理解的语言。', san: 20 },
+                    fail: { text: '能量柱的结构超出了你的理解范围。你能感受到其中蕴含的巨大力量，但无法分析其运作原理。唯一确定的是，这股能量正在逐渐增强，时间不多了。', san: 8 },
+                    success: { text: '你强迫自己冷静分析，发现能量柱是一个双向通道——它在维持深渊封印的同时，也在抽取艾琳娜的生命力作为能量源。这就是守门人仪式的真相：用一个人的灵魂作为祭品，换取封印的稳定。你意识到，如果能够找到替代者，或者找到另一种能量源，艾琳娜就有可能被释放。', clue: '守门人真相' },
+                    crit: { text: '你的神秘学知识让你看穿了能量柱的本质。这不仅是封印，更是一个牢笼——艾琳娜的意识被困在深渊和现实之间，作为两个世界之间的"缓冲垫"。你惊讶地发现，这个仪式有一个古老的漏洞：如果替代者是自愿的，仪式可以进行转移。而且，如果同时有两名守门人，封印的力量会增强，但每个人承受的负担会减轻。这为拯救艾琳娜提供了可能性！', clue: '艾琳娜真相' }
+                }
+            }
+        ]
+    },
+    'elenia_figure': {
+        id: 'elenia_figure',
+        name: '艾琳娜·布莱克伍德',
+        type: 'story',
+        icon: '👻',
+        desc: '艾琳娜漂浮在能量柱中，她的身体半透明，仿佛处于现实和虚幻之间。她的面容安详，像是在沉睡，但偶尔眉头会微微皱起，显示出她仍在与深渊的力量抗争。她的嘴唇偶尔翕动，似乎在说什么，但声音无法穿透能量屏障。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '艾琳娜真相' }],
+        actions: [
+            {
+                id: 'listen_elenia',
+                name: '聆听低语',
+                desc: '尝试理解艾琳娜的信息',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 40 },
+                results: {
+                    fumble: { text: '你试图聆听艾琳娜的声音，却听到了深渊的回应。无数声音在你脑海中同时响起，它们在尖叫、哀嚎、狂笑。你捂住耳朵，但那些声音直接在你的大脑中回荡。当你终于恢复清醒时，发现自己已经在地上蜷缩了不知多久。', san: 15 },
+                    fail: { text: '你努力聆听，但只能捕捉到只言片语。艾琳娜的声音太微弱了，被能量柱的轰鸣声淹没。你隐约听到"不要..."和"救..."，但无法确定完整的意思。' },
+                    success: { text: '你静下心来，屏蔽了周围的干扰，终于听清了艾琳娜的话："不要...责怪埃德蒙...他只是想救我...但这个方法错了...深渊...不能被控制...只能被...平衡..."她的声音断断续续，但传递了一个重要的信息：埃德蒙的初衷是爱，而不是邪恶。', clue: '艾琳娜的遗言' },
+                    crit: { text: '你不仅听清了艾琳娜的话，还感受到了她的情感——她对埃德蒙的爱，对深渊的恐惧，以及一种超越个人的责任感。她说："告诉埃德蒙...我爱他...但让他放手...守门人必须自愿，但不是必须牺牲...找到...第三个选择..."她的眼睛突然睁开，直视着你，那双眼睛里蕴含着超越人类理解的智慧。', clue: '艾琳娜的智慧' }
+                }
+            }
+        ]
+    },
+    'exit_truth': {
+        id: 'exit_truth',
+        name: '说服出口',
+        type: 'exit',
+        icon: '💬',
+        desc: '通过说服埃德蒙找到第三条路。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '艾琳娜真相' }, { type: 'clue', target: '照片线索' }],
+        lockedText: '🔒 需要了解艾琳娜的真相并持有照片线索',
+        unlockedText: '✓ 可以揭开真相',
+        actions: [
+            {
+                id: 'ending_truth',
+                name: '真相结局：第三条路',
+                desc: '利用所有线索说服埃德蒙',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你向埃德蒙展示了艾琳娜的照片，讲述了你在藏书室了解到的一切——他最初是为了拯救妻子，而不是臣服于深渊。你告诉他艾琳娜的遗言：她爱他，但这个方法错了。埃德蒙崩溃了，能量柱开始不稳定。你提出了第三种方案：不完全释放艾琳娜，也不继续牺牲她，而是建立一个循环封印，让她和埃德蒙轮流承担守门人的职责，减轻各自的负担。埃德蒙最终同意了。艾琳娜被释放了一半，她仍然与深渊有联系，但不再被囚禁。埃德蒙选择留在矿坑中，继续研究如何彻底解放妻子。你离开时，看到艾琳娜和埃德蒙相拥而泣，他们的身影在能量柱的微光中逐渐模糊。' }
+                }
+            }
+        ]
+    },
+    'exit_hero': {
+        id: 'exit_hero',
+        name: '战斗出口',
+        type: 'exit',
+        icon: '⚔️',
+        desc: '通过力量阻止仪式。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '战斗胜利' }],
+        lockedText: '🔒 需要先击败或说服埃德蒙',
+        unlockedText: '✓ 可以阻止仪式',
+        actions: [
+            {
+                id: 'ending_hero',
+                name: '英雄结局：牺牲与拯救',
+                desc: '强行阻止仪式',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你用尽全力打断了仪式，能量柱崩溃，艾琳娜的身影在光芒中消散。埃德蒙在最后一刻恢复了清醒，看着妻子的消失，他的眼中流下了泪水。"你做了正确的事..."他低声说，"她自由了...从痛苦中..."说完，他的身体开始崩解，与深渊同化。你逃离了崩塌的仪式大厅，身后传来埃德蒙最后的笑声——那不是疯狂的笑，而是释然的笑。当你回到地面，第一缕阳光照在脸上，你知道这一夜改变了你的一生。DIA会问你发生了什么，但你永远不会说出全部真相。有些知识，最好留在深渊之中。' }
+                }
+            }
+        ]
+    },
+    'exit_sacrifice': {
+        id: 'exit_sacrifice',
+        name: '牺牲出口',
+        type: 'exit',
+        icon: '✨',
+        desc: '自愿替代艾琳娜成为守门人。',
+        visible: 'conditional',
+        unlockConditions: [{ type: 'clue', target: '守门人真相' }, { type: 'skill', skill: '神秘学', min: 50 }],
+        lockedText: '🔒 需要了解守门人仪式且神秘学≥50',
+        unlockedText: '✓ 可以自愿牺牲',
+        actions: [
+            {
+                id: 'ending_sacrifice',
+                name: '牺牲结局：永恒守望',
+                desc: '替代艾琳娜成为守门人',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你走向能量柱，理解了守门人仪式的全部含义。这不是简单的牺牲，而是一种永恒的守望——你将成为深渊和现实之间的屏障，承受两个世界的挤压，保护无知的人类免受深渊的侵蚀。艾琳娜被释放时，她的眼神中充满了感激和悲伤。埃德蒙跪倒在地，痛哭失声。你的队友想要阻止你，但你知道这是唯一的选择。当你踏入能量柱的那一刻，痛苦和狂喜同时席卷而来。你感受到深渊的知识涌入脑海，同时也感受到了艾琳娜承受的孤独和恐惧。仪式完成后，你的队友离开了矿坑，但你仍然"存在"于此。在永恒的孤独中，你守护着两个世界的边界，等待着下一个守门人来接替你的职责。' }
+                }
+            }
+        ]
     }
 };
 
@@ -833,14 +1091,13 @@ var rooms = [
     },
     {
         id: 'collapse',
-        name: '塌陷通道 [对象系统演示]',
+        name: '房间1：塌陷通道【教学关】',
         type: 'main',
-        objectSystem: true, // 启用对象系统
-        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。\n\n你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号，看起来是匆忙中留下的。\n\n角落里还躺着一本破旧的日记，似乎属于之前的探险者。',
-        objects: ['debris', 'symbols', 'diary', 'collapse_exit'], // 引用对象模板
+        objectSystem: true,
+        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。碎石堆上覆盖着新鲜的灰尘和抓痕，看起来是近期形成的坍塌。\n\n你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号。刻痕很深，力度不均，显示出刻写者当时情绪激动或时间紧迫。符号周围还有一些褐色的污渍，可能是血迹。\n\n角落里还躺着一本破旧的日记，被随意丢在那里。封面已经被血浸透了一半，纸页在潮湿的环境中微微卷曲。',
+        objects: ['debris', 'symbols', 'diary', 'exit_narrow'],
         choices: [
-            { text: '进入遗弃装备室', next: 2, desc: '继续前进' },
-            { text: '前往诡异壁画厅', next: 3, desc: '探索侧路' }
+            { text: '进入遗弃装备室', next: 2, desc: '继续前进' }
         ]
     },
     {
@@ -889,14 +1146,14 @@ var rooms = [
     },
     {
         id: 'fork',
-        name: '矿道分叉【抉择】',
+        name: '房间2：矿道分叉【抉择】',
         type: 'main',
         objectSystem: true,
-        desc: '通道在这里分成两条路。\n\n左边通向仪式准备区，你们隐约看到火光和人声。\n\n右边通向深渊边缘，传来不祥的能量波动...',
-        objects: ['upper_path', 'lower_path', 'middle_sign'],
+        desc: '通道在这里分成两条路，这是一个需要情报支撑的抉择点。\n\n左边通向仪式准备区，你们隐约看到火光和人声。火光的颜色不太正常，带着淡淡的绿色调，空气中飘荡着某种 incense 的气味。\n\n右边通向深渊边缘，传来不祥的能量波动。越靠近这个方向，温度就越低，呼出的气息凝结成白色的雾气。\n\n岔路口中央的石柱上刻着古老的标记，似乎是某种指示牌。在做出选择之前，你需要先调查收集情报。',
+        objects: ['upper_path', 'lower_path', 'middle_sign', 'exit_upper', 'exit_lower'],
         choices: [
-            { text: '⬆️ 前往教导厅（上分支）', next: 7, desc: '了解仪式的秘密' },
-            { text: '⬇️ 前往深渊边缘（下分支）', next: 9, desc: '寻找第7小队' }
+            { text: '⬆️ 前往教导厅（上分支）', next: 7, desc: '更多知识，更多SAN风险' },
+            { text: '⬇️ 前往深渊边缘（下分支）', next: 9, desc: '更多战斗，更多HP风险' }
         ]
     },
     // 上分支
@@ -948,15 +1205,15 @@ var rooms = [
     // 终局
     {
         id: 'ritual',
-        name: '仪式大厅【终局】',
+        name: '房间3：仪式大厅【终局·多结局】',
         type: 'main',
         objectSystem: true,
-        desc: '终于来到了核心区域。仪式正在进行——\n\n黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。\n\n在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中...\n\n埃德蒙转身："你们来了...我等待着有人能理解我...或者，至少...能阻止我。"',
-        objects: ['ritual_pillar', 'edmund_figure', 'elenia_figure', 'energy_column'],
+        desc: '终于来到了核心区域。仪式正在进行——\n\n黑色的能量柱从裂隙中升起，埃德蒙·布莱克伍德站在光柱中央，他的身体已经开始与深渊同化。他的半边脸仍然是那个理性的DIA首席研究员，但另外半边已经变成了由黑暗和星光构成的非人形态。\n\n在能量柱中，你们隐约看到一个人影——艾琳娜·布莱克伍德，漂浮在虚空之中。她的身体半透明，仿佛处于现实和虚幻之间...\n\n埃德蒙转身，他的眼神中既有疯狂，也有深深的悲哀："你们来了...我等待着有人能理解我...或者，至少...能阻止我。"\n\n三个选择摆在你面前：用从藏书室获得的照片线索说服埃德蒙（真相结局）、用从深渊边缘获得的力量击败他（英雄结局）、或者如果你有足够的神秘学知识，可以自愿替代艾琳娜（牺牲结局）。',
+        objects: ['edmund_figure', 'energy_column', 'elenia_figure', 'exit_truth', 'exit_hero', 'exit_sacrifice'],
         choices: [
-            { text: '💬 尝试说服', ending: 'truth', desc: '利用了解的情报' },
-            { text: '⚔️ 强行阻止', ending: 'hero', desc: '与埃德蒙战斗' },
-            { text: '✨ 自愿牺牲', ending: 'sacrifice', desc: '替代艾琳娜' }
+            { text: '💬 真相结局', ending: 'truth', desc: '去过藏书室+艾琳娜真相' },
+            { text: '⚔️ 英雄结局', ending: 'hero', desc: '去过深渊边缘或击败埃德蒙' },
+            { text: '✨ 牺牲结局', ending: 'sacrifice', desc: '神秘学≥50+了解守门人仪式' }
         ]
     }
 ];
@@ -1237,15 +1494,20 @@ function renderActions() {
     }
     
     // v0.3 如果是锁定的出口，显示解锁条件
-    if (selectedObject.type === 'exit' && !currentRoomState.unlockedExits) {
-        var conditionText = selectedObject.unlockConditions ? 
-            '需要: ' + selectedObject.unlockConditions.map(function(id) {
-                var obj = objectTemplates[id];
-                return obj ? obj.name : id;
-            }).join('、') : '条件未满足';
-        html += '<div style="text-align:center;padding:15px;color:#e94560;">🔒 ' + conditionText + '</div>';
-        document.getElementById('actionList').innerHTML = html;
-        return;
+    if (selectedObject.type === 'exit' && selectedObject.unlockConditions) {
+        var isUnlocked = selectedObject.unlockConditions.every(function(condition) {
+            return checkExitUnlockCondition(condition);
+        });
+        
+        if (!isUnlocked) {
+            var conditionText = selectedObject.lockedText || '解锁条件未满足';
+            html += '<div style="text-align:center;padding:15px;color:#e94560;">🔒 ' + conditionText + '</div>';
+            document.getElementById('actionList').innerHTML = html;
+            return;
+        } else {
+            // 显示已解锁状态
+            html += '<div style="text-align:center;padding:10px;color:#27ae60;">' + (selectedObject.unlockedText || '✓ 已解锁') + '</div>';
+        }
     }
     
     selectedObject.actions.forEach(function(action) {
@@ -1391,21 +1653,31 @@ function executeActionResult(rollData) {
     var result = rollData.resultData;
     var action = rollData.action;
     
-    // v0.3 应用效果（移除解决度，保留SAN和线索）
+    // v0.3 应用效果
     if (result.san) {
         addSanity(result.san);
+    }
+    if (result.hp) {
+        team.forEach(function(inv) {
+            inv.hp = Math.max(0, Math.min(inv.maxHp, inv.hp + result.hp));
+        });
+        updateStatus();
     }
     if (result.clue && clues.indexOf(result.clue) < 0) {
         clues.push(result.clue);
     }
     
     // v0.3 标记对象为已解决
-    if (!currentRoomState.solvedObjects.includes(selectedObject.id)) {
+    if (result.solveObject) {
+        if (!currentRoomState.solvedObjects.includes(result.solveObject)) {
+            currentRoomState.solvedObjects.push(result.solveObject);
+        }
+    } else if (!currentRoomState.solvedObjects.includes(selectedObject.id)) {
         currentRoomState.solvedObjects.push(selectedObject.id);
     }
     
-    // v0.3 如果是障碍对象，检查并解锁关联出口
-    if (selectedObject.type === 'obstacle') {
+    // v0.3 如果是障碍对象或解决了对象，检查并解锁关联出口
+    if (selectedObject.type === 'obstacle' || result.solveObject) {
         checkAndUnlockExits();
     }
     
@@ -1418,6 +1690,7 @@ function executeActionResult(rollData) {
     // 显示效果
     var effects = [];
     if (result.san) effects.push('理智 +' + result.san);
+    if (result.hp) effects.push('生命 ' + (result.hp > 0 ? '+' : '') + result.hp);
     if (result.clue) effects.push('获得线索: ' + result.clue);
     if (result.item) effects.push('获得物品: ' + result.item);
     if (result.bonus) effects.push('额外: ' + result.bonus);
@@ -1441,25 +1714,62 @@ function executeActionResult(rollData) {
     }
 }
 
+// v0.3 新增：检查出口解锁条件
+function checkExitUnlockCondition(condition) {
+    if (!condition) return true;
+    
+    // 对象已解决类型
+    if (condition.type === 'object_solved') {
+        return currentRoomState.solvedObjects.includes(condition.target);
+    }
+    
+    // 线索类型
+    if (condition.type === 'clue') {
+        return clues.includes(condition.target);
+    }
+    
+    // 技能类型
+    if (condition.type === 'skill') {
+        var skillVal = getSkillValue(condition.skill);
+        return skillVal >= (condition.min || 0);
+    }
+    
+    // 默认字符串类型（向后兼容）
+    if (typeof condition === 'string') {
+        return currentRoomState.solvedObjects.includes(condition);
+    }
+    
+    return false;
+}
+
 // v0.3 新增：检查并解锁出口
 function checkAndUnlockExits() {
     var room = rooms[currentRoomIdx];
     if (!room || !room.objects) return;
     
-    // 获取所有障碍对象ID
-    var obstacleIds = room.objects.filter(function(id) {
-        var obj = objectTemplates[id];
-        return obj && obj.type === 'obstacle';
+    // 检查所有出口对象
+    var allConditionsMet = true;
+    
+    room.objects.forEach(function(objId) {
+        var obj = objectTemplates[objId];
+        if (!obj || obj.type !== 'exit' || !obj.unlockConditions) return;
+        
+        // 检查该出口的所有解锁条件
+        var conditionsMet = obj.unlockConditions.every(function(condition) {
+            return checkExitUnlockCondition(condition);
+        });
+        
+        if (conditionsMet) {
+            // 标记该出口已解锁（存储在对象上）
+            obj.unlocked = true;
+        }
     });
     
-    // 检查是否所有障碍都已解决
-    var allObstaclesSolved = obstacleIds.every(function(id) {
-        return currentRoomState.solvedObjects.includes(id);
+    // 更新全局解锁状态（用于显示出口区域）
+    currentRoomState.unlockedExits = room.objects.some(function(objId) {
+        var obj = objectTemplates[objId];
+        return obj && obj.type === 'exit' && obj.unlocked;
     });
-    
-    if (allObstaclesSolved && obstacleIds.length > 0) {
-        currentRoomState.unlockedExits = true;
-    }
 }
 
 // v0.3 新增：刷新对象列表显示
@@ -1475,7 +1785,14 @@ function refreshObjectList() {
         if (!obj) return;
         
         var isSolved = currentRoomState.solvedObjects.includes(objId);
-        var isLockedExit = obj.type === 'exit' && !currentRoomState.unlockedExits;
+        
+        // 检查出口是否已解锁
+        var isUnlockedExit = false;
+        if (obj.type === 'exit' && obj.unlockConditions) {
+            isUnlockedExit = obj.unlockConditions.every(function(condition) {
+                return checkExitUnlockCondition(condition);
+            });
+        }
         
         // 更新解决状态标记
         var nameEl = objEl.querySelector('.object-name');
@@ -1487,13 +1804,25 @@ function refreshObjectList() {
         }
         
         // 更新出口锁定标记
-        if (isLockedExit && obj.unlockConditions) {
-            if (!objEl.querySelector('.lock-indicator')) {
+        if (obj.type === 'exit' && obj.unlockConditions) {
+            // 移除旧的锁定标记
+            var oldLock = objEl.querySelector('.lock-indicator');
+            if (oldLock) oldLock.remove();
+            
+            // 如果没有解锁，添加锁定标记
+            if (!isUnlockedExit) {
                 var lockSpan = document.createElement('span');
                 lockSpan.className = 'lock-indicator';
                 lockSpan.style.cssText = 'font-size:10px;color:#e94560;margin-left:5px;';
                 lockSpan.textContent = '🔒';
                 objEl.appendChild(lockSpan);
+            } else {
+                // 已解锁，添加解锁标记
+                var unlockSpan = document.createElement('span');
+                unlockSpan.className = 'unlock-indicator';
+                unlockSpan.style.cssText = 'font-size:10px;color:#27ae60;margin-left:5px;';
+                unlockSpan.textContent = '✓';
+                objEl.appendChild(unlockSpan);
             }
         }
     });
