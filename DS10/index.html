@@ -98,6 +98,106 @@
         }
         .action-btn:hover:not(:disabled) { border-color: #e94560; background: #2a1a2e; }
         .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        /* UI Polish - 微动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        .slide-in { animation: slideIn 0.2s ease-out; }
+        
+        .profession-card {
+            transition: transform 0.15s ease-out, border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+        }
+        .profession-card:hover {
+            transform: translateY(-2px);
+        }
+        .profession-card:active {
+            transform: scale(0.98);
+        }
+        
+        .object-item {
+            transition: transform 0.15s ease-out, border-color 0.15s ease-out, background 0.15s ease-out;
+        }
+        .object-item:hover {
+            transform: translateY(-1px);
+        }
+        .object-item:active {
+            transform: scale(0.97);
+        }
+        
+        .action-btn, .choice-btn {
+            transition: transform 0.15s ease-out, border-color 0.15s ease-out, background 0.15s ease-out;
+            min-height: 44px;
+        }
+        .action-btn:active:not(:disabled), .choice-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* 排版优化 */
+        .room-desc, .narrative-text {
+            text-wrap: pretty;
+            line-height: 1.75;
+        }
+        .scene-title, .profession-title {
+            text-wrap: balance;
+        }
+        .bar-value, .action-rate {
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* 移动端优化 */
+        @supports (height: 100dvh) {
+            .game-layout { height: calc(100dvh - 70px); }
+            .profession-select { height: 100dvh; }
+        }
+        
+        @supports (padding: max(0px)) {
+            .team-status-bar {
+                padding-top: max(8px, env(safe-area-inset-top));
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+            }
+        }
+        
+        /* 空状态引导 */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state-text {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .empty-state-action {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            color: #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: border-color 0.15s ease-out;
+        }
+        .empty-state-action:hover {
+            border-color: #e94560;
+        }
         .action-info { display: flex; flex-direction: column; }
         .action-name { font-size: 13px; font-weight: bold; }
         .action-desc { font-size: 10px; color: #888; }
@@ -152,7 +252,7 @@
 </head>
 <body>
     <!-- 职业选择 -->
-    <div id="professionSelect" class="profession-select">
+    <div id="professionSelect" class="profession-select fade-in">
         <h1 class="profession-title">DS10 v0.3 - 深渊编年史<br><span style="font-size:14px;color:#666;">选择2名调查员组成小队</span></h1>
         <div class="profession-card" id="card1" onclick="selectProf('archaeologist')">
             <div class="profession-name">🔍 考古学家</div>
@@ -170,7 +270,7 @@
     </div>
 
     <!-- 游戏主界面 -->
-    <div id="gameUI" class="hidden" style="display: flex; flex-direction: column; height: 100vh;">
+    <div id="gameUI" class="hidden fade-in" style="display: flex; flex-direction: column; height: 100vh;">
         <div class="team-status-bar" style="position:relative;">
             <div class="turn-display" id="turnDisplay">回合: 0</div>
             <div class="investigator-status">
