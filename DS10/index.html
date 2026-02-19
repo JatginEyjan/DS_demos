@@ -700,6 +700,25 @@ var objectTemplates = {
             }
         ]
     },
+    'exit_camp': {
+        id: 'exit_camp',
+        name: '离开营地',
+        type: 'exit',
+        icon: '🚪',
+        desc: '营地的出口通向更深处的矿道，低语声从黑暗中传来。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_whisper',
+                name: '前往低语回廊',
+                desc: '继续前进',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你离开营地，沿着狭窄的通道深入。空气越来越潮湿，墙壁开始渗出水珠...', next: 5 }
+                }
+            }
+        ]
+    },
 
     // ========== 4. 诡异壁画厅 (mural) ==========
     'mural_left': {
@@ -923,6 +942,103 @@ var objectTemplates = {
         ]
     },
     
+    // ========== 5.5 低语回廊 (whisper) ==========
+    'wall_whisper': {
+        id: 'wall_whisper',
+        name: '墙中低语',
+        type: 'info',
+        icon: '👂',
+        desc: '墙壁似乎在...说话？你听到模糊的声音从岩石中传出，像是在诱导你——"来吧...看看真相..."',
+        visible: 'always',
+        actions: [
+            {
+                id: 'listen_whisper',
+                name: '聆听低语',
+                desc: '神秘学判定理解内容',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 30 },
+                results: {
+                    fumble: { text: '你专注于低语，却听到它直接在你脑海中响起。那些声音在说你的名字...它们知道你是谁...', san: 15 },
+                    fail: { text: '低语太模糊了，你只能捕捉到一些零碎的词语，无法理解完整的意思。', san: 5 },
+                    success: { text: '你勉强听清了低语的内容："守门人必须自愿...艾琳娜...困在边缘..."这是某种警告？', clue: '低语警告' },
+                    crit: { text: '你不仅听清了低语，还辨认出声音的来源——那是马库斯的声音！他在重复："不要相信主教...去深渊边缘...救她..."', clue: '马库斯求救' }
+                }
+            },
+            {
+                id: 'ignore_whisper',
+                name: '捂住耳朵',
+                desc: '拒绝聆听',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你捂住耳朵，快步通过这段通道。低语渐渐消失，但你的心跳仍然很快。', san: 0 }
+                }
+            }
+        ]
+    },
+    'water_drops': {
+        id: 'water_drops',
+        name: '渗水的墙壁',
+        type: 'info',
+        icon: '💧',
+        desc: '岩壁上不断渗出水珠，在地面形成一滩积水。水很清澈，但带着一股铁锈味。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'check_water',
+                name: '检查积水',
+                desc: '侦查判定寻找异常',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 35 },
+                results: {
+                    fumble: { text: '你蹲下检查时，水面突然泛起涟漪...你看到了自己的倒影，但那倒影在笑...而你并没有笑...', san: 12 },
+                    fail: { text: '水看起来很正常，只是带着矿井常见的铁锈味。' },
+                    success: { text: '你发现水中混杂着微量的黑色颗粒，那是深渊能量的残留。这里离裂隙不远了。', clue: '深渊接近' },
+                    crit: { text: '你注意到水面的倒影有些延迟——当你的手已经收回时，倒影的手还停留在水面上。这里的现实正在扭曲。', clue: '现实扭曲' }
+                }
+            }
+        ]
+    },
+    'shadow_corner': {
+        id: 'shadow_corner',
+        name: '角落的阴影',
+        type: 'story',
+        icon: '👤',
+        desc: '通道拐角处的阴影比周围更浓，仿佛有什么东西藏在那里。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'approach_shadow',
+                name: '靠近查看',
+                desc: '勇气考验（自动）',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你鼓起勇气走近阴影...却发现那只是一块形状奇特的岩石。但当你转身离开时，你确信听到了一声叹息。', san: 5 }
+                }
+            }
+        ]
+    },
+    'exit_whisper': {
+        id: 'exit_whisper',
+        name: '离开回廊',
+        type: 'exit',
+        icon: '🚪',
+        desc: '通道继续延伸，前方有一个岔路口。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_fork',
+                name: '前往矿道分叉',
+                desc: '继续前进',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你快步离开这段诡异的通道，低语渐渐消失。前方出现了一个岔路口...', next: 6 }
+                }
+            }
+        ]
+    },
+
     // v0.3 示例出口对象
     'collapse_exit': {
         id: 'collapse_exit',
@@ -1055,6 +1171,390 @@ var objectTemplates = {
                 roll: { type: 'auto' },
                 results: {
                     success: { text: '你沿着通道向下走去，温度越来越低，岩壁上的结晶发出诡异的荧光。深渊的力量在召唤着你...', next: 9 }
+                }
+            }
+        ]
+    },
+
+    // ========== 7. 教导厅 (teaching) ==========
+    'villagers': {
+        id: 'villagers',
+        name: '狂热的村民',
+        type: 'info',
+        icon: '👥',
+        desc: '几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。他们的姿态僵硬而统一，动作完全同步。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'observe_villagers',
+                name: '观察村民',
+                desc: '侦查判定分析状态',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你观察时，一个村民突然转头看向你。他的眼睛全是黑色的，没有眼白。"你也想学习吗？"他问。', san: 12 },
+                    fail: { text: '村民们似乎在背诵某种祷词，但你听不清具体内容。他们完全无视你的存在。' },
+                    success: { text: '你观察到村民们的嘴唇同步开合，背诵的内容是："深渊是门，守门人是钥匙，自愿者将永生。"这是守门人仪式的咒语！', clue: '守门人咒语' },
+                    crit: { text: '你不仅听清了咒语，还发现村民们的手腕上都有相同的伤痕——那是自愿献血的标记。埃德蒙在用他们的生命力维持某种东西。', clue: '献血标记' }
+                }
+            }
+        ]
+    },
+    'podium_notes': {
+        id: 'podium_notes',
+        name: '讲台上的笔记',
+        type: 'info',
+        icon: '📋',
+        desc: '讲台上散落着一些手写笔记，字迹潦草但还能辨认。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'read_notes',
+                name: '阅读笔记',
+                desc: '自动阅读',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '笔记上写着埃德蒙的教导："深渊不是邪恶，它是屏障。守门人的职责是维持平衡，而非消灭深渊。艾琳娜选择了这条路，我必须尊重她的选择...但我必须找到方法减轻她的痛苦。"', clue: '埃德蒙动机' }
+                }
+            }
+        ]
+    },
+    'wall_symbols': {
+        id: 'wall_symbols',
+        name: '墙上的符号',
+        type: 'info',
+        icon: '✏️',
+        desc: '墙上刻满了你不认识的符号，但神秘学者可能能理解它们。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'interpret_symbols',
+                name: '解读符号',
+                desc: '神秘学判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 40 },
+                results: {
+                    fumble: { text: '你试图理解符号时，它们开始旋转、蠕动，像是有生命的触须。你感到一阵强烈的眩晕。', san: 15 },
+                    fail: { text: '这些符号太古老了，你无法理解它们的含义。' },
+                    success: { text: '你认出这是描述守门人仪式的古老符文。它说守门人必须自愿，否则仪式会反噬施术者。', clue: '自愿原则' },
+                    crit: { text: '你读出了完整的仪式流程：自愿者站在深渊边缘，用意识作为屏障。但符文还提到了一种"轮换"方法——两名守门人可以分担负担！', clue: '轮换方法' }
+                }
+            }
+        ]
+    },
+    'exit_teaching': {
+        id: 'exit_teaching',
+        name: '前往藏书室',
+        type: 'exit',
+        icon: '📚',
+        desc: '教导厅深处有一扇门，通往埃德蒙的私人藏书室。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_library',
+                name: '进入藏书室',
+                desc: '继续探索上分支',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你避开狂热的村民，悄悄推开了藏书室的门。里面堆满了书籍和...照片？', next: 8 }
+                }
+            }
+        ]
+    },
+
+    // ========== 8. 藏书室 (library) ==========
+    'research_papers': {
+        id: 'research_papers',
+        name: '研究报告',
+        type: 'info',
+        icon: '📄',
+        desc: '墙上贴满了关于深渊能量的研究报告，记录着大量的数据和实验结果。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'read_papers',
+                name: '阅读报告',
+                desc: '自动阅读',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '报告显示埃德蒙最初是DIA最坚定的深渊封印支持者。但2年前第3裂隙事件后，他的观点发生了根本转变——他开始相信深渊可以被利用而非单纯封印。', clue: '埃德蒙转变' }
+                }
+            }
+        ]
+    },
+    'group_photo': {
+        id: 'group_photo',
+        name: 'DIA合影',
+        type: 'info',
+        icon: '🖼️',
+        desc: 'DIA成立初期的合影，年轻的埃德蒙站在中央，笑容自信。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_photo',
+                name: '仔细观察',
+                desc: '侦查判定找细节',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 35 },
+                results: {
+                    fail: { text: '这是一张普通的团队合影，看起来大家都很开心。' },
+                    success: { text: '你注意到照片角落里有一个年轻女子，她和埃德蒙站得很近，两人手牵着手。那应该是艾琳娜。', clue: '照片线索' },
+                    crit: { text: '你不仅看到了艾琳娜，还发现照片背面写着一行字："埃德蒙与艾琳娜，深渊研究组。愿知识照亮黑暗，愿爱情超越恐惧。"', clue: '照片线索' }
+                }
+            }
+        ]
+    },
+    'elena_photo': {
+        id: 'elena_photo',
+        name: '埃德蒙与艾琳娜',
+        type: 'story',
+        icon: '💑',
+        desc: '埃德蒙和一个年轻女子的合影，背景是某个深渊裂隙。照片背面写着："艾琳娜，愿深渊永远封印。"日期是...2年前？',
+        visible: 'always',
+        actions: [
+            {
+                id: 'check_date',
+                name: '查看日期',
+                desc: '自动',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '照片背面的日期显示这是2年前拍摄的——正是艾琳娜"阵亡"之后！这说明艾琳娜并没有死，而是被困在了深渊边缘。', clue: '艾琳娜真相' }
+                }
+            },
+            {
+                id: 'take_photo',
+                name: '带走照片',
+                desc: '作为证据',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你将照片小心地收好。这可能是说服埃德蒙的关键证据。', item: '照片线索' }
+                }
+            }
+        ]
+    },
+    'edmund_desk': {
+        id: 'edmund_desk',
+        name: '埃德蒙的书桌',
+        type: 'info',
+        icon: '📚',
+        desc: '书桌上堆满了书籍和笔记，还有一杯已经干涸的咖啡。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'search_desk',
+                name: '搜查书桌',
+                desc: '侦查判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你翻找时碰倒了一瓶墨水，黑色的液体洒满了桌面。在墨水下，你似乎看到了...一张脸？', san: 10 },
+                    fail: { text: '书桌上大多是普通的研究资料，没有什么特别的东西。' },
+                    success: { text: '你在抽屉里发现了一封未寄出的信："亲爱的艾琳娜，如果我失败了，请记住我是为了救你。无论发生什么，我都爱你。——埃德蒙"', clue: '埃德蒙的爱' },
+                    crit: { text: '你不仅找到了信，还在暗格里发现了一份实验记录——埃德蒙正在研究如何安全地替换守门人，而不伤害艾琳娜的意识。他不是在疯，他是在绝望地寻找救妻子的方法。', clue: '拯救计划' }
+                }
+            }
+        ]
+    },
+    'exit_library': {
+        id: 'exit_library',
+        name: '前往仪式大厅',
+        type: 'exit',
+        icon: '🔮',
+        desc: '藏书室的密道通向仪式大厅，埃德蒙就在那里。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_ritual_upper',
+                name: '前往最终决战',
+                desc: '上分支汇合点',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你带着从藏书室获得的知识和证据，走向最终决战...', next: 11 }
+                }
+            }
+        ]
+    },
+
+    // ========== 9. 牺牲坑道 (pit) ==========
+    'surgery_table': {
+        id: 'surgery_table',
+        name: '手术台',
+        type: 'info',
+        icon: '🏥',
+        desc: '一个简陋的手术台，上面残留着暗褐色的血迹。这是埃德蒙"筛选"村民的地方。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_table',
+                name: '检查手术台',
+                desc: '侦查判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 40 },
+                results: {
+                    fumble: { text: '你检查时发现手术台下藏着一个人！他猛地扑向你，疯狂地大喊："纯度！纯度不够！"', san: 15, hp: -10 },
+                    fail: { text: '血迹已经干涸，无法判断这里发生了什么。' },
+                    success: { text: '你在手术台边缘发现了一些刻痕——那是受害者留下的计数。至少有12个人在这里被...处理。', san: 5, clue: '受害者数量' },
+                    crit: { text: '你不仅发现了计数，还在手术台下方找到了一个隐藏的医疗日志。埃德蒙在记录每个人的"纯度"——只有高纯度的人才能参与仪式，其他人被...废弃。', clue: '纯度测试' }
+                }
+            }
+        ]
+    },
+    'mad_villager': {
+        id: 'mad_villager',
+        name: '疯狂的村民',
+        type: 'story',
+        icon: '😰',
+        desc: '一个半疯的村民蜷缩在角落，看到你们，他露出解脱的微笑。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'talk_villager',
+                name: '与他对话',
+                desc: '自动',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '村民颤抖着说："埃德蒙说我们不纯净，不能被深渊接受，所以他...研究我们...想知道为什么..."他指了指自己的手臂，上面布满了针孔。"那些纯净的人被带到上面教导厅，不纯净的就...留在这里。"', san: 5, clue: '筛选过程' }
+                }
+            },
+            {
+                id: 'help_villager',
+                name: '尝试救治',
+                desc: '消耗医疗物资',
+                cost: 0,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你用急救包为村民处理伤口。他感激地抓住你的手："去深渊边缘...马库斯队长还活着...他在坚持..."说完，他闭上了眼睛。', san: 3, clue: '马库斯存活' }
+                }
+            }
+        ]
+    },
+    'blood_trail': {
+        id: 'blood_trail',
+        name: '血迹',
+        type: 'info',
+        icon: '🩸',
+        desc: '地面上有一道新鲜的血迹，延伸向通道深处。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'follow_blood',
+                name: '追踪血迹',
+                desc: '侦查判定',
+                cost: 1,
+                roll: { type: 'skill', skill: '侦查', base: 35 },
+                results: {
+                    fail: { text: '血迹断断续续，你无法确定方向。' },
+                    success: { text: '你追踪血迹，发现它通向深渊边缘。看起来有人受伤后逃向了那里。', clue: '血迹方向' },
+                    crit: { text: '你不仅追踪了血迹，还辨认出这是DIA制式军靴的脚印——是马库斯！他受伤了，但还活着，正在向深渊边缘移动。', clue: '马库斯踪迹' }
+                }
+            }
+        ]
+    },
+    'exit_pit': {
+        id: 'exit_pit',
+        name: '前往深渊边缘',
+        type: 'exit',
+        icon: '⚡',
+        desc: '通道继续向下，能量波动越来越强。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_abyss',
+                name: '继续前进',
+                desc: '前往深渊边缘',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你沿着血迹和能量波动前进，温度越来越低。深渊边缘就在前方...', next: 10 }
+                }
+            }
+        ]
+    },
+
+    // ========== 10. 深渊边缘 (abyss) ==========
+    'abyss_rift': {
+        id: 'abyss_rift',
+        name: '深渊裂隙',
+        type: 'info',
+        icon: '🌌',
+        desc: '一个巨大的黑色裂隙悬浮在矿坑尽头，像是现实被撕开了一道伤口。它不是黑暗，而是"无"——光、声音、甚至时间都在那里消失。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'observe_rift',
+                name: '观察裂隙',
+                desc: '神秘学判定，高风险',
+                cost: 1,
+                roll: { type: 'skill', skill: '神秘学', base: 45 },
+                results: {
+                    fumble: { text: '你凝视裂隙太久，感到意识被拉扯。你看到了深渊内部——无数星辰在黑暗中旋转，但它们是吞噬光的存在。当你回过神来，发现自己跪倒在地，鼻血直流。', san: 20 },
+                    fail: { text: '裂隙让你感到强烈的恐惧和眩晕，你无法直视它。', san: 10 },
+                    success: { text: '你强迫自己观察，发现裂隙边缘有某种屏障在维持——那是艾琳娜的意识！她正在用自己的存在阻止深渊扩张。', clue: '艾琳娜屏障' },
+                    crit: { text: '你不仅看到了屏障，还感知到艾琳娜的意识——她清醒着，感受着每一次深渊的脉动。她在痛苦中坚持了2年，只为保护外面的人。她的意志比埃德蒙想象的更强大。', clue: '艾琳娜意志' }
+                }
+            }
+        ]
+    },
+    'dying_marcus': {
+        id: 'dying_marcus',
+        name: '濒死的马库斯',
+        type: 'story',
+        icon: '🤕',
+        desc: '马库斯队长浑身是血，靠在岩壁上。看到你们，他露出解脱的微笑。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'talk_marcus',
+                name: '与马库斯对话',
+                desc: '自动',
+                cost: 1,
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '马库斯虚弱地说："听着...埃德蒙...他不是坏人...他只是...想救他的妻子...艾琳娜被困在深渊边缘2年了...守门人必须自愿..."他用最后的力气在你手心画下一个符号，"这个符号能保护你...去阻止仪式...但不要杀埃德蒙...给他...一个选择..."马库斯停止了呼吸。', san: 10, clue: '保护符号' }
+                }
+            }
+        ]
+    },
+    'protective_symbol': {
+        id: 'protective_symbol',
+        name: '保护符号',
+        type: 'info',
+        icon: '✋',
+        desc: '马库斯在你手心画下的符号，不知道有什么用，但感觉...温暖。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'examine_symbol',
+                name: '检查符号',
+                desc: '神秘学判定',
+                cost: 0,
+                roll: { type: 'skill', skill: '神秘学', base: 30 },
+                results: {
+                    fail: { text: '你不认识这个符号，但它让你感到安心。' },
+                    success: { text: '你认出这是古老的守护符文，能抵御深渊能量的侵蚀。马库斯用最后的力量保护了你。', clue: '守护符文' }
+                }
+            }
+        ]
+    },
+    'exit_abyss': {
+        id: 'exit_abyss',
+        name: '前往仪式大厅',
+        type: 'exit',
+        icon: '⚔️',
+        desc: '带着马库斯的遗愿，前往仪式大厅阻止埃德蒙。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_ritual_lower',
+                name: '为马库斯报仇',
+                desc: '下分支汇合点',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你握紧马库斯画下的符号，带着他的遗愿，走向最终的决战...', next: 11 }
                 }
             }
         ]
@@ -1266,7 +1766,7 @@ var rooms = [
         type: 'main',
         objectSystem: true,
         desc: '一个相对开阔的洞室，显然是第7小队的临时营地。\n\n床铺整齐，装备箱未打开——他们离开得很匆忙。中央的桌子上，一盏煤油灯还在微微燃烧...\n\n马库斯队长的日记就摊开在桌上。',
-        objects: ['camp_bed', 'camp_case', 'marcus_diary', 'camp_lamp'],
+        objects: ['camp_bed', 'camp_case', 'marcus_diary', 'camp_lamp', 'exit_camp'],
         choices: [
             { text: '前往低语回廊', next: 5, desc: '继续前进' }
         ]
@@ -1277,7 +1777,7 @@ var rooms = [
         type: 'main',
         objectSystem: true,
         desc: '通道变得狭窄，墙壁上渗出水珠。\n\n你们听到了...低语声？像是有人在你们耳边说话，但听不清内容。声音似乎在诱导你们——"来吧...看看真相...""放弃吧...太迟了..."',
-        objects: ['wall_whisper', 'water_drops', 'shadow_corner'],
+        objects: ['wall_whisper', 'water_drops', 'shadow_corner', 'exit_whisper'],
         choices: [
             { text: '前往矿道分叉', next: 6, desc: '继续前进' }
         ]
@@ -1301,7 +1801,7 @@ var rooms = [
         type: 'side',
         objectSystem: true,
         desc: '一个昏暗的大厅，墙上刻满了你们不认识的符号。\n\n几个村民坐在地上，眼神空洞，似乎在反复背诵着什么。',
-        objects: ['villagers', 'podium_notes', 'wall_symbols'],
+        objects: ['villagers', 'podium_notes', 'wall_symbols', 'exit_teaching'],
         choices: [
             { text: '继续前往藏书室', next: 8, desc: '了解埃德蒙的过去' }
         ]
@@ -1312,7 +1812,7 @@ var rooms = [
         type: 'main',
         objectSystem: true,
         desc: '埃德蒙·布莱克伍德的私人空间，墙上贴满了研究报告和...照片？\n\n是DIA成立初期的合影，年轻的埃德蒙站在中央，笑容自信。另一张照片上，他和一个年轻女子——艾琳娜。\n\n照片背面写着："艾琳娜，愿深渊永远封印。"日期是...2年前？',
-        objects: ['research_papers', 'group_photo', 'elena_photo', 'edmund_desk'],
+        objects: ['research_papers', 'group_photo', 'elena_photo', 'edmund_desk', 'exit_library'],
         choices: [
             { text: '前往仪式大厅', next: 11, desc: '最终决战' }
         ]
@@ -1324,7 +1824,7 @@ var rooms = [
         type: 'side',
         objectSystem: true,
         desc: '向下的斜坡，空气中弥漫着血腥味。\n\n你们看到了...手术台？这是埃德蒙"处理"那些"不适合参与仪式"的人的地方。',
-        objects: ['surgery_table', 'mad_villager', 'blood_trail'],
+        objects: ['surgery_table', 'mad_villager', 'blood_trail', 'exit_pit'],
         choices: [
             { text: '前往深渊边缘', next: 10, desc: '继续前进' }
         ]
@@ -1335,7 +1835,7 @@ var rooms = [
         type: 'main',
         objectSystem: true,
         desc: '你们来到了裂隙边缘。黑色的虚无悬浮在矿坑尽头。\n\n在裂隙前，你们发现了马库斯队长。他浑身是血，但还活着。\n\n"听着...埃德蒙...他不是坏人...他只是...想救他的妻子..."\n\n"艾琳娜...被困在深渊边缘...2年了...守门人...必须自愿..."',
-        objects: ['abyss_rift', 'dying_marcus', 'protective_symbol'],
+        objects: ['abyss_rift', 'dying_marcus', 'protective_symbol', 'exit_abyss'],
         choices: [
             { text: '前往仪式大厅', next: 11, desc: '为马库斯报仇' }
         ]
