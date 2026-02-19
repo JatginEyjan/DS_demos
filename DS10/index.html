@@ -1220,22 +1220,41 @@ var rooms = [
 
 // ========== 游戏函数 ==========
 function selectProf(key) {
-    if (selectedProfs.indexOf(key) >= 0) return;
-    if (selectedProfs.length >= 2) return;
+    console.log('selectProf called:', key, 'current:', selectedProfs);
+    
+    if (selectedProfs.indexOf(key) >= 0) {
+        console.log('Already selected');
+        return;
+    }
+    if (selectedProfs.length >= 2) {
+        console.log('Already have 2');
+        return;
+    }
     
     selectedProfs.push(key);
-    document.getElementById('selectHint').textContent = '已选择: ' + selectedProfs.length + '/2';
-    document.getElementById('selectHint').style.color = '#27ae60';
+    console.log('Added:', key, 'total:', selectedProfs);
+    
+    var hintEl = document.getElementById('selectHint');
+    if (hintEl) {
+        hintEl.textContent = '已选择: ' + selectedProfs.length + '/2';
+        hintEl.style.color = '#27ae60';
+    }
     
     // 高亮
     var ids = { archaeologist: 'card1', soldier: 'card2', occultist: 'card3' };
-    var card = document.getElementById(ids[key]);
+    var cardId = ids[key];
+    console.log('Looking for card:', cardId);
+    var card = document.getElementById(cardId);
     if (card) {
         card.style.borderColor = '#27ae60';
         card.style.backgroundColor = '#1a3a2e';
+        console.log('Card highlighted');
+    } else {
+        console.log('Card not found!');
     }
     
     if (selectedProfs.length === 2) {
+        console.log('Starting game...');
         setTimeout(startGame, 500);
     }
 }
