@@ -2217,7 +2217,10 @@ function enterRoom(idx) {
     selectedObject = null;
     
     // v0.3 初始化房间状态（对象解决状态）
-    currentRoomState = { solvedObjects: [], unlockedExits: false };
+    currentRoomState.solvedObjects = [];
+    currentRoomState.unlockedExits = false;
+    currentRoomState.residue = null;
+    currentRoomState.dialogueState = { active: false, npcId: null, currentNode: null, history: [] };
     
     // v0.3+ 检查并触发记忆回响
     var triggeredEchoes = checkAndTriggerEchoes(room.id);
