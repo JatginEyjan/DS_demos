@@ -3106,6 +3106,10 @@ function updateProfile(impact) {
     // 调试日志
     console.log('Profile updated:', profile);
 }
+
+// 2. 房间残留系统 - 记录每个房间的解决方式
+function recordRoomResidue(roomId, data) {
+    if (!roomResidues[roomId]) {
         roomResidues[roomId] = {};
     }
     
