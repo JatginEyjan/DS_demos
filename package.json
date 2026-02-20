@@ -1,0 +1,13 @@
+{
+  "name": "ds-demos",
+  "version": "1.0.0",
+  "description": "DS Game Demos",
+  "scripts": {
+    "check": "node check-code.js",
+    "test": "node browser-test.js",
+    "serve": "npx http-server . -p 8888"
+  },
+  "devDependencies": {
+    "puppeteer": "^21.0.0"
+  }
+}
