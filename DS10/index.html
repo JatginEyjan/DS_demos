@@ -3182,6 +3182,7 @@ function checkAndTriggerEchoes(triggerRoom) {
         }
     ];
     
+    var triggeredEchoes = [];
     echoes.forEach(function(echo) {
         if (echo.triggerRoom === triggerRoom && echo.condition()) {
             // 显示回响文本
@@ -3190,9 +3191,12 @@ function checkAndTriggerEchoes(triggerRoom) {
             // 执行效果
             if (echo.effect) echo.effect();
             
+            triggeredEchoes.push(echo);
             console.log('Echo triggered:', echo.id);
         }
     });
+    
+    return triggeredEchoes;
 }
 
 // 辅助函数：显示叙事文本
