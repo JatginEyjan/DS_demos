@@ -346,6 +346,44 @@ var clues = [];
 var turnCount = 0;  // 回合计数
 var currentRoomState = {};  // 当前房间状态（对象解决状态等）
 
+// ========== v0.3+ 核心系统数据结构 ==========
+
+// 玩家画像系统 - 记录玩家的行为倾向
+var profile = {
+    pragmatic: 0,      // 实用主义 (暴力解决、效率优先)
+    empathetic: 0,     // 共情倾向 (探索故事、关心NPC)
+    curious: 0,        // 好奇探索 (仔细调查、收集线索)
+    cautious: 0,       // 谨慎保守 (避开风险、准备充分)
+    dominantTrait: null,    // 主导特质
+    traitCombo: null,       // 特质组合标签
+    choiceHistory: []       // 关键选择历史 [{scene, choice, timestamp}]
+};
+
+// 房间残留系统 - 记录每个房间的状态残留
+var roomResidues = {
+    // 格式: '房间ID': { type: '状态类型', data: {}, expiry: 过期时间 }
+};
+
+// 全局记忆系统 - 跨房间关联的事件记录
+var globalMemory = {
+    echoes: [],         // 记忆回响队列 [{trigger, source, target, condition}]
+    milestones: [],     // 关键里程碑 [{id, description, timestamp}]
+    npcStates: {}       // NPC状态 {npcId: {attitude, trust, memories: []}}
+};
+
+// 扩展当前房间状态 - 添加残留和对话状态
+currentRoomState = {
+    solvedObjects: [],      // 已解决对象ID列表
+    unlockedExits: false,   // 出口是否解锁
+    residue: null,          // 本房间的状态残留
+    dialogueState: {        // 当前对话状态
+        active: false,      // 是否正在进行对话
+        npcId: null,        // 当前对话的NPC
+        currentNode: null,  // 当前对话节点
+        history: []         // 对话历史
+    }
+};
+
 // v0.3 简化系统 - 移除行动卡牌和解决度/恶化度系统
 
 var professions = {
@@ -478,6 +516,7 @@ var objectTemplates = {
                 name: '强行推开',
                 desc: '用蛮力清理通道（力量判定）',
                 cost: 1,
+                profileImpact: { pragmatic: 1 },
                 roll: { type: 'skill', skill: '力量', base: 30 },
                 results: {
                     fumble: { text: '你被碎石砸中手臂，鲜血直流。更糟糕的是，你触动了不稳定的结构，碎石反而滑落堵住更多空间。疼痛和挫败感同时袭来。', san: 5, hp: -10 },
@@ -491,6 +530,7 @@ var objectTemplates = {
                 name: '寻找稳固点',
                 desc: '侦查结构弱点（侦查判定，军人/考古学家优势）',
                 cost: 1,
+                profileImpact: { curious: 1 },
                 roll: { type: 'skill', skill: '侦查', base: 35 },
                 results: {
                     fumble: { text: '你的观察让你过于专注，没注意到头顶的碎石正在松动。一块石头砸在你的肩膀上，疼痛让你倒吸一口冷气。', san: 5, hp: -5 },
@@ -514,6 +554,7 @@ var objectTemplates = {
                 name: '解读符号',
                 desc: '尝试理解这些标记（神秘学判定）',
                 cost: 1,
+                profileImpact: { curious: 1 },
                 roll: { type: 'skill', skill: '神秘学', base: 35 },
                 results: {
                     fumble: { text: '你盯着符号看得太久，突然感到一阵眩晕...那些线条似乎在蠕动，像是有生命的触须。当你回过神来，发现手指不自觉地在自己的手臂上划动，留下浅浅的血痕。某种东西透过符号触碰了你。', san: 10 },
@@ -537,6 +578,7 @@ var objectTemplates = {
                 name: '阅读日记',
                 desc: '了解之前发生了什么',
                 cost: 1,
+                profileImpact: { empathetic: 2, curious: 1 },
                 roll: { type: 'auto' },
                 results: {
                     success: { text: '你小心翼翼地翻开日记："11月14日：找到深渊入口，一切正常。11月15日：马库斯队长说这里不对劲，埃德蒙主教的行为很奇怪。11月16日：我必须藏起来，他们已经不再是我认识的队友了。我听到他们在讨论「献祭」和「仪式」。如果有人看到这本日记，请告诉艾拉——我爱她。——科林，DIA第7小队考古学家" 日记到这里戛然而止，最后几页被撕掉了。', san: 5, clue: '科林的日记' }
@@ -1520,18 +1562,261 @@ var objectTemplates = {
         name: '濒死的马库斯',
         type: 'story',
         icon: '🤕',
-        desc: '马库斯队长浑身是血，靠在岩壁上。看到你们，他露出解脱的微笑。',
+        desc: '马库斯队长浑身是血，靠在岩壁上。看到你们，他露出解脱的微笑。他似乎在等待什么...',
         visible: 'always',
+        hasDialogue: true,
+        dialogueTree: {
+            root: {
+                id: 'marcus_start',
+                speaker: '马库斯队长',
+                text: '"你们终于来了...我知道DIA会派人来...但我没想到...会这么快..."',
+                choices: [
+                    {
+                        id: 'ask_injury',
+                        text: '"你伤得很重，我能帮你什么？"',
+                        profileImpact: { empathetic: 1 },
+                        effects: [{ type: 'trust', value: 10 }],
+                        nextNode: 'marcus_injury_response'
+                    },
+                    {
+                        id: 'ask_mission',
+                        text: '"第7小队发生了什么？任务报告。"',
+                        profileImpact: { pragmatic: 1 },
+                        effects: [{ type: 'trust', value: -5 }],
+                        nextNode: 'marcus_mission_response'
+                    },
+                    {
+                        id: 'stay_silent',
+                        text: '*默默等待他说下去*',
+                        profileImpact: { cautious: 1 },
+                        effects: [{ type: 'trust', value: 5 }],
+                        nextNode: 'marcus_silence_response'
+                    }
+                ]
+            },
+            marcus_injury_response: {
+                id: 'marcus_injury_response',
+                speaker: '马库斯',
+                text: '"太迟了...我撑不了多久了...但这不是重点。"\n\n他咳嗽了几声，鲜血从嘴角溢出。\n\n"重点是...埃德蒙...他不是你们想象的那样..."',
+                choices: [
+                    {
+                        id: 'ask_edmund_empathetic',
+                        text: '"慢慢说，我在这里陪你。"',
+                        profileImpact: { empathetic: 1 },
+                        effects: [{ type: 'trust', value: 15 }],
+                        nextNode: 'marcus_truth'
+                    },
+                    {
+                        id: 'ask_edmund_direct',
+                        text: '"埃德蒙怎么了？他在哪？"',
+                        profileImpact: { pragmatic: 1 },
+                        effects: [{ type: 'trust', value: 0 }],
+                        nextNode: 'marcus_truth'
+                    }
+                ]
+            },
+            marcus_mission_response: {
+                id: 'marcus_mission_response',
+                speaker: '马库斯',
+                text: '"任务...哈...我们搞砸了..."\n\n他苦笑了一声。\n\n"我们以为只是普通的失踪案...但这里...这里有些东西...不应该被唤醒..."',
+                choices: [
+                    {
+                        id: 'ask_what_happened',
+                        text: '"发生了什么？告诉我全部。"',
+                        profileImpact: { curious: 1 },
+                        effects: [{ type: 'trust', value: 5 }],
+                        nextNode: 'marcus_truth'
+                    },
+                    {
+                        id: 'comfort_marcus',
+                        text: '"不是你的错，你已经尽力了。"',
+                        profileImpact: { empathetic: 1 },
+                        effects: [{ type: 'trust', value: 10 }, { type: 'attitude', value: 'trusting' }],
+                        nextNode: 'marcus_truth'
+                    }
+                ]
+            },
+            marcus_silence_response: {
+                id: 'marcus_silence_response',
+                speaker: '马库斯',
+                text: '"你们...和其他人不一样..."\n\n他仔细地打量着你们。\n\n"我看得出来...你们会做出正确的选择...不像我..."',
+                choices: [
+                    {
+                        id: 'ask_choice',
+                        text: '"什么选择？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_truth'
+                    },
+                    {
+                        id: 'nod_continue',
+                        text: '*点头示意他继续*',
+                        profileImpact: { cautious: 1 },
+                        nextNode: 'marcus_truth'
+                    }
+                ]
+            },
+            marcus_truth: {
+                id: 'marcus_truth',
+                speaker: '马库斯',
+                text: '"听着...埃德蒙...他不是坏人...他只是...想救他的妻子...艾琳娜被困在深渊边缘2年了...她成为了守门人...自愿的..."\n\n他喘了几口气。\n\n"但埃德蒙无法接受...他想找到方法...不牺牲艾琳娜...也能封印深渊..."',
+                choices: [
+                    {
+                        id: 'ask_elena',
+                        text: '"艾琳娜？她是谁？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_elena'
+                    },
+                    {
+                        id: 'ask_ritual',
+                        text: '"他在进行什么仪式？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_ritual'
+                    },
+                    {
+                        id: 'ask_stop',
+                        text: '"我们该怎么阻止他？"',
+                        profileImpact: { pragmatic: 1 },
+                        nextNode: 'marcus_stop'
+                    }
+                ]
+            },
+            marcus_elena: {
+                id: 'marcus_elena',
+                speaker: '马库斯',
+                text: '"艾琳娜...埃德蒙的妻子...也是DIA的研究员...2年前第3裂隙事件...她自愿成为守门人...封印了深渊..."\n\n他的眼神变得柔和。\n\n"埃德蒙以为他失去了她...但他不知道...她还活着...以另一种方式..."',
+                choices: [
+                    {
+                        id: 'empathy_elena',
+                        text: '"这对他们来说太痛苦了..."',
+                        profileImpact: { empathetic: 1 },
+                        nextNode: 'marcus_final'
+                    },
+                    {
+                        id: 'ask_gatekeeper',
+                        text: '"什么是守门人？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_gatekeeper'
+                    }
+                ]
+            },
+            marcus_ritual: {
+                id: 'marcus_ritual',
+                speaker: '马库斯',
+                text: '"他称之为「解放仪式」...他相信可以找到替代守门人的方法...但需要牺牲...很多牺牲..."\n\n他颤抖着。\n\n"那些村民...那些第7小队的队员...他以为他们在拯救艾琳娜..."',
+                choices: [
+                    {
+                        id: 'condemn_edmund',
+                        text: '"他疯了，我们必须阻止他。"',
+                        profileImpact: { pragmatic: 1 },
+                        nextNode: 'marcus_defend'
+                    },
+                    {
+                        id: 'understand_edmund',
+                        text: '"他只是为了救爱人...我能理解。"',
+                        profileImpact: { empathetic: 1 },
+                        nextNode: 'marcus_understand'
+                    }
+                ]
+            },
+            marcus_stop: {
+                id: 'marcus_stop',
+                speaker: '马库斯',
+                text: '"不...不要阻止他...至少不是用暴力...给他...一个选择..."\n\n他用尽最后的力气撑起身体。\n\n"让他知道...艾琳娜还活着...让她亲口告诉他...接受自己的命运..."',
+                choices: [
+                    {
+                        id: 'promise_peaceful',
+                        text: '"我保证，会给他一个选择的机会。"',
+                        profileImpact: { empathetic: 1 },
+                        effects: [{ type: 'clue', value: '和平解决方案' }],
+                        nextNode: 'marcus_final_gift'
+                    },
+                    {
+                        id: 'noncommittal',
+                        text: '"我会尽力的。"',
+                        profileImpact: { cautious: 1 },
+                        nextNode: 'marcus_final_gift'
+                    }
+                ]
+            },
+            marcus_gatekeeper: {
+                id: 'marcus_gatekeeper',
+                speaker: '马库斯',
+                text: '"守门人...自愿的灵魂...站在深渊边缘...用自己的意识作为屏障...阻止深渊吞噬世界..."\n\n他的声音越来越弱。\n\n"这是古老的契约...守门人必须自愿...否则封印会成为召唤..."',
+                choices: [
+                    {
+                        id: 'back_to_elena',
+                        text: '"回到艾琳娜...她还活着吗？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_final'
+                    }
+                ]
+            },
+            marcus_defend: {
+                id: 'marcus_defend',
+                speaker: '马库斯',
+                text: '"不...你不明白...他没有疯...他只是...绝望了..."\n\n马库斯摇着头。\n\n"我见过真正的疯狂...那东西...在深渊里...埃德蒙只是想保护他爱的人...就像我会保护我的队员一样..."',
+                choices: [
+                    {
+                        id: 'accept_view',
+                        text: '"也许你是对的...我会试着理解他。"',
+                        profileImpact: { empathetic: 1 },
+                        nextNode: 'marcus_final_gift'
+                    }
+                ]
+            },
+            marcus_understand: {
+                id: 'marcus_understand',
+                speaker: '马库斯',
+                text: '"是的...你会理解的...因为你们也带着同样的东西...那种为了所爱的人愿意做任何事的决心..."\n\n他微笑着，似乎松了一口气。\n\n"这就是我希望你们来处理这件事的原因...你们会做正确的事..."',
+                choices: [
+                    {
+                        id: 'ask_what_right',
+                        text: '"什么是正确的事？"',
+                        profileImpact: { curious: 1 },
+                        nextNode: 'marcus_final_gift'
+                    }
+                ]
+            },
+            marcus_final: {
+                id: 'marcus_final',
+                speaker: '马库斯',
+                text: '"去仪式大厅...找到埃德蒙...但不要杀他...给他...一个选择..."\n\n他的眼神变得涣散。\n\n"艾琳娜...她还清醒着...让她亲口告诉他...接受命运...或者...继续守护..."',
+                choices: [
+                    {
+                        id: 'ask_how',
+                        text: '"我怎么才能进入仪式大厅？"',
+                        profileImpact: { pragmatic: 1 },
+                        nextNode: 'marcus_final_gift'
+                    }
+                ]
+            },
+            marcus_final_gift: {
+                id: 'marcus_final_gift',
+                speaker: '马库斯',
+                text: '"这个符号...能保护你...抵御深渊的侵蚀..."\n\n他用最后的力气在你手心画下一个复杂的符文。\n\n"还有...这个...埃德蒙的日记...我在他帐篷里找到的...也许能帮你说服他..."\n\n他从怀中掏出一个染血的笔记本。\n\n"现在...走吧...时间不多了...记住...给他...一个选择..."\n\n马库斯队长停止了呼吸，但他的脸上带着平静的微笑。',
+                choices: [
+                    {
+                        id: 'farewell',
+                        text: '*默默收起笔记本，向马库斯致敬*',
+                        profileImpact: { empathetic: 1 },
+                        effects: [
+                            { type: 'clue', value: '保护符号' },
+                            { type: 'clue', value: '埃德蒙的日记' },
+                            { type: 'end' }
+                        ],
+                        nextNode: null
+                    }
+                ]
+            }
+        },
         actions: [
             {
-                id: 'talk_marcus',
+                id: 'start_marcus_dialogue',
                 name: '与马库斯对话',
-                desc: '自动',
+                desc: '开始对话（对话树系统）',
                 cost: 1,
-                roll: { type: 'auto' },
-                results: {
-                    success: { text: '马库斯虚弱地说："听着...埃德蒙...他不是坏人...他只是...想救他的妻子...艾琳娜被困在深渊边缘2年了...守门人必须自愿..."他用最后的力气在你手心画下一个符号，"这个符号能保护你...去阻止仪式...但不要杀埃德蒙...给他...一个选择..."马库斯停止了呼吸。', san: 10, clue: '保护符号' }
-                }
+                onClick: 'startDialogue("marcus", objectTemplates["dying_marcus"].dialogueTree)',
+                profileImpact: { empathetic: 1 }
             }
         ]
     },
@@ -1934,6 +2219,12 @@ function enterRoom(idx) {
     // v0.3 初始化房间状态（对象解决状态）
     currentRoomState = { solvedObjects: [], unlockedExits: false };
     
+    // v0.3+ 检查并触发记忆回响
+    var triggeredEchoes = checkAndTriggerEchoes(room.id);
+    if (triggeredEchoes.length > 0) {
+        console.log('触发了 ' + triggeredEchoes.length + ' 个记忆回响');
+    }
+    
     document.getElementById('roomTitle').textContent = room.name;
     document.getElementById('roomSub').textContent = '房间 ' + (idx + 1) + '/13 | 回合 ' + turnCount;
     
@@ -2015,6 +2306,317 @@ function addSanity(amount) {
     });
     updateStatus();
 }
+
+// ========== v0.3+ 画像系统函数 ==========
+
+// 更新玩家画像 - 根据选择调整特质值
+function updateProfile(choice) {
+    // choice 格式: { type: 'trait', value: 数值, scene: '场景描述' }
+    if (!choice || !choice.type) return;
+    
+    // 调整特质值 (0-100范围)
+    var traitMap = {
+        'pragmatic': 'pragmatic',
+        'empathetic': 'empathetic', 
+        'curious': 'curious',
+        'cautious': 'cautious',
+        'violent': 'pragmatic',      // 暴力选择→实用主义
+        'investigate': 'curious',    // 调查选择→好奇
+        'story': 'empathetic',       // 探索故事→共情
+        'avoid': 'cautious',         // 回避风险→谨慎
+        'help': 'empathetic',        // 帮助他人→共情
+        'efficiency': 'pragmatic'    // 效率优先→实用主义
+    };
+    
+    var trait = traitMap[choice.type];
+    if (trait && profile[trait] !== undefined) {
+        profile[trait] = Math.min(100, Math.max(0, profile[trait] + (choice.value || 5)));
+        
+        // 记录选择历史
+        profile.choiceHistory.push({
+            scene: choice.scene || '未知场景',
+            choice: choice.type,
+            trait: trait,
+            value: choice.value || 5,
+            timestamp: new Date().toISOString()
+        });
+        
+        // 重新计算主导特质
+        calculateDominantTrait();
+    }
+}
+
+// 计算主导特质
+function calculateDominantTrait() {
+    var traits = ['pragmatic', 'empathetic', 'curious', 'cautious'];
+    var maxValue = -1;
+    var dominant = null;
+    
+    traits.forEach(function(trait) {
+        if (profile[trait] > maxValue) {
+            maxValue = profile[trait];
+            dominant = trait;
+        }
+    });
+    
+    profile.dominantTrait = dominant;
+    calculateTraitCombo();
+    
+    return dominant;
+}
+
+// 计算特质组合标签
+function calculateTraitCombo() {
+    var p = profile.pragmatic;
+    var e = profile.empathetic;
+    var c = profile.curious;
+    var a = profile.cautious;
+    
+    var combo = null;
+    
+    // 特质组合规则
+    if (p > 50 && e > 50) combo = '理性共情者';      // 实用+共情
+    else if (p > 50 && c > 50) combo = '高效探索者'; // 实用+好奇
+    else if (e > 50 && a > 50) combo = '谨慎守护者'; // 共情+谨慎
+    else if (c > 50 && a > 50) combo = '细心调查员'; // 好奇+谨慎
+    else if (p > 60) combo = '实用主义者';
+    else if (e > 60) combo = '共情者';
+    else if (c > 60) combo = '探索者';
+    else if (a > 60) combo = '谨慎者';
+    else combo = '平衡型';
+    
+    profile.traitCombo = combo;
+    return combo;
+}
+
+// ========== v0.3+ 房间残留系统 ==========
+
+// 添加房间残留
+function addRoomResidue(roomId, type, data, duration) {
+    var expiry = duration ? Date.now() + duration : null;
+    roomResidues[roomId] = {
+        type: type,
+        data: data,
+        expiry: expiry,
+        createdAt: Date.now()
+    };
+}
+
+// 检查并应用房间残留效果
+function checkRoomResidue(roomId) {
+    var residue = roomResidues[roomId];
+    if (!residue) return null;
+    
+    // 检查是否过期
+    if (residue.expiry && Date.now() > residue.expiry) {
+        delete roomResidues[roomId];
+        return null;
+    }
+    
+    return residue;
+}
+
+// ========== v0.3+ 对话树系统 ==========
+
+// 开始对话
+function startDialogue(npcId, dialogueTree) {
+    currentRoomState.dialogueState = {
+        active: true,
+        npcId: npcId,
+        currentNode: dialogueTree.root,
+        history: []
+    };
+    
+    // 初始化NPC状态（如果不存在）
+    if (!globalMemory.npcStates[npcId]) {
+        globalMemory.npcStates[npcId] = {
+            attitude: 'neutral',  // neutral, friendly, hostile, trusting
+            trust: 50,           // 0-100
+            memories: []
+        };
+    }
+    
+    renderDialogueNode();
+}
+
+// 渲染当前对话节点
+function renderDialogueNode() {
+    var state = currentRoomState.dialogueState;
+    if (!state.active || !state.currentNode) return;
+    
+    var node = state.currentNode;
+    var npcState = globalMemory.npcStates[state.npcId];
+    
+    // 构建对话UI
+    var html = '<div class="dialogue-panel">';
+    html += '<div class="dialogue-npc">' + (node.speaker || state.npcId) + '</div>';
+    html += '<div class="dialogue-text">' + node.text + '</div>';
+    
+    // 渲染选项
+    if (node.choices && node.choices.length > 0) {
+        html += '<div class="dialogue-choices">';
+        node.choices.forEach(function(choice, idx) {
+            // 检查选项条件
+            var visible = true;
+            if (choice.condition) {
+                visible = checkDialogueCondition(choice.condition, npcState);
+            }
+            
+            if (visible) {
+                html += '<button class="dialogue-choice-btn" onclick="selectDialogueChoice(' + idx + ')">';
+                html += choice.text;
+                html += '</button>';
+            }
+        });
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    
+    // 显示对话面板
+    var feedbackArea = document.getElementById('resultFeedback');
+    if (feedbackArea) {
+        feedbackArea.innerHTML = html;
+    }
+}
+
+// 检查对话选项条件
+function checkDialogueCondition(condition, npcState) {
+    if (condition.minTrust && npcState.trust < condition.minTrust) return false;
+    if (condition.maxTrust && npcState.trust > condition.maxTrust) return false;
+    if (condition.attitude && npcState.attitude !== condition.attitude) return false;
+    if (condition.clue && clues.indexOf(condition.clue) < 0) return false;
+    return true;
+}
+
+// 选择对话选项
+function selectDialogueChoice(choiceIdx) {
+    var state = currentRoomState.dialogueState;
+    if (!state.active) return;
+    
+    var node = state.currentNode;
+    var choice = node.choices[choiceIdx];
+    if (!choice) return;
+    
+    var npcState = globalMemory.npcStates[state.npcId];
+    
+    // 记录历史
+    state.history.push({
+        node: node.id,
+        choice: choice.id,
+        text: choice.text
+    });
+    
+    // 应用效果
+    if (choice.effects) {
+        choice.effects.forEach(function(effect) {
+            if (effect.type === 'trust') {
+                npcState.trust = Math.min(100, Math.max(0, npcState.trust + effect.value));
+            }
+            else if (effect.type === 'attitude') {
+                npcState.attitude = effect.value;
+            }
+            else if (effect.type === 'clue') {
+                if (clues.indexOf(effect.value) < 0) clues.push(effect.value);
+            }
+            else if (effect.type === 'end') {
+                state.active = false;
+            }
+        });
+    }
+    
+    // 更新画像
+    if (choice.profileImpact) {
+        updateProfile(choice.profileImpact);
+    }
+    
+    // 跳转到下一节点
+    if (choice.nextNode) {
+        // 在实际实现中，这里需要从dialogueTree中查找节点
+        state.currentNode = findDialogueNode(choice.nextNode);
+        renderDialogueNode();
+    } else {
+        // 结束对话
+        state.active = false;
+        // 返回正常房间界面
+        enterRoom(currentRoomIdx);
+    }
+}
+
+// 查找对话节点（辅助函数）
+function findDialogueNode(nodeId) {
+    // 这里应该根据实际的对话树结构查找节点
+    // 暂时返回null，需要在实际使用时完善
+    return null;
+}
+
+// ========== v0.3+ 记忆回响系统 ==========
+
+// 检查并触发记忆回响
+function checkAndTriggerEchoes(currentRoomId) {
+    var triggeredEchoes = [];
+    
+    globalMemory.echoes.forEach(function(echo) {
+        if (echo.triggerRoom === currentRoomId && checkEchoCondition(echo)) {
+            triggeredEchoes.push(echo);
+            // 执行回响效果
+            executeEchoEffect(echo);
+        }
+    });
+    
+    return triggeredEchoes;
+}
+
+// 检查回响条件
+function checkEchoCondition(echo) {
+    if (!echo.condition) return true;
+    
+    // 检查来源房间的对象是否已解决
+    if (echo.condition.solvedInRoom) {
+        // 这里需要检查房间状态，可能需要保存已访问房间的状态
+        var solvedObjects = getRoomSolvedObjects(echo.condition.solvedInRoom);
+        if (echo.condition.solvedObject && solvedObjects.indexOf(echo.condition.solvedObject) < 0) {
+            return false;
+        }
+    }
+    
+    // 检查是否拥有特定线索
+    if (echo.condition.hasClue && clues.indexOf(echo.condition.hasClue) < 0) {
+        return false;
+    }
+    
+    return true;
+}
+
+// 执行回响效果
+function executeEchoEffect(echo) {
+    // 添加叙事文本到当前房间
+    var narrativeArea = document.getElementById('narrativeArea');
+    if (narrativeArea && echo.narrative) {
+        var echoDiv = document.createElement('div');
+        echoDiv.className = 'echo-text';
+        echoDiv.style.cssText = 'color: #888; font-style: italic; border-left: 2px solid #666; padding-left: 10px; margin: 10px 0;';
+        echoDiv.textContent = '💭 ' + echo.narrative;
+        narrativeArea.appendChild(echoDiv);
+    }
+    
+    // 可能的其他效果：修改SAN值、添加线索等
+    if (echo.effects) {
+        if (echo.effects.san) addSanity(echo.effects.san);
+        if (echo.effects.clue && clues.indexOf(echo.effects.clue) < 0) {
+            clues.push(echo.effects.clue);
+        }
+    }
+}
+
+// 获取房间已解决对象（辅助函数）
+function getRoomSolvedObjects(roomId) {
+    // 这里需要存储每个房间的解决状态
+    // 暂时返回空数组，需要在实际使用时完善
+    return [];
+}
+
+// ========== 原有游戏函数 ==========
 
 function updateStatus() {
     team.forEach(function(inv, idx) {
@@ -2340,6 +2942,11 @@ function executeActionResult(rollData) {
         clues.push(result.clue);
     }
     
+    // v0.3+ 更新玩家画像
+    if (action.profileImpact) {
+        updateProfile(action.profileImpact);
+    }
+    
     // v0.3 标记对象为已解决（仅在成功或大成功时）
     var isSuccess = rollData.resultType === 'success' || rollData.resultType === 'crit';
     if (isSuccess) {
@@ -2351,6 +2958,17 @@ function executeActionResult(rollData) {
         // 标记当前对象为已解决（所有类型的对象）
         if (!currentRoomState.solvedObjects.includes(selectedObject.id)) {
             currentRoomState.solvedObjects.push(selectedObject.id);
+        }
+        
+        // v0.3+ 记录房间残留
+        if (action.residueTag) {
+            var currentRoom = rooms[currentRoomIdx];
+            recordRoomResidue(currentRoom.id, {
+                type: action.residueTag.type,
+                method: action.residueTag.value,
+                objectsSolved: currentRoomState.solvedObjects.slice(),
+                impact: isSuccess ? 'high' : 'low'
+            });
         }
         
         // v0.3 检查并解锁关联出口
@@ -2523,6 +3141,375 @@ function getRollResultText(type) {
     };
     return texts[type] || type;
 }
+
+// ========== v0.3+ 核心系统实现 ==========
+
+// 1. 玩家画像系统 - 记录和更新玩家行为倾向
+function updateProfile(impact) {
+    if (!impact) return;
+    
+    // 累加各维度数值
+    if (impact.pragmatic) profile.pragmatic += impact.pragmatic;
+    if (impact.empathetic) profile.empathetic += impact.empathetic;
+    if (impact.curious) profile.curious += impact.curious;
+    if (impact.cautious) profile.cautious += impact.cautious;
+    
+    // 计算主导特质
+    calculateDominantTrait();
+    
+    // 记录选择历史
+    if (impact.scene) {
+        profile.choiceHistory.push({
+            scene: impact.scene,
+            choice: impact.choice,
+            timestamp: Date.now()
+        });
+    }
+    
+    // 调试日志
+    console.log('Profile updated:', profile);
+}
+
+function calculateDominantTrait() {
+    var traits = [
+        { key: 'pragmatic', name: '实用主义' },
+        { key: 'empathetic', name: '共情倾向' },
+        { key: 'curious', name: '好奇探索' },
+        { key: 'cautious', name: '谨慎保守' }
+    ];
+    
+    var maxVal = -1;
+    var dominant = null;
+    
+    traits.forEach(function(t) {
+        var val = profile[t.key];
+        if (val > maxVal) {
+            maxVal = val;
+            dominant = t;
+        }
+    });
+    
+    if (dominant) {
+        profile.dominantTrait = dominant.name;
+        
+        // 计算特质组合
+        var sorted = traits
+            .map(function(t) { return { key: t.key, name: t.name, val: profile[t.key] }; })
+            .sort(function(a, b) { return b.val - a.val; })
+            .slice(0, 2);
+        
+        var comboMap = {
+            'pragmatic_curious': '效率探索者',
+            'pragmatic_empathetic': '务实守护者',
+            'curious_empathetic': '深渊共情者',
+            'cautious_curious': '谨慎求知者',
+            'pragmatic_cautious': '稳健执行者'
+        };
+        
+        var comboKey = sorted[0].key + '_' + sorted[1].key;
+        profile.traitCombo = comboMap[comboKey] || '平衡型调查员';
+    }
+}
+
+// 2. 房间残留系统 - 记录每个房间的解决方式
+function recordRoomResidue(roomId, data) {
+    if (!roomResidues[roomId]) {
+        roomResidues[roomId] = {};
+    }
+    
+    roomResidues[roomId] = {
+        type: data.type || 'default',
+        method: data.method,      // 解决方法: force/clever/compassion
+        objectsSolved: data.objectsSolved || [],
+        timestamp: Date.now(),
+        impact: data.impact || 'low'  // low/medium/high
+    };
+    
+    // 添加到全局记忆的里程碑
+    if (data.milestone) {
+        globalMemory.milestones.push({
+            id: data.milestone,
+            room: roomId,
+            timestamp: Date.now()
+        });
+    }
+    
+    console.log('Residue recorded:', roomId, roomResidues[roomId]);
+}
+
+// 3. 记忆回响系统 - 跨房间的关联事件
+function checkAndTriggerEchoes(triggerRoom) {
+    var echoes = [
+        {
+            id: 'echo_symbol_collapse',
+            sourceRoom: 'entrance',
+            triggerRoom: 'collapse',
+            condition: function() {
+                return roomResidues.entrance && 
+                       roomResidues.entrance.objectsSolved &&
+                       roomResidues.entrance.objectsSolved.includes('entrance_symbol');
+            },
+            text: '你突然想起入口处的那个符号...那些线条似乎和这堵墙上的划痕有某种联系。',
+            effect: function() {
+                addClue('符号关联');
+            }
+        },
+        {
+            id: 'echo_diary_whisper',
+            sourceRoom: 'collapse',
+            triggerRoom: 'whisper',
+            condition: function() {
+                return roomResidues.collapse && 
+                       roomResidues.collapse.objectsSolved &&
+                       roomResidues.collapse.objectsSolved.includes('diary');
+            },
+            text: '墙壁中的低语让你想起科林日记中的话：「我听到它们在呼唤我」...是同一种声音吗？',
+            effect: function() {
+                addSanity(-3);
+                addClue('低语与日记的联系');
+            }
+        },
+        {
+            id: 'echo_force_camp',
+            sourceRoom: 'collapse',
+            triggerRoom: 'camp',
+            condition: function() {
+                return roomResidues.collapse && roomResidues.collapse.method === 'force';
+            },
+            text: '营地的空气中有股紧张的气氛。如果之前用更安静的方式通过塌陷通道，或许这里的状况会有所不同。',
+            effect: function() {
+                // 影响营地NPC的初始态度
+                if (globalMemory.npcStates.marcus) {
+                    globalMemory.npcStates.marcus.attitude -= 5;
+                }
+            }
+        }
+    ];
+    
+    echoes.forEach(function(echo) {
+        if (echo.triggerRoom === triggerRoom && echo.condition()) {
+            // 显示回响文本
+            showNarrative('💭 ' + echo.text, 'echo');
+            
+            // 执行效果
+            if (echo.effect) echo.effect();
+            
+            console.log('Echo triggered:', echo.id);
+        }
+    });
+}
+
+// 辅助函数：显示叙事文本
+function showNarrative(text, type) {
+    var narrativeArea = document.getElementById('narrativeArea');
+    if (!narrativeArea) return;
+    
+    var div = document.createElement('div');
+    div.className = 'narrative-text' + (type ? ' ' + type : '');
+    div.innerHTML = text;
+    narrativeArea.appendChild(div);
+    
+    // 自动滚动
+    narrativeArea.scrollTop = narrativeArea.scrollHeight;
+}
+
+// 4. 马库斯对话树系统
+var marcusDialogueTree = {
+    root: {
+        id: 'root',
+        text: '马库斯虚弱地看着你们，他的脸色苍白，显然失血过多。「你们...是第9小队？终于...」他艰难地喘息着。',
+        emotion: 'dying',
+        choices: [
+            {
+                id: 'ask_mission',
+                text: '「发生了什么？你的小队呢？」',
+                next: 'mission_reply',
+                profileImpact: { pragmatic: 1 }
+            },
+            {
+                id: 'comfort',
+                text: '「别说话，先保存体力。」',
+                next: 'comfort_reply',
+                profileImpact: { empathetic: 2 }
+            },
+            {
+                id: 'ask_edmund',
+                text: '「埃德蒙在哪？我们要阻止他。」',
+                next: 'edmund_info',
+                profileImpact: { pragmatic: 2 }
+            }
+        ]
+    },
+    mission_reply: {
+        id: 'mission_reply',
+        text: '「我们...太天真了...深渊不是威胁...是诱惑...」马库斯咳嗽着，「埃德蒙说他是为了救艾琳娜...但深渊已经改变了他...」',
+        emotion: 'fearful',
+        addClue: '深渊诱惑论',
+        choices: [
+            {
+                id: 'ask_elena',
+                text: '「艾琳娜是谁？」',
+                next: 'elena_story',
+                profileImpact: { curious: 1 }
+            },
+            {
+                id: 'ask_stop',
+                text: '「怎么阻止仪式？」',
+                next: 'stop_ritual',
+                profileImpact: { pragmatic: 1 }
+            },
+            {
+                id: 'comfort_mission',
+                text: '「够了，别再说了。你需要休息。」',
+                next: 'end_dialogue',
+                profileImpact: { empathetic: 1 },
+                endDialogue: true
+            }
+        ]
+    },
+    comfort_reply: {
+        id: 'comfort_reply',
+        text: '马库斯摇摇头：「没时间了...听我说...守门人仪式需要自愿...艾琳娜被困2年了...她一直在抵抗...」他抓住你的手，「埃德蒙不是坏人...他只是...太爱她了...」',
+        emotion: 'sad',
+        addClue: '守门人真相',
+        choices: [
+            {
+                id: 'ask_sacrifice',
+                text: '「自愿是什么意思？」',
+                next: 'sacrifice_explained',
+                profileImpact: { curious: 1 }
+            },
+            {
+                id: 'promise_help',
+                text: '「我会救她的，我保证。」',
+                next: 'promise_reply',
+                profileImpact: { empathetic: 2 }
+            }
+        ]
+    },
+    elena_story: {
+        id: 'elena_story',
+        text: '「艾琳娜...埃德蒙的妻子...2年前的事故...」马库斯的眼神涣散，「她被深渊困住了...但还在抵抗...埃德蒙想用仪式替换她...但这样会把深渊释放出来...」',
+        emotion: 'dying',
+        addClue: '艾琳娜抵抗',
+        choices: [
+            {
+                id: 'ask_why',
+                text: '「为什么告诉我这些？」',
+                next: 'trust_reply',
+                profileImpact: { cautious: 1 }
+            },
+            {
+                id: 'ask_symbol',
+                text: '「你手心的符号是什么？」',
+                next: 'symbol_explain',
+                profileImpact: { curious: 1 },
+                condition: function() { return hasClue('保护符号'); }
+            }
+        ]
+    },
+    stop_ritual: {
+        id: 'stop_ritual',
+        text: '「说服他...或者...替代她...」马库斯的声音越来越弱，「如果你有神秘学知识...可以自愿成为守门人...但代价是...永远困在这里...」',
+        emotion: 'dying',
+        addClue: '阻止仪式的方法',
+        choices: [
+            {
+                id: 'ask_volunteer',
+                text: '「自愿成为守门人？」',
+                next: 'volunteer_explained',
+                profileImpact: { curious: 1 }
+            },
+            {
+                id: 'end_talk',
+                text: '「谢谢你，马库斯。安息吧。」',
+                next: 'final_moments',
+                profileImpact: { empathetic: 1 }
+            }
+        ]
+    },
+    final_moments: {
+        id: 'final_moments',
+        text: '马库斯露出微笑，用尽最后的力气在你手心画下一个符号。「这个...能保护你...去救艾琳娜...但不要...杀埃德蒙...给他...选择...」他的手无力的垂下。',
+        emotion: 'peaceful',
+        addClue: '保护符号',
+        effect: function() {
+            addSanity(5);
+            // 添加保护符号到物品
+        },
+        choices: [
+            {
+                id: 'farewell',
+                text: '合上他的眼睛，继续前进',
+                next: 'end_dialogue',
+                endDialogue: true
+            }
+        ]
+    },
+    end_dialogue: {
+        id: 'end_dialogue',
+        text: '马库斯不再回应。他的表情安详，仿佛终于完成了使命。',
+        emotion: 'dead',
+        choices: []
+    }
+};
+
+// 5. 修改 solveObject 函数以集成新系统
+// 注意：这个函数会包装原有的 executeAction
+function executeActionWithProfile(actionId) {
+    // 获取当前行动
+    var action = selectedObject.actions.find(function(a) { return a.id === actionId; });
+    if (!action) return;
+    
+    // 记录画像影响
+    if (action.profileImpact) {
+        updateProfile(action.profileImpact);
+    }
+    
+    // 执行原始逻辑
+    executeAction(actionId);
+    
+    // 记录房间残留
+    if (action.residueTag) {
+        var currentRoom = rooms[currentRoomIdx];
+        recordRoomResidue(currentRoom.id, {
+            type: action.residueTag.type,
+            method: action.residueTag.value,
+            objectsSolved: currentRoomState.solvedObjects,
+            impact: 'medium'
+        });
+    }
+}
+
+// 6. 修改 enterRoom 以检查回响
+// 保存原始 enterRoom 的引用
+var originalEnterRoom = enterRoom;
+enterRoom = function(idx) {
+    // 调用原始函数
+    originalEnterRoom(idx);
+    
+    // 检查记忆回响
+    var room = rooms[idx];
+    if (room && room.id) {
+        setTimeout(function() {
+            checkAndTriggerEchoes(room.id);
+        }, 500);
+    }
+};
+
+// 7. 添加线索辅助函数
+function hasClue(clueId) {
+    return clues.indexOf(clueId) >= 0;
+}
+
+function addClue(clueId) {
+    if (!hasClue(clueId)) {
+        clues.push(clueId);
+        log('获得线索: ' + clueId);
+    }
+}
+
+console.log('v0.3+ 核心系统已加载');
 </script>
 </body>
 </html>
