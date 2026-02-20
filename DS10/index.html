@@ -3106,51 +3106,6 @@ function updateProfile(impact) {
     // 调试日志
     console.log('Profile updated:', profile);
 }
-
-function calculateDominantTrait() {
-    var traits = [
-        { key: 'pragmatic', name: '实用主义' },
-        { key: 'empathetic', name: '共情倾向' },
-        { key: 'curious', name: '好奇探索' },
-        { key: 'cautious', name: '谨慎保守' }
-    ];
-    
-    var maxVal = -1;
-    var dominant = null;
-    
-    traits.forEach(function(t) {
-        var val = profile[t.key];
-        if (val > maxVal) {
-            maxVal = val;
-            dominant = t;
-        }
-    });
-    
-    if (dominant) {
-        profile.dominantTrait = dominant.name;
-        
-        // 计算特质组合
-        var sorted = traits
-            .map(function(t) { return { key: t.key, name: t.name, val: profile[t.key] }; })
-            .sort(function(a, b) { return b.val - a.val; })
-            .slice(0, 2);
-        
-        var comboMap = {
-            'pragmatic_curious': '效率探索者',
-            'pragmatic_empathetic': '务实守护者',
-            'curious_empathetic': '深渊共情者',
-            'cautious_curious': '谨慎求知者',
-            'pragmatic_cautious': '稳健执行者'
-        };
-        
-        var comboKey = sorted[0].key + '_' + sorted[1].key;
-        profile.traitCombo = comboMap[comboKey] || '平衡型调查员';
-    }
-}
-
-// 2. 房间残留系统 - 记录每个房间的解决方式
-function recordRoomResidue(roomId, data) {
-    if (!roomResidues[roomId]) {
         roomResidues[roomId] = {};
     }
     
