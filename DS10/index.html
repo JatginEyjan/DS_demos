@@ -792,10 +792,10 @@ var objectTemplates = {
     },
     'exit_mural': {
         id: 'exit_mural',
-        name: '离开壁画厅',
+        name: '前往第7小队营地',
         type: 'exit',
-        icon: '🚪',
-        desc: '前方的通道通向更深的矿坑，空气中弥漫着某种古老的气息。',
+        icon: '🏕️',
+        desc: '壁画厅的另一端有一条通道通向第7小队营地方向。',
         visible: 'always',
         actions: [
             {
@@ -805,6 +805,25 @@ var objectTemplates = {
                 roll: { type: 'auto' },
                 results: {
                     success: { text: '你记下壁画的关键信息，离开壁画厅，沿着通道向营地走去...', next: 4 }
+                }
+            }
+        ]
+    },
+    'exit_mural_back': {
+        id: 'exit_mural_back',
+        name: '返回塌陷通道',
+        type: 'exit',
+        icon: '↩️',
+        desc: '返回来的路，回到塌陷通道。',
+        visible: 'always',
+        actions: [
+            {
+                id: 'go_back_collapse',
+                name: '原路返回',
+                desc: '回到塌陷通道',
+                roll: { type: 'auto' },
+                results: {
+                    success: { text: '你决定暂时离开壁画厅，沿着原路返回塌陷通道...', next: 1 }
                 }
             }
         ]
@@ -1038,24 +1057,21 @@ var objectTemplates = {
             }
         ]
     },
-
-    // v0.3 示例出口对象
-    'collapse_exit': {
-        id: 'collapse_exit',
-        name: '通道出口',
+    'exit_mural_room': {
+        id: 'exit_mural_room',
+        name: '前往壁画厅',
         type: 'exit',
-        icon: '🚪',
-        desc: '通往下一个区域的通道，但被碎石部分阻挡。',
+        icon: '🎨',
+        desc: '一条侧向通道通向岩壁深处，那里有古老的壁画痕迹。空气中似乎传来微弱的回声。',
         visible: 'always',
-        unlockConditions: ['debris'], // 需要解决碎石堆障碍
         actions: [
             {
-                id: 'exit_room',
-                name: '通过通道',
-                desc: '离开这个区域',
+                id: 'go_mural',
+                name: '探索壁画厅',
+                desc: '查看古老壁画',
                 roll: { type: 'auto' },
                 results: {
-                    success: { text: '你小心地通过通道，前往下一个区域。' }
+                    success: { text: '你沿着狭窄的侧道前行，岩壁上的壁画越来越清晰。那些图案似乎描绘着某种古老的仪式...', next: 3 }
                 }
             }
         ]
@@ -1732,8 +1748,8 @@ var rooms = [
         name: '房间1：塌陷通道【教学关】',
         type: 'main',
         objectSystem: true,
-        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。碎石堆上覆盖着新鲜的灰尘和抓痕，看起来是近期形成的坍塌。\n\n你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号。刻痕很深，力度不均，显示出刻写者当时情绪激动或时间紧迫。符号周围还有一些褐色的污渍，可能是血迹。\n\n角落里还躺着一本破旧的日记，被随意丢在那里。封面已经被血浸透了一半，纸页在潮湿的环境中微微卷曲。',
-        objects: ['debris', 'symbols', 'diary', 'exit_narrow'],
+        desc: '通道被碎石部分堵塞，但还有一条窄缝可以通过。碎石堆上覆盖着新鲜的灰尘和抓痕，看起来是近期形成的坍塌。\n\n你们注意到墙上有新鲜的划痕——有人用匕首刻下了符号。刻痕很深，力度不均，显示出刻写者当时情绪激动或时间紧迫。符号周围还有一些褐色的污渍，可能是血迹。\n\n角落里还躺着一本破旧的日记，被随意丢在那里。封面已经被血浸透了一半，纸页在潮湿的环境中微微卷曲。\n\n在通道另一侧，你们发现了一条岔路，岩壁上隐约可见古老的壁画痕迹。',
+        objects: ['debris', 'symbols', 'diary', 'exit_narrow', 'exit_mural_room'],
         choices: [
             { text: '进入遗弃装备室', next: 2, desc: '继续前进' }
         ]
@@ -1754,8 +1770,8 @@ var rooms = [
         name: '诡异壁画厅',
         type: 'side',
         objectSystem: true,
-        desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。\n\n画中人们围着一个黑色裂隙，似乎在...献祭？壁画的风格不属于任何已知的古代文明。',
-        objects: ['mural_left', 'mural_center', 'mural_right', 'exit_mural'],
+        desc: '洞穴墙壁上出现了古老的壁画，描绘着某种仪式场景。\n\n画中人们围着一个黑色裂隙，似乎在...献祭？壁画的风格不属于任何已知的古代文明。\n\n这里是一个相对封闭的侧室，除了来时的通道，还有一条路通向第7小队营地方向。',
+        objects: ['mural_left', 'mural_center', 'mural_right', 'exit_mural', 'exit_mural_back'],
         choices: [
             { text: '前往第7小队营地', next: 4, desc: '继续前进' }
         ]
