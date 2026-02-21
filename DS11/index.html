@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS11 - 迷雾分支网格（Day4：游戏循环）</title>
+    <title>DS11 - 迷雾分支网格 v1.0 MVP</title>
     <style>
         * {
             margin: 0;
@@ -503,6 +503,10 @@
             <div class="info-label">👁️ 印记</div>
             <div class="info-value" id="markCount">0/3</div>
         </div>
+        <div class="info-item" id="limitInfo" style="display: none; border-color: #e94560;">
+            <div class="info-label">⚠️ 迷雾上限</div>
+            <div class="info-value" id="limitCount" style="color: #e94560;">15/15</div>
+        </div>
         <div class="info-item mutation-info" id="mutationInfo" style="display: none;">
             <div class="info-label">⚡ 畸变</div>
             <div class="info-value mutation" id="mutationName">无</div>
@@ -569,6 +573,11 @@
                 this.corePosition = null; // 核心位置
                 this.score = 0;          // 得分
                 this.gameWon = false;    // 游戏胜利状态
+                
+                // Day5: 平衡参数
+                this.maxCells = 15;      // 迷雾格上限
+                this.fogCellsCount = 0;  // 当前迷雾格数量
+                this.gameStartedAt = Date.now();
                 
                 this.mutationData = {  // 畸变数据
                     'eye': {
@@ -645,6 +654,8 @@
                 this.corePosition = null;
                 this.score = 0;
                 this.eyeAbilityUsed = false;
+                this.fogCellsCount = 0;
+                this.gameStartedAt = Date.now();
                 
                 document.getElementById('gameOverOverlay').classList.remove('show');
                 document.getElementById('winOverlay').classList.remove('show');
@@ -676,17 +687,49 @@
                     isEdge: false
                 };
                 this.grid.set(key, cell);
+                
+                // Day5: 跟踪迷雾格数量
+                if (type === 'fog') {
+                    this.fogCellsCount++;
+                }
+                
                 return cell;
             }
             
             updateEdgeCells() {
                 this.edgeCells.clear();
+                
+                // Day5: 检查是否达到迷雾格上限
+                if (this.fogCellsCount >= this.maxCells) {
+                    // 只更新现有边缘格，不创建新的
+                    for (const key of this.revealedCells) {
+                        const cell = this.grid.get(key);
+                        const neighbors = this.getNeighbors(cell.x, cell.y);
+                        for (const neighbor of neighbors) {
+                            const nKey = `${neighbor.x},${neighbor.y}`;
+                            if (this.grid.has(nKey)) {
+                                const existingCell = this.grid.get(nKey);
+                                if (!existingCell.revealed && existingCell.type === 'fog') {
+                                    existingCell.isEdge = true;
+                                    this.edgeCells.add(nKey);
+                                }
+                            }
+                        }
+                    }
+                    this.updateUI();
+                    return;
+                }
+                
                 for (const key of this.revealedCells) {
                     const cell = this.grid.get(key);
                     const neighbors = this.getNeighbors(cell.x, cell.y);
                     for (const neighbor of neighbors) {
                         const nKey = `${neighbor.x},${neighbor.y}`;
                         if (!this.grid.has(nKey)) {
+                            // Day5: 检查上限
+                            if (this.fogCellsCount >= this.maxCells) {
+                                continue;
+                            }
                             const fogCell = this.createCell(neighbor.x, neighbor.y, 'fog');
                             fogCell.isEdge = true;
                             this.edgeCells.add(nKey);
@@ -1097,6 +1140,15 @@
                 document.getElementById('riftCount').textContent = this.riftCount;
                 document.getElementById('torchCount').textContent = `${this.torch}/${this.maxTorch}`;
                 document.getElementById('markCount').textContent = `${this.marks}/${this.maxMarks}`;
+                
+                // Day5: 迷雾格上限显示
+                const limitInfo = document.getElementById('limitInfo');
+                if (this.fogCellsCount >= this.maxCells) {
+                    limitInfo.style.display = 'block';
+                    document.getElementById('limitCount').textContent = `${this.fogCellsCount}/${this.maxCells}`;
+                } else {
+                    limitInfo.style.display = 'none';
+                }
                 
                 // 火把低时视觉警告
                 const torchInfo = document.getElementById('torchInfo');
