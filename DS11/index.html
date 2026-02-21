@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS11 - 迷雾分支网格 v1.0 MVP</title>
+    <title>DS11 - 迷雾分支网格 v1.1 平衡版</title>
     <style>
         * {
             margin: 0;
@@ -505,7 +505,7 @@
         </div>
         <div class="info-item" id="limitInfo" style="display: none; border-color: #e94560;">
             <div class="info-label">⚠️ 迷雾上限</div>
-            <div class="info-value" id="limitCount" style="color: #e94560;">15/15</div>
+            <div class="info-value" id="limitCount" style="color: #e94560;">18/18</div>
         </div>
         <div class="info-item mutation-info" id="mutationInfo" style="display: none;">
             <div class="info-label">⚡ 畸变</div>
@@ -558,8 +558,8 @@
                 this.riftCount = 0;
                 
                 // Day2: 火把系统
-                this.torch = 5;        // 当前火把
-                this.maxTorch = 10;    // 火把上限
+                this.torch = 6;        // 当前火把 (调整: 5→6)
+                this.maxTorch = 12;    // 火把上限 (调整: 10→12)
                 this.gameOver = false; // 游戏结束状态
                 
                 // Day3: F4印记系统
@@ -574,8 +574,9 @@
                 this.score = 0;          // 得分
                 this.gameWon = false;    // 游戏胜利状态
                 
-                // Day5: 平衡参数
-                this.maxCells = 15;      // 迷雾格上限
+                // Day5: 平衡参数 (调整)
+                this.maxCells = 18;      // 迷雾格上限 (调整: 15→18)
+                this.coreGuarantee = 18; // 核心保底格数 (新增)
                 this.fogCellsCount = 0;  // 当前迷雾格数量
                 this.gameStartedAt = Date.now();
                 
@@ -645,7 +646,7 @@
                 this.edgeCells.clear();
                 this.revealedCount = 0;
                 this.riftCount = 0;
-                this.torch = 5;
+                this.torch = 6;  // 调整: 5→6
                 this.gameOver = false;
                 this.gameWon = false;
                 this.marks = 0;
@@ -861,9 +862,17 @@
             }
             
             determineCellType(cell) {
-                // Day4: 10格后概率生成核心
+                // 调整: 核心概率 15%→20%，保底18格
                 if (this.revealedCount >= 10 && !this.coreFound && !this.corePosition) {
-                    if (Math.random() < 0.15) {
+                    // 保底机制：18格必出核心
+                    if (this.revealedCount >= this.coreGuarantee) {
+                        cell.type = 'core';
+                        this.corePosition = {x: cell.x, y: cell.y};
+                        this.log('💎 深渊核心出现（保底）！找到它可以完成任务', 'reward');
+                        return;
+                    }
+                    // 正常概率：20%
+                    if (Math.random() < 0.20) {
                         cell.type = 'core';
                         this.corePosition = {x: cell.x, y: cell.y};
                         this.log('💎 深渊核心出现！找到它可以完成任务', 'reward');
@@ -877,18 +886,19 @@
                     return;
                 }
                 
+                // 调整: 雷率 20%→18%
                 const rand = Math.random();
                 if (rand < 0.1) {
                     cell.type = 'rift';
                     this.riftCount++;
-                } else if (rand < 0.3) {
+                } else if (rand < 0.28) {  // 10%+18%=28%
                     cell.type = 'mine';
                 } else {
                     cell.type = 'safe';
                     cell.number = this.countAdjacentMines(cell.x, cell.y);
-                    // 资源嗅觉畸变+20%火把概率
-                    let torchChance = 0.3;
-                    if (this.mutation === 'sense') torchChance = 0.5;
+                    // 调整: 火把获取率 30%→35%
+                    let torchChance = 0.35;  // 调整: 0.3→0.35
+                    if (this.mutation === 'sense') torchChance = 0.55;  // +20%
                     if (Math.random() < torchChance) {
                         cell.hasTorch = true;
                         cell.torchAmount = Math.floor(Math.random() * 3) + 1;
@@ -1141,7 +1151,7 @@
                 document.getElementById('torchCount').textContent = `${this.torch}/${this.maxTorch}`;
                 document.getElementById('markCount').textContent = `${this.marks}/${this.maxMarks}`;
                 
-                // Day5: 迷雾格上限显示
+                // Day5: 迷雾格上限显示 (调整: 上限18)
                 const limitInfo = document.getElementById('limitInfo');
                 if (this.fogCellsCount >= this.maxCells) {
                     limitInfo.style.display = 'block';
