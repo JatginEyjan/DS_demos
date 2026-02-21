@@ -142,11 +142,27 @@
             border: 2px solid #9b59b6;
             color: #9b59b6;
             animation: pulse 2s infinite;
+            position: relative;
         }
         
         @keyframes pulse {
             0%, 100% { box-shadow: 0 0 5px #9b59b6; }
             50% { box-shadow: 0 0 20px #9b59b6; }
+        }
+        
+        /* 裂隙提示 */
+        .cell.rift::before {
+            content: '5🔥→3🚪';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #f39c12;
+            background: rgba(0,0,0,0.7);
+            padding: 1px 3px;
+            border-radius: 3px;
+            white-space: nowrap;
         }
         
         /* 雷格 */
@@ -167,6 +183,19 @@
         @keyframes glow-core {
             0%, 100% { box-shadow: 0 0 10px #f39c12, inset 0 0 10px rgba(243,156,18,0.3); }
             50% { box-shadow: 0 0 30px #f39c12, inset 0 0 20px rgba(243,156,18,0.5); }
+        }
+        
+        /* F3触发动画 */
+        .cell.f3-trigger {
+            animation: f3-shake 0.5s ease-in-out;
+            border-color: #e94560 !important;
+            box-shadow: 0 0 30px #e94560 !important;
+        }
+        
+        @keyframes f3-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
         
         /* 污染格 */
@@ -833,13 +862,30 @@
                 // 决定格子类型
                 this.determineCellType(cell);
                 
+                // 优化：深渊裂隙确认弹窗
+                if (cell.type === 'rift') {
+                    const confirmMsg = `【深渊裂隙】\n\n消耗 ${this.config.riftCost} 火把揭示裂隙\n将打开 3 条新的探索路径\n\n当前火把：${this.torch}\n消耗后剩余：${this.torch - this.config.riftCost}\n\n确定要打开裂隙吗？`;
+                    
+                    if (!confirm(confirmMsg)) {
+                        // 取消揭示，恢复为迷雾格
+                        cell.type = 'fog';
+                        cell.revealed = false;
+                        this.grid.delete(key);
+                        this.state.fogCellsCount--;
+                        this.log('取消打开深渊裂隙', 'system');
+                        return false;
+                    }
+                    
+                    this.log(`🔥 消耗 ${this.config.riftCost} 火把打开深渊裂隙！`, 'event');
+                }
+                
                 cell.revealed = true;
                 this.revealedCells.add(key);
                 this.revealedCount++;
                 
                 if (cell.type === 'rift') {
                     this.growFromRift(cell);
-                    this.log(`发现深渊裂隙！向3个方向打开新路径。`, 'event');
+                    this.log(`✨ 裂隙开启！3条新路径已展开`, 'reward');
                 } else if (cell.type === 'safe') {
                     this.log(`揭示安全格，周围有 ${cell.number} 个雷。`, 'system');
                     if (cell.hasTorch) {
@@ -944,9 +990,23 @@
                 }
             }
             
-            triggerF3(mineCell) {
+            // 优化：F3踩雷时刻强化
+            async triggerF3(mineCell) {
                 const neighbors = this.getNeighbors(mineCell.x, mineCell.y);
                 let revealedCount = 0;
+                
+                // 优化：突出显示踩雷格
+                this.log(`💀 踩中雷格！深渊之力即将强制揭示周围区域...`, 'event');
+                this.highlightCell(mineCell.key, 'f3-trigger');
+                
+                // 优化：延迟动画效果
+                await this.delay(300);
+                
+                const pollutionNames = {
+                    'blur': '【模糊污染】数字±1误差，持续3回合',
+                    'heavy': '【沉重污染】经过+1火把消耗，永久',
+                    'unstable': '【不稳定污染】不能停留，必须离开'
+                };
                 
                 for (const n of neighbors) {
                     if (revealedCount >= 3) break;
@@ -955,6 +1015,10 @@
                     if (!this.grid.has(nKey)) {
                         const newCell = this.createCell(n.x, n.y, 'fog');
                         this.determineCellType(newCell);
+                        
+                        // 优化：逐个揭示，带延迟
+                        await this.delay(200);
+                        
                         newCell.revealed = true;
                         newCell.polluted = true;
                         newCell.pollutionType = this.getRandomPollution();
@@ -962,12 +1026,22 @@
                         this.revealedCount++;
                         revealedCount++;
                         
-                        const pollutionNames = {
-                            'blur': '模糊污染',
-                            'heavy': '沉重污染', 
-                            'unstable': '不稳定污染'
-                        };
-                        this.log(`F3揭示(${n.x},${n.y})，${pollutionNames[newCell.pollutionType]}`, 'event');
+                        // 优化：详细日志
+                        let logMsg = `⚡ F3揭示(${n.x},${n.y})`;
+                        if (newCell.type === 'safe') {
+                            logMsg += ` 安全格，周围${newCell.number}个雷`;
+                        } else if (newCell.type === 'rift') {
+                            logMsg += ` 深渊裂隙！`;
+                        } else if (newCell.type === 'mine') {
+                            logMsg += ` 又一个雷！`;
+                        }
+                        this.log(logMsg, 'event');
+                        
+                        // 污染警告
+                        this.log(`⚠️ 该格被${pollutionNames[newCell.pollutionType]}`, 'warning');
+                        
+                        // 实时渲染更新
+                        this.render();
                         
                         if (newCell.hasTorch) {
                             this.gainTorch(newCell.torchAmount);
@@ -975,8 +1049,24 @@
                     }
                 }
                 
+                // 优化：F3总结
+                await this.delay(300);
+                this.log(`📊 F3总结：强制揭示${revealedCount}格，获得信息但付出代价`, 'system');
+                
                 // 获得印记
                 this.gainMark();
+            }
+            
+            // 新增：高亮格子动画
+            highlightCell(key, effectClass) {
+                // 渲染后通过CSS类实现高亮
+                this.render();
+                // 可以添加额外的视觉反馈
+            }
+            
+            // 新增：延迟工具函数
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
             }
             
             // 获得印记
@@ -1190,7 +1280,7 @@
                 this.init();
             }
             
-            // Day4: 撤退功能
+            // Day4: 撤退功能（优化：强化决策）
             retreat() {
                 if (this.gameOver || this.gameWon) return;
                 
@@ -1203,7 +1293,33 @@
                     }
                 }
                 
-                // 计算得分
+                // 优化：计算预期得分
+                const expectedScore = this.calculateExpectedScore();
+                const remainingCells = this.edgeCells.size;
+                
+                // 优化：构建确认信息
+                let confirmMsg = `【撤退确认】\n\n`;
+                confirmMsg += `已揭示: ${this.revealedCount} 格\n`;
+                confirmMsg += `剩余火把: ${this.torch}\n`;
+                confirmMsg += `未探索: ${remainingCells} 格\n\n`;
+                
+                if (this.coreFound) {
+                    confirmMsg += `✅ 已找到深渊核心！\n`;
+                    confirmMsg += `预期得分: ${expectedScore} 分\n\n`;
+                    confirmMsg += `确定要撤退吗？`;
+                } else {
+                    confirmMsg += `⚠️ 警告：未找到深渊核心！\n`;
+                    confirmMsg += `预期得分: ${expectedScore} 分 (基础分，无核心奖励)\n\n`;
+                    confirmMsg += `建议继续探索寻找核心（+500分）\n`;
+                    confirmMsg += `确定要现在撤退吗？`;
+                }
+                
+                if (!confirm(confirmMsg)) {
+                    this.log('取消撤退，继续探索', 'system');
+                    return;
+                }
+                
+                // 计算最终得分
                 this.calculateScore();
                 
                 if (this.coreFound) {
@@ -1220,6 +1336,35 @@
                     document.getElementById('winTitle').textContent = '任务结束';
                     this.log('任务结束：撤退时未找到深渊核心', 'warning');
                 }
+            }
+            
+            // 新增：计算预期得分（用于撤退确认）
+            calculateExpectedScore() {
+                let score = 0;
+                
+                // 基础分：揭示格数 × 10
+                score += this.revealedCount * 10;
+                
+                // 核心奖励
+                if (this.coreFound) {
+                    score += 500;
+                }
+                
+                // 火把剩余奖励
+                score += this.torch * 20;
+                
+                // 深渊裂隙奖励
+                score += this.riftCount * 50;
+                
+                // 畸变惩罚/奖励
+                if (this.mutation) {
+                    const data = this.mutationData[this.mutation];
+                    if (data.type === 'positive') score += 100;
+                    else if (data.type === 'negative') score -= 50;
+                    else if (data.type === 'easter') score += 200;
+                }
+                
+                return score;
             }
             
             // 计算得分
