@@ -653,20 +653,20 @@
             // 火把消耗配置
             getTorchCost(cellType) {
                 let costs = {
-                    'fog': 2,      // 普通迷雾格
+                    'fog': 1,      // 普通迷雾格 (修改: 2→1)
                     'rift': 5,     // 深渊裂隙
                     'safe': 0,     // 已揭示安全格（免费经过）
                     'mine': 2,     // 雷格（如果踩中）
-                    'polluted': 3  // 污染格（额外+1）
+                    'polluted': 2  // 污染格 (修改: 3→2)
                 };
                 
                 // 畸变效果：沉重步伐 +1火把
                 if (this.mutation === 'heavy') {
-                    costs['fog'] = 3;
-                    costs['polluted'] = 4;
+                    costs['fog'] = 2;
+                    costs['polluted'] = 3;
                 }
                 
-                return costs[cellType] || 2;
+                return costs[cellType] || 1;
             }
             
             init() {
