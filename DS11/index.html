@@ -864,19 +864,20 @@
                 
                 // 优化：深渊裂隙确认弹窗
                 if (cell.type === 'rift') {
-                    const confirmMsg = `【深渊裂隙】\n\n消耗 ${this.config.riftCost} 火把揭示裂隙\n将打开 3 条新的探索路径\n\n当前火把：${this.torch}\n消耗后剩余：${this.torch - this.config.riftCost}\n\n确定要打开裂隙吗？`;
+                    const riftCost = 5; // 深渊裂隙消耗
+                    const confirmMsg = `【深渊裂隙】\n\n消耗 ${riftCost} 火把揭示裂隙\n将打开 3 条新的探索路径\n\n当前火把：${this.torch}\n消耗后剩余：${this.torch - riftCost}\n\n确定要打开裂隙吗？`;
                     
                     if (!confirm(confirmMsg)) {
                         // 取消揭示，恢复为迷雾格
                         cell.type = 'fog';
                         cell.revealed = false;
                         this.grid.delete(key);
-                        this.state.fogCellsCount--;
+                        this.fogCellsCount--;
                         this.log('取消打开深渊裂隙', 'system');
                         return false;
                     }
                     
-                    this.log(`🔥 消耗 ${this.config.riftCost} 火把打开深渊裂隙！`, 'event');
+                    this.log(`🔥 消耗 ${riftCost} 火把打开深渊裂隙！`, 'event');
                 }
                 
                 cell.revealed = true;
