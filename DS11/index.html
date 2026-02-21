@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS11 - 迷雾分支网格</title>
+    <title>DS11 - 迷雾分支网格（Day2：火把系统）</title>
     <style>
         * {
             margin: 0;
@@ -31,9 +31,11 @@
         
         .game-info {
             display: flex;
-            gap: 30px;
+            gap: 20px;
             margin-bottom: 20px;
             font-size: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
         .info-item {
@@ -41,6 +43,16 @@
             padding: 10px 20px;
             border-radius: 8px;
             border: 1px solid #2a2a3a;
+        }
+        
+        .info-item.torch-low {
+            border-color: #e94560;
+            animation: pulse-red 1s infinite;
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 5px #e94560; }
+            50% { box-shadow: 0 0 15px #e94560; }
         }
         
         .info-label {
@@ -52,6 +64,10 @@
             color: #e94560;
             font-size: 18px;
             font-weight: bold;
+        }
+        
+        .info-value.torch {
+            color: #f39c12;
         }
         
         .grid-container {
@@ -78,6 +94,11 @@
             position: relative;
         }
         
+        .cell.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         /* 迷雾格 */
         .cell.fog {
             background: #1a1a2e;
@@ -85,7 +106,7 @@
             color: #666;
         }
         
-        .cell.fog:hover {
+        .cell.fog:hover:not(.disabled) {
             border-color: #e94560;
             background: #2a1a2e;
         }
@@ -164,6 +185,18 @@
             pointer-events: none;
         }
         
+        /* 火把消耗提示 */
+        .cell .cost-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #f39c12;
+            color: #000;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        
         .log-panel {
             width: 100%;
             max-width: 600px;
@@ -200,6 +233,11 @@
             color: #27ae60;
         }
         
+        .log-entry.warning {
+            border-left-color: #f39c12;
+            color: #f39c12;
+        }
+        
         .controls {
             margin-top: 20px;
             display: flex;
@@ -226,10 +264,39 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+        
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .game-over-overlay.show {
+            display: flex;
+        }
+        
+        .game-over-title {
+            color: #e94560;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        
+        .game-over-reason {
+            color: #888;
+            margin-bottom: 30px;
+        }
     </style>
 </head>
 <body>
-    <div class="game-title">DS11 - 迷雾分支网格</div>
+    <div class="game-title">DS11 - 迷雾分支网格（Day2：火把系统）</div>
     
     <div class="game-info">
         <div class="info-item">
@@ -244,60 +311,84 @@
             <div class="info-label">深渊裂隙</div>
             <div class="info-value" id="riftCount">0</div>
         </div>
+        <div class="info-item" id="torchInfo">
+            <div class="info-label">🔥 火把</div>
+            <div class="info-value torch" id="torchCount">5/10</div>
+        </div>
     </div>
     
     <div class="grid-container" id="gridContainer"></div>
     
     <div class="controls">
         <button class="btn" onclick="game.restart()">重新开始</button>
-        <button class="btn" onclick="game.autoReveal()">自动揭示边缘</button>
+        <button class="btn" onclick="game.autoReveal()">自动揭示</button>
     </div>
     
     <div class="log-panel" id="logPanel"></div>
+    
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-title">游戏结束</div>
+        <div class="game-over-reason" id="gameOverReason">火把耗尽</div>
+        <button class="btn" onclick="game.restart()">重新开始</button>
+    </div>
 
     <script>
         // 游戏核心类
         class MistGridGame {
             constructor() {
-                this.grid = new Map(); // 存储所有格子
-                this.revealedCells = new Set(); // 已揭示的格子
-                this.edgeCells = new Set(); // 迷雾边缘格子
-                this.revealedCount = 0; // 已揭示计数（用于深渊裂隙保底）
-                this.riftCount = 0; // 深渊裂隙计数
-                this.gridSize = 20; // 网格最大范围
+                this.grid = new Map();
+                this.revealedCells = new Set();
+                this.edgeCells = new Set();
+                this.revealedCount = 0;
+                this.riftCount = 0;
+                
+                // Day2: 火把系统
+                this.torch = 5;        // 当前火把
+                this.maxTorch = 10;    // 火把上限
+                this.gameOver = false; // 游戏结束状态
+                
                 this.init();
             }
             
-            // 初始化游戏
+            // 火把消耗配置
+            getTorchCost(cellType) {
+                const costs = {
+                    'fog': 2,      // 普通迷雾格
+                    'rift': 5,     // 深渊裂隙
+                    'safe': 0,     // 已揭示安全格（免费经过）
+                    'mine': 2,     // 雷格（如果踩中）
+                    'polluted': 3  // 污染格（额外+1）
+                };
+                return costs[cellType] || 2;
+            }
+            
             init() {
                 this.grid.clear();
                 this.revealedCells.clear();
                 this.edgeCells.clear();
                 this.revealedCount = 0;
                 this.riftCount = 0;
+                this.torch = 5;
+                this.gameOver = false;
+                document.getElementById('gameOverOverlay').classList.remove('show');
                 
-                // 创建中心格
                 const centerCell = this.createCell(0, 0, 'center');
                 centerCell.revealed = true;
                 this.revealedCells.add('0,0');
                 this.revealedCount = 1;
                 
-                // 创建初始迷雾边缘
                 this.updateEdgeCells();
-                
                 this.render();
-                this.log('游戏开始！中心格已揭示。点击迷雾边缘格进行派遣揭示。', 'system');
+                this.log('游戏开始！火把：' + this.torch + '/' + this.maxTorch, 'system');
+                this.log('点击迷雾边缘格消耗火把进行派遣揭示。', 'system');
             }
             
-            // 创建格子
             createCell(x, y, type = 'fog') {
                 const key = `${x},${y}`;
                 const cell = {
-                    x, y,
-                    key,
-                    type, // 'fog', 'safe', 'rift', 'mine'
+                    x, y, key, type,
                     revealed: false,
-                    number: 0, // 周围雷数
+                    number: 0,
                     polluted: false,
                     pollutionType: null,
                     hasTorch: false,
@@ -308,20 +399,14 @@
                 return cell;
             }
             
-            // 更新迷雾边缘
             updateEdgeCells() {
                 this.edgeCells.clear();
-                
-                // 遍历所有已揭示的格子
                 for (const key of this.revealedCells) {
                     const cell = this.grid.get(key);
                     const neighbors = this.getNeighbors(cell.x, cell.y);
-                    
-                    // 检查邻居
                     for (const neighbor of neighbors) {
                         const nKey = `${neighbor.x},${neighbor.y}`;
                         if (!this.grid.has(nKey)) {
-                            // 邻居不存在，创建迷雾格并标记为边缘
                             const fogCell = this.createCell(neighbor.x, neighbor.y, 'fog');
                             fogCell.isEdge = true;
                             this.edgeCells.add(nKey);
@@ -334,11 +419,9 @@
                         }
                     }
                 }
-                
                 this.updateUI();
             }
             
-            // 获取邻居坐标
             getNeighbors(x, y) {
                 const neighbors = [];
                 const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
@@ -348,64 +431,122 @@
                 return neighbors;
             }
             
-            // 揭示格子（派遣）
+            // 检查是否有足够火把
+            canAfford(cost) {
+                return this.torch >= cost;
+            }
+            
+            // 消耗火把
+            spendTorch(amount) {
+                this.torch = Math.max(0, this.torch - amount);
+                this.updateUI();
+                
+                // 火把耗尽检测
+                if (this.torch === 0) {
+                    this.checkGameOver();
+                }
+            }
+            
+            // 获得火把
+            gainTorch(amount) {
+                const oldTorch = this.torch;
+                this.torch = Math.min(this.maxTorch, this.torch + amount);
+                const gained = this.torch - oldTorch;
+                if (gained > 0) {
+                    this.log(`获得 ${gained} 个火把！当前：${this.torch}/${this.maxTorch}`, 'reward');
+                }
+                this.updateUI();
+            }
+            
+            // 检查游戏结束
+            checkGameOver() {
+                // 检查是否还有可行动的边缘格
+                let hasAffordableEdge = false;
+                for (const key of this.edgeCells) {
+                    const cell = this.grid.get(key);
+                    if (cell) {
+                        const cost = this.getTorchCost('fog');
+                        if (this.torch >= cost) {
+                            hasAffordableEdge = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!hasAffordableEdge) {
+                    this.gameOver = true;
+                    document.getElementById('gameOverReason').textContent = 
+                        `火把耗尽（${this.torch}），且无法揭示任何边缘格`;
+                    document.getElementById('gameOverOverlay').classList.add('show');
+                    this.log('游戏结束：火把耗尽', 'event');
+                }
+            }
+            
             revealCell(key) {
+                if (this.gameOver) return false;
+                
                 const cell = this.grid.get(key);
                 if (!cell || cell.revealed || !cell.isEdge) {
                     return false;
                 }
                 
+                // 计算火把消耗
+                let cost = this.getTorchCost('fog');
+                if (cell.polluted) {
+                    cost = this.getTorchCost('polluted');
+                }
+                
+                // 检查火把是否足够
+                if (!this.canAfford(cost)) {
+                    this.log(`火把不足！需要 ${cost} 个火把，当前只有 ${this.torch} 个`, 'warning');
+                    return false;
+                }
+                
+                // 消耗火把
+                this.spendTorch(cost);
+                this.log(`消耗 ${cost} 火把派遣揭示 (${cell.x},${cell.y})`, 'system');
+                
                 // 决定格子类型
                 this.determineCellType(cell);
                 
-                // 标记为已揭示
                 cell.revealed = true;
                 this.revealedCells.add(key);
                 this.revealedCount++;
                 
-                // 如果是深渊裂隙，生长新区域
                 if (cell.type === 'rift') {
                     this.growFromRift(cell);
-                    this.log(`发现深渊裂隙！消耗5火把揭示，向3个方向打开新路径。`, 'event');
+                    this.log(`发现深渊裂隙！向3个方向打开新路径。`, 'event');
                 } else if (cell.type === 'safe') {
-                    this.log(`揭示安全格 (${cell.x},${cell.y})，周围有${cell.number}个雷。`, 'system');
+                    this.log(`揭示安全格，周围有 ${cell.number} 个雷。`, 'system');
                     if (cell.hasTorch) {
-                        this.log(`发现火把堆！获得${cell.torchAmount}个火把。`, 'reward');
+                        this.gainTorch(cell.torchAmount);
                     }
                 } else if (cell.type === 'mine') {
-                    this.log(`踩中雷格！触发F3强制揭示周围3格。`, 'event');
+                    this.log(`踩中雷格！触发F3强制揭示。`, 'event');
                     this.triggerF3(cell);
                 }
                 
-                // 更新边缘
                 this.updateEdgeCells();
                 this.render();
-                
                 return true;
             }
             
-            // 决定格子类型
             determineCellType(cell) {
-                // 每5个普通格后保底出深渊裂隙
                 if (this.revealedCount % 5 === 0 && this.revealedCount > 0) {
                     cell.type = 'rift';
                     this.riftCount++;
                     return;
                 }
                 
-                // 随机决定类型（深渊裂隙10%，雷20%，安全70%）
                 const rand = Math.random();
                 if (rand < 0.1) {
                     cell.type = 'rift';
                     this.riftCount++;
                 } else if (rand < 0.3) {
                     cell.type = 'mine';
-                    // 计算周围雷数（用于其他格显示）
                 } else {
                     cell.type = 'safe';
-                    // 计算周围雷数
                     cell.number = this.countAdjacentMines(cell.x, cell.y);
-                    // 30%概率有火把堆
                     if (Math.random() < 0.3) {
                         cell.hasTorch = true;
                         cell.torchAmount = Math.floor(Math.random() * 3) + 1;
@@ -413,7 +554,6 @@
                 }
             }
             
-            // 计算周围雷数
             countAdjacentMines(x, y) {
                 const neighbors = this.getNeighbors(x, y);
                 let count = 0;
@@ -427,13 +567,10 @@
                 return count;
             }
             
-            // 从深渊裂隙生长
             growFromRift(riftCell) {
                 const directions = [
                     {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}
                 ];
-                
-                // 随机选3个方向
                 const shuffled = directions.sort(() => Math.random() - 0.5);
                 const selectedDirs = shuffled.slice(0, 3);
                 
@@ -443,7 +580,6 @@
                     const newKey = `${newX},${newY}`;
                     
                     if (!this.grid.has(newKey)) {
-                        // 创建中间格和远端格
                         const midX = riftCell.x + dir.dx;
                         const midY = riftCell.y + dir.dy;
                         const midKey = `${midX},${midY}`;
@@ -454,11 +590,8 @@
                         this.createCell(newX, newY, 'fog');
                     }
                 }
-                
-                this.log(`深渊裂隙向3个方向生长出新区域。`, 'system');
             }
             
-            // 触发F3（强制揭示周围3格）
             triggerF3(mineCell) {
                 const neighbors = this.getNeighbors(mineCell.x, mineCell.y);
                 let revealedCount = 0;
@@ -477,25 +610,22 @@
                         this.revealedCount++;
                         revealedCount++;
                         
-                        const pollutionName = {
+                        const pollutionNames = {
                             'blur': '模糊污染',
-                            'heavy': '沉重污染',
+                            'heavy': '沉重污染', 
                             'unstable': '不稳定污染'
-                        }[newCell.pollutionType];
-                        
-                        this.log(`F3强制揭示 (${n.x},${n.y})，该格被${pollutionName}。`, 'event');
+                        };
+                        this.log(`F3揭示(${n.x},${n.y})，${pollutionNames[newCell.pollutionType]}`, 'event');
                         
                         if (newCell.hasTorch) {
-                            this.log(`意外发现火把堆！获得${newCell.torchAmount}个火把。`, 'reward');
+                            this.gainTorch(newCell.torchAmount);
                         }
                     }
                 }
                 
-                // 获得印记
-                this.log('获得1个印记。累积3个印记将触发畸变。', 'system');
+                this.log('获得1个印记。', 'system');
             }
             
-            // 获取随机污染类型
             getRandomPollution() {
                 const rand = Math.random();
                 if (rand < 0.4) return 'blur';
@@ -503,12 +633,10 @@
                 return 'unstable';
             }
             
-            // 渲染网格
             render() {
                 const container = document.getElementById('gridContainer');
                 container.innerHTML = '';
                 
-                // 计算网格范围
                 let minX = 0, maxX = 0, minY = 0, maxY = 0;
                 for (const cell of this.grid.values()) {
                     minX = Math.min(minX, cell.x);
@@ -517,12 +645,10 @@
                     maxY = Math.max(maxY, cell.y);
                 }
                 
-                // 设置网格样式
                 const width = maxX - minX + 1;
                 const height = maxY - minY + 1;
                 container.style.gridTemplateColumns = `repeat(${width}, 60px)`;
                 
-                // 渲染所有格子
                 for (let y = minY; y <= maxY; y++) {
                     for (let x = minX; x <= maxX; x++) {
                         const key = `${x},${y}`;
@@ -531,10 +657,8 @@
                         cellDiv.className = 'cell';
                         
                         if (!cell) {
-                            // 空格子（未生成）
                             cellDiv.style.visibility = 'hidden';
                         } else {
-                            // 根据类型设置样式
                             if (cell.type === 'center') {
                                 cellDiv.classList.add('center');
                                 cellDiv.textContent = '★';
@@ -542,8 +666,19 @@
                                 cellDiv.classList.add('fog');
                                 if (cell.isEdge) {
                                     cellDiv.classList.add('edge');
-                                    cellDiv.textContent = '?';
-                                    cellDiv.onclick = () => this.revealCell(key);
+                                    // 显示火把消耗
+                                    let cost = this.getTorchCost('fog');
+                                    const badge = document.createElement('span');
+                                    badge.className = 'cost-badge';
+                                    badge.textContent = cost;
+                                    cellDiv.appendChild(badge);
+                                    
+                                    // 检查火把是否足够
+                                    if (!this.canAfford(cost)) {
+                                        cellDiv.classList.add('disabled');
+                                    } else {
+                                        cellDiv.onclick = () => this.revealCell(key);
+                                    }
                                 }
                             } else if (cell.type === 'safe') {
                                 cellDiv.classList.add('safe');
@@ -569,14 +704,21 @@
                 }
             }
             
-            // 更新UI
             updateUI() {
                 document.getElementById('revealedCount').textContent = this.revealedCount;
                 document.getElementById('edgeCount').textContent = this.edgeCells.size;
                 document.getElementById('riftCount').textContent = this.riftCount;
+                document.getElementById('torchCount').textContent = `${this.torch}/${this.maxTorch}`;
+                
+                // 火把低时视觉警告
+                const torchInfo = document.getElementById('torchInfo');
+                if (this.torch <= 2) {
+                    torchInfo.classList.add('torch-low');
+                } else {
+                    torchInfo.classList.remove('torch-low');
+                }
             }
             
-            // 日志系统
             log(message, type = 'system') {
                 const logPanel = document.getElementById('logPanel');
                 const entry = document.createElement('div');
@@ -586,23 +728,33 @@
                 logPanel.scrollTop = logPanel.scrollHeight;
             }
             
-            // 重新开始
             restart() {
                 this.init();
-                this.log('游戏重新开始。', 'system');
             }
             
-            // 自动揭示所有边缘（测试用）
             autoReveal() {
+                if (this.gameOver) return;
                 const edges = Array.from(this.edgeCells);
                 if (edges.length === 0) return;
                 
-                const randomEdge = edges[Math.floor(Math.random() * edges.length)];
+                // 找到火把足够的边缘格
+                const affordableEdges = edges.filter(key => {
+                    const cell = this.grid.get(key);
+                    if (!cell) return false;
+                    const cost = this.getTorchCost('fog');
+                    return this.torch >= cost;
+                });
+                
+                if (affordableEdges.length === 0) {
+                    this.log('火把不足，无法自动揭示', 'warning');
+                    return;
+                }
+                
+                const randomEdge = affordableEdges[Math.floor(Math.random() * affordableEdges.length)];
                 this.revealCell(randomEdge);
             }
         }
         
-        // 启动游戏
         const game = new MistGridGame();
     </script>
 </body>
