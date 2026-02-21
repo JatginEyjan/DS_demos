@@ -1012,40 +1012,48 @@
                     if (revealedCount >= 3) break;
                     
                     const nKey = `${n.x},${n.y}`;
-                    if (!this.grid.has(nKey)) {
-                        const newCell = this.createCell(n.x, n.y, 'fog');
-                        this.determineCellType(newCell);
-                        
-                        // 优化：逐个揭示，带延迟
-                        await this.delay(200);
-                        
-                        newCell.revealed = true;
-                        newCell.polluted = true;
-                        newCell.pollutionType = this.getRandomPollution();
-                        this.revealedCells.add(nKey);
-                        this.revealedCount++;
-                        revealedCount++;
-                        
-                        // 优化：详细日志
-                        let logMsg = `⚡ F3揭示(${n.x},${n.y})`;
-                        if (newCell.type === 'safe') {
-                            logMsg += ` 安全格，周围${newCell.number}个雷`;
-                        } else if (newCell.type === 'rift') {
-                            logMsg += ` 深渊裂隙！`;
-                        } else if (newCell.type === 'mine') {
-                            logMsg += ` 又一个雷！`;
-                        }
-                        this.log(logMsg, 'event');
-                        
-                        // 污染警告
-                        this.log(`⚠️ 该格被${pollutionNames[newCell.pollutionType]}`, 'warning');
-                        
-                        // 实时渲染更新
-                        this.render();
-                        
-                        if (newCell.hasTorch) {
-                            this.gainTorch(newCell.torchAmount);
-                        }
+                    let cell = this.grid.get(nKey);
+                    
+                    // 修复：如果格子不存在则创建，如果存在但未揭示则揭示
+                    if (!cell) {
+                        cell = this.createCell(n.x, n.y, 'fog');
+                        this.determineCellType(cell);
+                    } else if (cell.revealed) {
+                        // 已揭示的格子跳过
+                        continue;
+                    }
+                    
+                    // 优化：逐个揭示，带延迟
+                    await this.delay(200);
+                    
+                    cell.revealed = true;
+                    cell.polluted = true;
+                    cell.pollutionType = this.getRandomPollution();
+                    this.revealedCells.add(nKey);
+                    this.revealedCount++;
+                    revealedCount++;
+                    
+                    // 优化：详细日志
+                    let logMsg = `⚡ F3揭示(${n.x},${n.y})`;
+                    if (cell.type === 'safe') {
+                        logMsg += ` 安全格，周围${cell.number}个雷`;
+                    } else if (cell.type === 'rift') {
+                        logMsg += ` 深渊裂隙！`;
+                    } else if (cell.type === 'mine') {
+                        logMsg += ` 又一个雷！`;
+                    } else if (cell.type === 'core') {
+                        logMsg += ` 发现核心！`;
+                    }
+                    this.log(logMsg, 'event');
+                    
+                    // 污染警告
+                    this.log(`⚠️ 该格被${pollutionNames[cell.pollutionType]}`, 'warning');
+                    
+                    // 实时渲染更新
+                    this.render();
+                    
+                    if (cell.hasTorch) {
+                        this.gainTorch(cell.torchAmount);
                     }
                 }
                 
