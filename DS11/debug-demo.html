@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DebugPanel 通用调试模块 - 使用示例</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        h1 { color: #e94560; }
+        h2 { color: #333; margin-top: 30px; }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+        }
+        pre {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .demo-btn {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            font-size: 14px;
+        }
+        .demo-btn:hover {
+            background: #d63050;
+        }
+        .feature {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #e94560;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐛 DebugPanel 通用调试模块</h1>
+    <p>一个开箱即用的浏览器错误捕获和调试面板，只需引入一个JS文件即可使用。</p>
+    
+    <h2>🚀 快速开始</h2>
+    <p>在你的 HTML 文件底部引入：</p>
+    <pre>&lt;script src="debug-panel.js"&gt;&lt;/script&gt;</pre>
+    <p>完成！面板会自动创建，点击右下角的 🐛 按钮查看错误。</p>
+    
+    <h2>🎮 在线演示</h2>
+    <p>点击下方按钮产生不同类型的错误/日志：</p>
+    
+    <button class="demo-btn" onclick="throwError()">抛出JS错误</button>
+    <button class="demo-btn" onclick="throwPromiseError()">Promise错误</button>
+    <button class="demo-btn" onclick="consoleError()">console.error</button>
+    <button class="demo-btn" onclick="consoleWarn()">console.warn</button>
+    <button class="demo-btn" onclick="customLog()">自定义日志</button>
+    <button class="demo-btn" onclick="loadBrokenResource()">资源加载失败</button>
+    
+    <h2>✨ 功能特性</h2>
+    
+    <div class="feature">
+        <strong>🔴 自动错误捕获</strong>
+        <p>自动捕获 JavaScript 错误、Promise 错误、资源加载失败</p>
+    </div>
+    
+    <div class="feature">
+        <strong>📋 错误/日志双标签</strong>
+        <p>分别查看错误信息和普通日志，方便区分</p>
+    </div>
+    
+    <div class="feature">
+        <strong>📍 位置可配置</strong>
+        <p>支持四个角落放置触发按钮</p>
+    </div>
+    
+    <div class="feature">
+        <strong>📋 一键复制</strong>
+        <p>点击"复制全部"按钮，快速复制所有错误信息</p>
+    </div>
+    
+    <div class="feature">
+        <strong>💾 持久化存储</strong>
+        <p>可选将错误保存到 localStorage，刷新页面不丢失</p>
+    </div>
+    
+    <h2>⚙️ 高级配置</h2>
+    <pre>// 自定义配置
+DebugPanel.config({
+    position: 'bottom-left',  // 按钮位置: bottom-right, bottom-left, top-right, top-left
+    theme: 'light',           // 主题: dark, light
+    maxErrors: 100,           // 最大保存错误数
+    autoShow: true,           // 错误发生时自动显示面板
+    captureConsole: true,     // 捕获 console.error
+    persist: true             // 持久化到 localStorage
+});
+
+// 手动添加日志
+DebugPanel.log('这是一条自定义日志', 'info');
+DebugPanel.log('警告信息', 'warn');
+
+// 清空所有错误
+DebugPanel.clear();
+
+// 获取所有错误
+var errors = DebugPanel.getErrors();
+console.log(errors);</pre>
+    
+    <h2>📦 API 文档</h2>
+    <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%;">
+        <tr style="background: #f4f4f4;">
+            <th>方法</th>
+            <th>说明</th>
+            <th>示例</th>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.init(options)</code></td>
+            <td>初始化面板</td>
+            <td><code>DebugPanel.init({ theme: 'light' })</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.toggle()</code></td>
+            <td>切换面板显示</td>
+            <td><code>DebugPanel.toggle()</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.log(msg, type)</code></td>
+            <td>添加自定义日志</td>
+            <td><code>DebugPanel.log('测试', 'info')</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.clear()</code></td>
+            <td>清空所有错误</td>
+            <td><code>DebugPanel.clear()</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.copyAll()</code></td>
+            <td>复制所有错误</td>
+            <td><code>DebugPanel.copyAll()</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.getErrors()</code></td>
+            <td>获取错误数组</td>
+            <td><code>var errs = DebugPanel.getErrors()</code></td>
+        </tr>
+        <tr>
+            <td><code>DebugPanel.destroy()</code></td>
+            <td>销毁面板</td>
+            <td><code>DebugPanel.destroy()</code></td>
+        </tr>
+    </table>
+    
+    <h2>🔗 使用场景</h2>
+    <ul>
+        <li>📱 移动端调试（无法打开 DevTools）</li>
+        <li>🧪 测试环境收集错误</li>
+        <li>👥 用户反馈问题时收集日志</li>
+        <li>🎮 游戏/应用内嵌调试工具</li>
+    </ul>
+    
+    <p style="margin-top: 40px; padding: 20px; background: #e8f4f8; border-radius: 8px;">
+        <strong>💡 提示：</strong>点击右下角的 🐛 按钮打开调试面板，查看捕获的错误信息！
+    </p>
+
+    <script src="js/debug-panel.js"></script>
+    <script>
+        // 演示函数
+        function throwError() {
+            throw new Error('这是一个测试错误！发生在 ' + new Date().toLocaleTimeString());
+        }
+        
+        function throwPromiseError() {
+            Promise.reject(new Error('Promise 被拒绝！'));
+        }
+        
+        function consoleError() {
+            console.error('console.error 测试:', { foo: 'bar', num: 123 });
+        }
+        
+        function consoleWarn() {
+            console.warn('console.warn 测试: 这是一个警告信息');
+        }
+        
+        function customLog() {
+            DebugPanel.log('这是通过 DebugPanel.log() 添加的自定义日志', 'info');
+            DebugPanel.log('这是一个警告级别的日志', 'warn');
+        }
+        
+        function loadBrokenResource() {
+            var img = new Image();
+            img.src = 'https://example.com/non-existent-image.png';
+            document.body.appendChild(img);
+        }
+    </script>
+</body>
+</html>
