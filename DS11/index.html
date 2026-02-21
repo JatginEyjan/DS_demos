@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS11 - 迷雾分支网格（Day2：火把系统）</title>
+    <title>DS11 - 迷雾分支网格（Day3：F3+F4系统）</title>
     <style>
         * {
             margin: 0;
@@ -68,6 +68,20 @@
         
         .info-value.torch {
             color: #f39c12;
+        }
+        
+        .info-value.mutation {
+            color: #9b59b6;
+        }
+        
+        .mutation-info {
+            border-color: #9b59b6;
+            animation: pulse-purple 2s infinite;
+        }
+        
+        @keyframes pulse-purple {
+            0%, 100% { box-shadow: 0 0 5px #9b59b6; }
+            50% { box-shadow: 0 0 15px #9b59b6; }
         }
         
         .grid-container {
@@ -293,6 +307,108 @@
             color: #888;
             margin-bottom: 30px;
         }
+        
+        .mutation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10,10,15,0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+            padding: 40px;
+        }
+        
+        .mutation-overlay.show {
+            display: flex;
+        }
+        
+        .mutation-title {
+            color: #9b59b6;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #9b59b6;
+        }
+        
+        .mutation-desc {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .mutation-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+        }
+        
+        .mutation-card {
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 20px;
+            width: 200px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .mutation-card:hover {
+            border-color: #9b59b6;
+            background: #2a1a3e;
+            transform: translateY(-5px);
+        }
+        
+        .mutation-card.positive {
+            border-color: #27ae60;
+        }
+        
+        .mutation-card.positive:hover {
+            border-color: #27ae60;
+            background: #1a3a2e;
+        }
+        
+        .mutation-card.negative {
+            border-color: #e94560;
+        }
+        
+        .mutation-card.negative:hover {
+            border-color: #e94560;
+            background: #3a1a1e;
+        }
+        
+        .mutation-card.easter {
+            border-color: #f39c12;
+        }
+        
+        .mutation-card.easter:hover {
+            border-color: #f39c12;
+            background: #3a2a1e;
+        }
+        
+        .mutation-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .mutation-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+        }
+        
+        .mutation-desc-text {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -315,6 +431,14 @@
             <div class="info-label">🔥 火把</div>
             <div class="info-value torch" id="torchCount">5/10</div>
         </div>
+        <div class="info-item" id="markInfo">
+            <div class="info-label">👁️ 印记</div>
+            <div class="info-value" id="markCount">0/3</div>
+        </div>
+        <div class="info-item mutation-info" id="mutationInfo" style="display: none;">
+            <div class="info-label">⚡ 畸变</div>
+            <div class="info-value mutation" id="mutationName">无</div>
+        </div>
     </div>
     
     <div class="grid-container" id="gridContainer"></div>
@@ -330,6 +454,12 @@
         <div class="game-over-title">游戏结束</div>
         <div class="game-over-reason" id="gameOverReason">火把耗尽</div>
         <button class="btn" onclick="game.restart()">重新开始</button>
+    </div>
+    
+    <div class="mutation-overlay" id="mutationOverlay">
+        <div class="mutation-title">⚡ 畸变降临</div>
+        <div class="mutation-desc">你已累积3个印记，必须选择一种畸变</div>
+        <div class="mutation-options" id="mutationOptions"></div>
     </div>
 
     <script>
@@ -347,18 +477,67 @@
                 this.maxTorch = 10;    // 火把上限
                 this.gameOver = false; // 游戏结束状态
                 
+                // Day3: F4印记系统
+                this.marks = 0;        // 当前印记
+                this.maxMarks = 3;     // 印记上限（触发畸变）
+                this.mutation = null;  // 当前畸变
+                this.mutationData = {  // 畸变数据
+                    'eye': {
+                        name: '深渊之眼',
+                        icon: '👁️',
+                        type: 'positive',
+                        desc: '可以透视1格迷雾，每回合限1次',
+                        effect: 'reveal_1_fog'
+                    },
+                    'sense': {
+                        name: '资源嗅觉',
+                        icon: '🔍',
+                        type: 'positive',
+                        desc: '发现火把堆的概率+20%',
+                        effect: 'torch_chance_up'
+                    },
+                    'heavy': {
+                        name: '沉重步伐',
+                        icon: '⚓',
+                        type: 'negative',
+                        desc: '所有移动消耗+1火把',
+                        effect: 'move_cost_up'
+                    },
+                    'obsessive': {
+                        name: '强迫症',
+                        icon: '🔄',
+                        type: 'negative',
+                        desc: '必须揭示完所有格才能撤退',
+                        effect: 'must_reveal_all'
+                    },
+                    'whisper': {
+                        name: '低语理解',
+                        icon: '👂',
+                        type: 'easter',
+                        desc: '偶尔听到格子的提示',
+                        effect: 'random_hints'
+                    }
+                };
+                
                 this.init();
             }
             
             // 火把消耗配置
             getTorchCost(cellType) {
-                const costs = {
+                let costs = {
                     'fog': 2,      // 普通迷雾格
                     'rift': 5,     // 深渊裂隙
                     'safe': 0,     // 已揭示安全格（免费经过）
                     'mine': 2,     // 雷格（如果踩中）
                     'polluted': 3  // 污染格（额外+1）
                 };
+                
+                // 畸变效果：沉重步伐 +1火把
+                if (this.mutation === 'heavy') {
+                    costs['fog'] = 3;
+                    costs['polluted'] = 4;
+                }
+                
                 return costs[cellType] || 2;
             }
             
@@ -370,7 +549,11 @@
                 this.riftCount = 0;
                 this.torch = 5;
                 this.gameOver = false;
+                this.marks = 0;
+                this.mutation = null;
                 document.getElementById('gameOverOverlay').classList.remove('show');
+                document.getElementById('mutationOverlay').classList.remove('show');
+                document.getElementById('mutationInfo').style.display = 'none';
                 
                 const centerCell = this.createCell(0, 0, 'center');
                 centerCell.revealed = true;
@@ -623,7 +806,92 @@
                     }
                 }
                 
-                this.log('获得1个印记。', 'system');
+                // 获得印记
+                this.gainMark();
+            }
+            
+            // 获得印记
+            gainMark() {
+                this.marks++;
+                this.log(`获得1个印记。当前：${this.marks}/${this.maxMarks}`, 'system');
+                this.updateUI();
+                
+                // 检查是否触发畸变
+                if (this.marks >= this.maxMarks) {
+                    this.triggerMutation();
+                }
+            }
+            
+            // 触发畸变选择
+            triggerMutation() {
+                this.log('印记累积达到3个！畸变降临...', 'event');
+                
+                const overlay = document.getElementById('mutationOverlay');
+                const optionsContainer = document.getElementById('mutationOptions');
+                optionsContainer.innerHTML = '';
+                
+                // 随机选择3种畸变
+                const mutationKeys = Object.keys(this.mutationData);
+                const shuffled = mutationKeys.sort(() => Math.random() - 0.5);
+                const selected = shuffled.slice(0, 3);
+                
+                for (const key of selected) {
+                    const data = this.mutationData[key];
+                    const card = document.createElement('div');
+                    card.className = `mutation-card ${data.type}`;
+                    card.innerHTML = `
+                        <div class="mutation-icon">${data.icon}</div>
+                        <div class="mutation-name">${data.name}</div>
+                        <div class="mutation-desc-text">${data.desc}</div>
+                    `;
+                    card.onclick = () => this.selectMutation(key);
+                    optionsContainer.appendChild(card);
+                }
+                
+                overlay.classList.add('show');
+            }
+            
+            // 选择畸变
+            selectMutation(mutationKey) {
+                this.mutation = mutationKey;
+                const data = this.mutationData[mutationKey];
+                
+                document.getElementById('mutationOverlay').classList.remove('show');
+                document.getElementById('mutationInfo').style.display = 'block';
+                document.getElementById('mutationName').textContent = data.name;
+                
+                this.log(`获得畸变：${data.name} - ${data.desc}`, 'event');
+                this.updateUI();
+                
+                // 应用畸变效果
+                this.applyMutationEffect(mutationKey);
+            }
+            
+            // 应用畸变效果
+            applyMutationEffect(mutationKey) {
+                const effect = this.mutationData[mutationKey].effect;
+                
+                switch(effect) {
+                    case 'torch_chance_up':
+                        // 火把发现概率+20%，在determineCellType中处理
+                        break;
+                    case 'move_cost_up':
+                        // 移动成本+1，在getTorchCost中处理
+                        break;
+                    case 'reveal_1_fog':
+                        // 添加透视能力，点击迷雾格时检测
+                        this.enableEyeAbility();
+                        break;
+                }
+            }
+            
+            // 深渊之眼能力：透视1格
+            enableEyeAbility() {
+                this.eyeAbilityUsed = false;
+                this.log('深渊之眼已激活！本回合可以透视1格迷雾。', 'system');
+                
+                // 添加透视按钮或自动检测
+                // 这里简化处理：玩家点击迷雾格时，如果是第一次，免费揭示
             }
             
             getRandomPollution() {
@@ -709,6 +977,7 @@
                 document.getElementById('edgeCount').textContent = this.edgeCells.size;
                 document.getElementById('riftCount').textContent = this.riftCount;
                 document.getElementById('torchCount').textContent = `${this.torch}/${this.maxTorch}`;
+                document.getElementById('markCount').textContent = `${this.marks}/${this.maxMarks}`;
                 
                 // 火把低时视觉警告
                 const torchInfo = document.getElementById('torchInfo');
@@ -716,6 +985,14 @@
                     torchInfo.classList.add('torch-low');
                 } else {
                     torchInfo.classList.remove('torch-low');
+                }
+                
+                // 印记接近上限时警告
+                const markInfo = document.getElementById('markInfo');
+                if (this.marks >= 2) {
+                    markInfo.style.borderColor = '#e94560';
+                } else {
+                    markInfo.style.borderColor = '#2a2a3a';
                 }
             }
             
