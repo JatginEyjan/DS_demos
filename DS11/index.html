@@ -604,8 +604,8 @@
                 this.gameWon = false;    // 游戏胜利状态
                 
                 // Day5: 平衡参数 (调整)
-                this.maxCells = 18;      // 迷雾格上限 (调整: 15→18)
-                this.coreGuarantee = 18; // 核心保底格数 (新增)
+                this.maxCells = 25;      // 迷雾格上限 (调整: 18→25，为连锁机制预留空间)
+                this.coreGuarantee = 20; // 核心保底格数 (调整: 18→20)
                 this.fogCellsCount = 0;  // 当前迷雾格数量
                 this.gameStartedAt = Date.now();
                 
@@ -888,7 +888,14 @@
                     this.growFromRift(cell);
                     this.log(`✨ 裂隙开启！3条新路径已展开`, 'reward');
                 } else if (cell.type === 'safe') {
-                    this.log(`揭示安全格，周围有 ${cell.number} 个雷。`, 'system');
+                    // 优化：0格触发连锁揭示
+                    if (cell.number === 0) {
+                        this.log(`✨ 安全格周围无雷！触发连锁揭示...`, 'reward');
+                        // 使用setTimeout避免阻塞主流程
+                        setTimeout(() => this.chainReveal(cell), 100);
+                    } else {
+                        this.log(`揭示安全格，周围有 ${cell.number} 个雷。`, 'system');
+                    }
                     if (cell.hasTorch) {
                         this.gainTorch(cell.torchAmount);
                     }
@@ -933,12 +940,12 @@
                     return;
                 }
                 
-                // 调整: 雷率 20%→18%
+                // 调整: 雷率 18%→15% (为0格连锁机制)
                 const rand = Math.random();
                 if (rand < 0.1) {
                     cell.type = 'rift';
                     this.riftCount++;
-                } else if (rand < 0.28) {  // 10%+18%=28%
+                } else if (rand < 0.25) {  // 10%+15%=25%
                     cell.type = 'mine';
                 } else {
                     cell.type = 'safe';
@@ -1009,8 +1016,9 @@
                     'unstable': '【不稳定污染】不能停留，必须离开'
                 };
                 
+                // 调整：F3揭示5格（原为3格，补偿连锁机制）
                 for (const n of neighbors) {
-                    if (revealedCount >= 3) break;
+                    if (revealedCount >= 5) break;
                     
                     const nKey = `${n.x},${n.y}`;
                     let cell = this.grid.get(nKey);
@@ -1076,6 +1084,57 @@
             // 新增：延迟工具函数
             delay(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            // 新增：连锁揭示函数（0格安全格触发）
+            async chainReveal(centerCell) {
+                const neighbors = this.getNeighbors(centerCell.x, centerCell.y);
+                let chainCount = 0;
+                
+                for (const n of neighbors) {
+                    const nKey = `${n.x},${n.y}`;
+                    
+                    // 如果格子不存在，创建并揭示
+                    if (!this.grid.has(nKey)) {
+                        // 检查迷雾上限
+                        if (this.fogCellsCount >= this.maxCells) continue;
+                        
+                        const newCell = this.createCell(n.x, n.y, 'fog');
+                        this.determineCellType(newCell);
+                        
+                        // 连锁揭示免费，但带延迟动画
+                        newCell.revealed = true;
+                        this.revealedCells.add(nKey);
+                        this.revealedCount++;
+                        chainCount++;
+                        
+                        // 记录连锁日志（简洁版）
+                        let typeIcon = '❓';
+                        if (newCell.type === 'safe') typeIcon = '✅';
+                        else if (newCell.type === 'rift') typeIcon = '🌀';
+                        else if (newCell.type === 'mine') typeIcon = '💀';
+                        else if (newCell.type === 'core') typeIcon = '💎';
+                        
+                        // 实时渲染
+                        this.render();
+                        
+                        // 如果是0格安全格，递归连锁（异步）
+                        if (newCell.type === 'safe' && newCell.number === 0) {
+                            await this.delay(100);
+                            const subCount = await this.chainReveal(newCell);
+                            chainCount += subCount;
+                        }
+                        
+                        // 小延迟让动画可见
+                        await this.delay(50);
+                    }
+                }
+                
+                if (chainCount > 0) {
+                    this.log(`✨ 连锁揭示完成！共开启 ${chainCount} 格`, 'reward');
+                }
+                
+                return chainCount;
             }
             
             // 获得印记
