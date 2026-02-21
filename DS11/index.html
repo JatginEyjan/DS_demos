@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS11 - 迷雾分支网格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-title {
+            color: #e94560;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .info-item {
+            background: #1a1a2e;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #2a2a3a;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .info-value {
+            color: #e94560;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .grid-container {
+            display: grid;
+            gap: 8px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #0f0f1a;
+            border-radius: 12px;
+            border: 2px solid #2a2a3a;
+        }
+        
+        .cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: bold;
+            position: relative;
+        }
+        
+        /* 迷雾格 */
+        .cell.fog {
+            background: #1a1a2e;
+            border: 2px solid #3a3a4a;
+            color: #666;
+        }
+        
+        .cell.fog:hover {
+            border-color: #e94560;
+            background: #2a1a2e;
+        }
+        
+        /* 安全格 */
+        .cell.safe {
+            background: #1a3a2e;
+            border: 2px solid #27ae60;
+            color: #27ae60;
+        }
+        
+        .cell.safe:hover {
+            background: #2a4a3e;
+        }
+        
+        /* 深渊裂隙 */
+        .cell.rift {
+            background: #3a1a4e;
+            border: 2px solid #9b59b6;
+            color: #9b59b6;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 5px #9b59b6; }
+            50% { box-shadow: 0 0 20px #9b59b6; }
+        }
+        
+        /* 雷格 */
+        .cell.mine {
+            background: #3a1a1e;
+            border: 2px solid #e94560;
+            color: #e94560;
+        }
+        
+        /* 污染格 */
+        .cell.polluted {
+            position: relative;
+        }
+        
+        .cell.polluted::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 8px;
+            border: 3px solid #9b59b6;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        /* 中心格 */
+        .cell.center {
+            background: #1a2a3e;
+            border: 2px solid #3498db;
+            color: #3498db;
+        }
+        
+        /* 边缘格指示 */
+        .cell.edge {
+            position: relative;
+        }
+        
+        .cell.edge::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border: 1px dashed #666;
+            border-radius: 12px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        
+        .log-panel {
+            width: 100%;
+            max-width: 600px;
+            height: 150px;
+            background: #0f0f1a;
+            border: 2px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-left: 3px solid #3a3a4a;
+            padding-left: 10px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .log-entry.system {
+            border-left-color: #3498db;
+            color: #5dade2;
+        }
+        
+        .log-entry.event {
+            border-left-color: #e94560;
+            color: #e94560;
+        }
+        
+        .log-entry.reward {
+            border-left-color: #27ae60;
+            color: #27ae60;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            color: #e0e0e0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            border-color: #e94560;
+            background: #2a1a2e;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-title">DS11 - 迷雾分支网格</div>
+    
+    <div class="game-info">
+        <div class="info-item">
+            <div class="info-label">已揭示</div>
+            <div class="info-value" id="revealedCount">1</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">迷雾边缘</div>
+            <div class="info-value" id="edgeCount">8</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">深渊裂隙</div>
+            <div class="info-value" id="riftCount">0</div>
+        </div>
+    </div>
+    
+    <div class="grid-container" id="gridContainer"></div>
+    
+    <div class="controls">
+        <button class="btn" onclick="game.restart()">重新开始</button>
+        <button class="btn" onclick="game.autoReveal()">自动揭示边缘</button>
+    </div>
+    
+    <div class="log-panel" id="logPanel"></div>
+
+    <script>
+        // 游戏核心类
+        class MistGridGame {
+            constructor() {
+                this.grid = new Map(); // 存储所有格子
+                this.revealedCells = new Set(); // 已揭示的格子
+                this.edgeCells = new Set(); // 迷雾边缘格子
+                this.revealedCount = 0; // 已揭示计数（用于深渊裂隙保底）
+                this.riftCount = 0; // 深渊裂隙计数
+                this.gridSize = 20; // 网格最大范围
+                this.init();
+            }
+            
+            // 初始化游戏
+            init() {
+                this.grid.clear();
+                this.revealedCells.clear();
+                this.edgeCells.clear();
+                this.revealedCount = 0;
+                this.riftCount = 0;
+                
+                // 创建中心格
+                const centerCell = this.createCell(0, 0, 'center');
+                centerCell.revealed = true;
+                this.revealedCells.add('0,0');
+                this.revealedCount = 1;
+                
+                // 创建初始迷雾边缘
+                this.updateEdgeCells();
+                
+                this.render();
+                this.log('游戏开始！中心格已揭示。点击迷雾边缘格进行派遣揭示。', 'system');
+            }
+            
+            // 创建格子
+            createCell(x, y, type = 'fog') {
+                const key = `${x},${y}`;
+                const cell = {
+                    x, y,
+                    key,
+                    type, // 'fog', 'safe', 'rift', 'mine'
+                    revealed: false,
+                    number: 0, // 周围雷数
+                    polluted: false,
+                    pollutionType: null,
+                    hasTorch: false,
+                    torchAmount: 0,
+                    isEdge: false
+                };
+                this.grid.set(key, cell);
+                return cell;
+            }
+            
+            // 更新迷雾边缘
+            updateEdgeCells() {
+                this.edgeCells.clear();
+                
+                // 遍历所有已揭示的格子
+                for (const key of this.revealedCells) {
+                    const cell = this.grid.get(key);
+                    const neighbors = this.getNeighbors(cell.x, cell.y);
+                    
+                    // 检查邻居
+                    for (const neighbor of neighbors) {
+                        const nKey = `${neighbor.x},${neighbor.y}`;
+                        if (!this.grid.has(nKey)) {
+                            // 邻居不存在，创建迷雾格并标记为边缘
+                            const fogCell = this.createCell(neighbor.x, neighbor.y, 'fog');
+                            fogCell.isEdge = true;
+                            this.edgeCells.add(nKey);
+                        } else {
+                            const existingCell = this.grid.get(nKey);
+                            if (!existingCell.revealed && existingCell.type === 'fog') {
+                                existingCell.isEdge = true;
+                                this.edgeCells.add(nKey);
+                            }
+                        }
+                    }
+                }
+                
+                this.updateUI();
+            }
+            
+            // 获取邻居坐标
+            getNeighbors(x, y) {
+                const neighbors = [];
+                const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    neighbors.push({x: x + dx, y: y + dy});
+                }
+                return neighbors;
+            }
+            
+            // 揭示格子（派遣）
+            revealCell(key) {
+                const cell = this.grid.get(key);
+                if (!cell || cell.revealed || !cell.isEdge) {
+                    return false;
+                }
+                
+                // 决定格子类型
+                this.determineCellType(cell);
+                
+                // 标记为已揭示
+                cell.revealed = true;
+                this.revealedCells.add(key);
+                this.revealedCount++;
+                
+                // 如果是深渊裂隙，生长新区域
+                if (cell.type === 'rift') {
+                    this.growFromRift(cell);
+                    this.log(`发现深渊裂隙！消耗5火把揭示，向3个方向打开新路径。`, 'event');
+                } else if (cell.type === 'safe') {
+                    this.log(`揭示安全格 (${cell.x},${cell.y})，周围有${cell.number}个雷。`, 'system');
+                    if (cell.hasTorch) {
+                        this.log(`发现火把堆！获得${cell.torchAmount}个火把。`, 'reward');
+                    }
+                } else if (cell.type === 'mine') {
+                    this.log(`踩中雷格！触发F3强制揭示周围3格。`, 'event');
+                    this.triggerF3(cell);
+                }
+                
+                // 更新边缘
+                this.updateEdgeCells();
+                this.render();
+                
+                return true;
+            }
+            
+            // 决定格子类型
+            determineCellType(cell) {
+                // 每5个普通格后保底出深渊裂隙
+                if (this.revealedCount % 5 === 0 && this.revealedCount > 0) {
+                    cell.type = 'rift';
+                    this.riftCount++;
+                    return;
+                }
+                
+                // 随机决定类型（深渊裂隙10%，雷20%，安全70%）
+                const rand = Math.random();
+                if (rand < 0.1) {
+                    cell.type = 'rift';
+                    this.riftCount++;
+                } else if (rand < 0.3) {
+                    cell.type = 'mine';
+                    // 计算周围雷数（用于其他格显示）
+                } else {
+                    cell.type = 'safe';
+                    // 计算周围雷数
+                    cell.number = this.countAdjacentMines(cell.x, cell.y);
+                    // 30%概率有火把堆
+                    if (Math.random() < 0.3) {
+                        cell.hasTorch = true;
+                        cell.torchAmount = Math.floor(Math.random() * 3) + 1;
+                    }
+                }
+            }
+            
+            // 计算周围雷数
+            countAdjacentMines(x, y) {
+                const neighbors = this.getNeighbors(x, y);
+                let count = 0;
+                for (const n of neighbors) {
+                    const nKey = `${n.x},${n.y}`;
+                    const nCell = this.grid.get(nKey);
+                    if (nCell && nCell.type === 'mine') {
+                        count++;
+                    }
+                }
+                return count;
+            }
+            
+            // 从深渊裂隙生长
+            growFromRift(riftCell) {
+                const directions = [
+                    {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}
+                ];
+                
+                // 随机选3个方向
+                const shuffled = directions.sort(() => Math.random() - 0.5);
+                const selectedDirs = shuffled.slice(0, 3);
+                
+                for (const dir of selectedDirs) {
+                    const newX = riftCell.x + dir.dx * 2;
+                    const newY = riftCell.y + dir.dy * 2;
+                    const newKey = `${newX},${newY}`;
+                    
+                    if (!this.grid.has(newKey)) {
+                        // 创建中间格和远端格
+                        const midX = riftCell.x + dir.dx;
+                        const midY = riftCell.y + dir.dy;
+                        const midKey = `${midX},${midY}`;
+                        
+                        if (!this.grid.has(midKey)) {
+                            this.createCell(midX, midY, 'fog');
+                        }
+                        this.createCell(newX, newY, 'fog');
+                    }
+                }
+                
+                this.log(`深渊裂隙向3个方向生长出新区域。`, 'system');
+            }
+            
+            // 触发F3（强制揭示周围3格）
+            triggerF3(mineCell) {
+                const neighbors = this.getNeighbors(mineCell.x, mineCell.y);
+                let revealedCount = 0;
+                
+                for (const n of neighbors) {
+                    if (revealedCount >= 3) break;
+                    
+                    const nKey = `${n.x},${n.y}`;
+                    if (!this.grid.has(nKey)) {
+                        const newCell = this.createCell(n.x, n.y, 'fog');
+                        this.determineCellType(newCell);
+                        newCell.revealed = true;
+                        newCell.polluted = true;
+                        newCell.pollutionType = this.getRandomPollution();
+                        this.revealedCells.add(nKey);
+                        this.revealedCount++;
+                        revealedCount++;
+                        
+                        const pollutionName = {
+                            'blur': '模糊污染',
+                            'heavy': '沉重污染',
+                            'unstable': '不稳定污染'
+                        }[newCell.pollutionType];
+                        
+                        this.log(`F3强制揭示 (${n.x},${n.y})，该格被${pollutionName}。`, 'event');
+                        
+                        if (newCell.hasTorch) {
+                            this.log(`意外发现火把堆！获得${newCell.torchAmount}个火把。`, 'reward');
+                        }
+                    }
+                }
+                
+                // 获得印记
+                this.log('获得1个印记。累积3个印记将触发畸变。', 'system');
+            }
+            
+            // 获取随机污染类型
+            getRandomPollution() {
+                const rand = Math.random();
+                if (rand < 0.4) return 'blur';
+                if (rand < 0.8) return 'heavy';
+                return 'unstable';
+            }
+            
+            // 渲染网格
+            render() {
+                const container = document.getElementById('gridContainer');
+                container.innerHTML = '';
+                
+                // 计算网格范围
+                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+                for (const cell of this.grid.values()) {
+                    minX = Math.min(minX, cell.x);
+                    maxX = Math.max(maxX, cell.x);
+                    minY = Math.min(minY, cell.y);
+                    maxY = Math.max(maxY, cell.y);
+                }
+                
+                // 设置网格样式
+                const width = maxX - minX + 1;
+                const height = maxY - minY + 1;
+                container.style.gridTemplateColumns = `repeat(${width}, 60px)`;
+                
+                // 渲染所有格子
+                for (let y = minY; y <= maxY; y++) {
+                    for (let x = minX; x <= maxX; x++) {
+                        const key = `${x},${y}`;
+                        const cell = this.grid.get(key);
+                        const cellDiv = document.createElement('div');
+                        cellDiv.className = 'cell';
+                        
+                        if (!cell) {
+                            // 空格子（未生成）
+                            cellDiv.style.visibility = 'hidden';
+                        } else {
+                            // 根据类型设置样式
+                            if (cell.type === 'center') {
+                                cellDiv.classList.add('center');
+                                cellDiv.textContent = '★';
+                            } else if (!cell.revealed) {
+                                cellDiv.classList.add('fog');
+                                if (cell.isEdge) {
+                                    cellDiv.classList.add('edge');
+                                    cellDiv.textContent = '?';
+                                    cellDiv.onclick = () => this.revealCell(key);
+                                }
+                            } else if (cell.type === 'safe') {
+                                cellDiv.classList.add('safe');
+                                cellDiv.textContent = cell.number;
+                                if (cell.hasTorch) {
+                                    cellDiv.textContent += '🔥';
+                                }
+                            } else if (cell.type === 'rift') {
+                                cellDiv.classList.add('rift');
+                                cellDiv.textContent = '裂';
+                            } else if (cell.type === 'mine') {
+                                cellDiv.classList.add('mine');
+                                cellDiv.textContent = '💀';
+                            }
+                            
+                            if (cell.polluted) {
+                                cellDiv.classList.add('polluted');
+                            }
+                        }
+                        
+                        container.appendChild(cellDiv);
+                    }
+                }
+            }
+            
+            // 更新UI
+            updateUI() {
+                document.getElementById('revealedCount').textContent = this.revealedCount;
+                document.getElementById('edgeCount').textContent = this.edgeCells.size;
+                document.getElementById('riftCount').textContent = this.riftCount;
+            }
+            
+            // 日志系统
+            log(message, type = 'system') {
+                const logPanel = document.getElementById('logPanel');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logPanel.appendChild(entry);
+                logPanel.scrollTop = logPanel.scrollHeight;
+            }
+            
+            // 重新开始
+            restart() {
+                this.init();
+                this.log('游戏重新开始。', 'system');
+            }
+            
+            // 自动揭示所有边缘（测试用）
+            autoReveal() {
+                const edges = Array.from(this.edgeCells);
+                if (edges.length === 0) return;
+                
+                const randomEdge = edges[Math.floor(Math.random() * edges.length)];
+                this.revealCell(randomEdge);
+            }
+        }
+        
+        // 启动游戏
+        const game = new MistGridGame();
+    </script>
+</body>
+</html>
