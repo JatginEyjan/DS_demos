@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS11 - 迷雾分支网格 (模块化版)</title>
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <div class="game-title">DS11 - 迷雾分支网格 v2.0 模块化</div>
+    
+    <!-- 难度选择 -->
+    <div class="difficulty-select" id="difficultySelect" style="margin-bottom: 20px;">
+        <button class="btn" onclick="startGame('easy')">🟢 简单</button>
+        <button class="btn" onclick="startGame('normal')">🟡 标准</button>
+        <button class="btn" onclick="startGame('hard')">🔴 困难</button>
+    </div>
+    
+    <!-- 游戏信息 -->
+    <div class="game-info" id="gameInfo" style="display: none;">
+        <div class="info-item">
+            <div class="info-label">已揭示</div>
+            <div class="info-value" id="revealedCount">1</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">迷雾边缘</div>
+            <div class="info-value" id="edgeCount">8</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">深渊裂隙</div>
+            <div class="info-value" id="riftCount">0</div>
+        </div>
+        <div class="info-item" id="torchInfo">
+            <div class="info-label">🔥 火把</div>
+            <div class="info-value torch" id="torchCount">6/12</div>
+        </div>
+        <div class="info-item" id="markInfo">
+            <div class="info-label">👁️ 印记</div>
+            <div class="info-value" id="markCount">0/3</div>
+        </div>
+        <div class="info-item" id="limitInfo" style="display: none; border-color: #e94560;">
+            <div class="info-label">⚠️ 迷雾上限</div>
+            <div class="info-value" id="limitCount" style="color: #e94560;">18/18</div>
+        </div>
+        <div class="info-item mutation-info" id="mutationInfo" style="display: none;">
+            <div class="info-label">⚡ 畸变</div>
+            <div class="info-value mutation" id="mutationName">无</div>
+        </div>
+        <div class="info-item" id="coreInfo" style="display: none;">
+            <div class="info-label">💎 核心</div>
+            <div class="info-value" id="coreStatus">未找到</div>
+        </div>
+    </div>
+    
+    <!-- 游戏网格 -->
+    <div class="grid-container" id="gridContainer" style="display: none;"></div>
+    
+    <!-- 控制按钮 -->
+    <div class="controls" id="gameControls" style="display: none;">
+        <button class="btn" onclick="game.restart()">重新开始</button>
+        <button class="btn retreat-btn" onclick="game.retreat()">🏃 撤退</button>
+    </div>
+    
+    <!-- 日志面板 -->
+    <div class="log-panel" id="logPanel" style="display: none;"></div>
+    
+    <!-- 畸变选择遮罩 -->
+    <div class="overlay mutation-overlay" id="mutationOverlay">
+        <div class="mutation-title">⚡ 畸变降临</div>
+        <div class="mutation-desc">你已累积足够印记，必须选择一种畸变</div>
+        <div class="mutation-options" id="mutationOptions"></div>
+    </div>
+    
+    <!-- 游戏结束遮罩 -->
+    <div class="overlay" id="gameOverOverlay">
+        <div class="game-over-title">游戏结束</div>
+        <div class="game-over-reason" id="gameOverReason">火把耗尽</div>
+        <button class="btn" onclick="showDifficultySelect()">选择难度</button>
+    </div>
+    
+    <!-- 胜利遮罩 -->
+    <div class="overlay" id="winOverlay">
+        <div class="win-title">🎉 任务完成！</div>
+        <div class="win-reason" id="winReason">成功找到核心并撤退</div>
+        <div class="score-display" id="scoreDisplay">得分：0</div>
+        <div class="score-breakdown" id="scoreBreakdown"></div>
+        <button class="btn" onclick="showDifficultySelect()">再玩一次</button>
+    </div>
+
+    <!-- 加载模块 -->
+    <script src="js/config/difficulty.js"></script>
+    <script src="js/config/mutation.js"></script>
+    <script src="js/core/Game.js"></script>
+    <script src="js/ui/Renderer.js"></script>
+    
+    <script>
+        let game = null;
+        let renderer = null;
+        let logger = null;
+        
+        // 日志系统
+        function log(message, type = 'system') {
+            const panel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            panel.appendChild(entry);
+            panel.scrollTop = panel.scrollHeight;
+        }
+        
+        // 开始游戏
+        function startGame(difficulty) {
+            // 隐藏难度选择，显示游戏
+            document.getElementById('difficultySelect').style.display = 'none';
+            document.getElementById('gameInfo').style.display = 'flex';
+            document.getElementById('gridContainer').style.display = 'grid';
+            document.getElementById('gameControls').style.display = 'flex';
+            document.getElementById('logPanel').style.display = 'block';
+            
+            // 清空日志
+            document.getElementById('logPanel').innerHTML = '';
+            
+            // 创建游戏实例
+            game = new MistGridGame({
+                difficulty: DifficultyConfig[difficulty]
+            });
+            
+            // 绑定回调
+            game.on('init', () => {
+                log(`游戏开始！难度：${game.config.name}`, 'system');
+                log(`火把：${game.state.torch}，点击迷雾边缘格进行派遣揭示`, 'system');
+            });
+            
+            game.on('cellReveal', (data) => {
+                log(`消耗 ${data.cost} 火把揭示格子`, 'system');
+            });
+            
+            game.on('torchChange', (data) => {
+                if (data.delta > 0) log(`获得 ${data.delta} 火把！当前：${data.torch}`, 'reward');
+            });
+            
+            game.on('torchFound', (data) => {
+                log(`发现火把堆！获得 ${data.amount} 火把`, 'reward');
+            });
+            
+            game.on('markGain', (data) => {
+                log(`获得印记！当前：${data.marks}/${data.cap}`, 'system');
+            });
+            
+            game.on('mutationSelect', (data) => {
+                renderer.showMutationSelect(data.mutations, (id) => {
+                    game.selectMutation(id);
+                });
+            });
+            
+            game.on('mutationAcquired', (data) => {
+                log(`获得畸变：${data.mutation.name} - ${data.mutation.description}`, 'event');
+            });
+            
+            game.on('riftFound', () => {
+                log('发现深渊裂隙！向3个方向打开新路径', 'event');
+            });
+            
+            game.on('f3Trigger', () => {
+                log('踩中雷格！触发F3强制揭示', 'event');
+            });
+            
+            game.on('coreAppear', (data) => {
+                const msg = data.guaranteed ? '深渊核心出现（保底）！' : '深渊核心出现！';
+                log(`💎 ${msg}找到它可以完成任务`, 'reward');
+            });
+            
+            game.on('coreFound', () => {
+                log('💎 找到深渊核心！现在可以撤退完成任务', 'reward');
+            });
+            
+            game.on('obsessiveBlock', (data) => {
+                log(`强迫症畸变：还有 ${data.remaining} 个迷雾格未揭示，不能撤退！`, 'warning');
+            });
+            
+            game.on('insufficientTorch', (data) => {
+                log(`火把不足！需要 ${data.required} 个，当前只有 ${data.current} 个`, 'warning');
+            });
+            
+            game.on('gameEnd', (data) => {
+                renderer.showGameEnd(data.won, data);
+                if (data.won && data.coreFound) {
+                    log('🎉 任务完成！获得深渊核心并成功撤退', 'reward');
+                } else if (data.won) {
+                    log('任务结束：撤退时未找到深渊核心', 'warning');
+                } else {
+                    log('游戏结束：火把耗尽', 'event');
+                }
+            });
+            
+            // 创建渲染器
+            renderer = new GameRenderer('gridContainer');
+            renderer.bind(game);
+            
+            // 初始化
+            game.init();
+        }
+        
+        // 显示难度选择
+        function showDifficultySelect() {
+            document.getElementById('difficultySelect').style.display = 'block';
+            document.getElementById('gameInfo').style.display = 'none';
+            document.getElementById('gridContainer').style.display = 'none';
+            document.getElementById('gameControls').style.display = 'none';
+            document.getElementById('logPanel').style.display = 'none';
+            document.getElementById('gameOverOverlay').classList.remove('show');
+            document.getElementById('winOverlay').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
