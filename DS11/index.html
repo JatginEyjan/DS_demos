@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DS11 - 迷雾分支网格（Day3：F3+F4系统）</title>
+    <title>DS11 - 迷雾分支网格（Day4：游戏循环）</title>
     <style>
         * {
             margin: 0;
@@ -156,6 +156,19 @@
             color: #e94560;
         }
         
+        /* 核心格 */
+        .cell.core {
+            background: #2a2a1e;
+            border: 3px solid #f39c12;
+            color: #f39c12;
+            animation: glow-core 2s infinite;
+        }
+        
+        @keyframes glow-core {
+            0%, 100% { box-shadow: 0 0 10px #f39c12, inset 0 0 10px rgba(243,156,18,0.3); }
+            50% { box-shadow: 0 0 30px #f39c12, inset 0 0 20px rgba(243,156,18,0.5); }
+        }
+        
         /* 污染格 */
         .cell.polluted {
             position: relative;
@@ -279,6 +292,16 @@
             cursor: not-allowed;
         }
         
+        .btn.retreat-btn {
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+        
+        .btn.retreat-btn:hover {
+            background: #1a3a2e;
+            border-color: #27ae60;
+        }
+        
         .game-over-overlay {
             position: fixed;
             top: 0;
@@ -306,6 +329,51 @@
         .game-over-reason {
             color: #888;
             margin-bottom: 30px;
+        }
+        
+        .win-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10,10,15,0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .win-overlay.show {
+            display: flex;
+        }
+        
+        .win-title {
+            color: #27ae60;
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #27ae60;
+        }
+        
+        .win-reason {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .score-display {
+            color: #f39c12;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .score-breakdown {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.6;
         }
         
         .mutation-overlay {
@@ -439,6 +507,10 @@
             <div class="info-label">⚡ 畸变</div>
             <div class="info-value mutation" id="mutationName">无</div>
         </div>
+        <div class="info-item" id="coreInfo" style="display: none;">
+            <div class="info-label">💎 核心</div>
+            <div class="info-value" id="coreStatus">未找到</div>
+        </div>
     </div>
     
     <div class="grid-container" id="gridContainer"></div>
@@ -446,6 +518,7 @@
     <div class="controls">
         <button class="btn" onclick="game.restart()">重新开始</button>
         <button class="btn" onclick="game.autoReveal()">自动揭示</button>
+        <button class="btn retreat-btn" onclick="game.retreat()">🏃 撤退</button>
     </div>
     
     <div class="log-panel" id="logPanel"></div>
@@ -454,6 +527,14 @@
         <div class="game-over-title">游戏结束</div>
         <div class="game-over-reason" id="gameOverReason">火把耗尽</div>
         <button class="btn" onclick="game.restart()">重新开始</button>
+    </div>
+    
+    <div class="win-overlay" id="winOverlay">
+        <div class="win-title">🎉 任务完成！</div>
+        <div class="win-reason" id="winReason">成功找到核心并撤退</div>
+        <div class="score-display" id="scoreDisplay">得分：0</div>
+        <div class="score-breakdown" id="scoreBreakdown"></div>
+        <button class="btn" onclick="game.restart()">再玩一次</button>
     </div>
     
     <div class="mutation-overlay" id="mutationOverlay">
@@ -481,6 +562,14 @@
                 this.marks = 0;        // 当前印记
                 this.maxMarks = 3;     // 印记上限（触发畸变）
                 this.mutation = null;  // 当前畸变
+                this.eyeAbilityUsed = false;
+                
+                // Day4: 游戏循环
+                this.coreFound = false;  // 是否找到核心
+                this.corePosition = null; // 核心位置
+                this.score = 0;          // 得分
+                this.gameWon = false;    // 游戏胜利状态
+                
                 this.mutationData = {  // 畸变数据
                     'eye': {
                         name: '深渊之眼',
@@ -549,11 +638,19 @@
                 this.riftCount = 0;
                 this.torch = 5;
                 this.gameOver = false;
+                this.gameWon = false;
                 this.marks = 0;
                 this.mutation = null;
+                this.coreFound = false;
+                this.corePosition = null;
+                this.score = 0;
+                this.eyeAbilityUsed = false;
+                
                 document.getElementById('gameOverOverlay').classList.remove('show');
+                document.getElementById('winOverlay').classList.remove('show');
                 document.getElementById('mutationOverlay').classList.remove('show');
                 document.getElementById('mutationInfo').style.display = 'none';
+                document.getElementById('coreInfo').style.display = 'none';
                 
                 const centerCell = this.createCell(0, 0, 'center');
                 centerCell.revealed = true;
@@ -707,6 +804,12 @@
                 } else if (cell.type === 'mine') {
                     this.log(`踩中雷格！触发F3强制揭示。`, 'event');
                     this.triggerF3(cell);
+                } else if (cell.type === 'core') {
+                    this.coreFound = true;
+                    this.log(`💎 找到深渊核心！现在可以撤退完成任务`, 'reward');
+                    document.getElementById('coreInfo').style.display = 'block';
+                    document.getElementById('coreStatus').textContent = '已找到！';
+                    document.getElementById('coreStatus').style.color = '#27ae60';
                 }
                 
                 this.updateEdgeCells();
@@ -715,6 +818,16 @@
             }
             
             determineCellType(cell) {
+                // Day4: 10格后概率生成核心
+                if (this.revealedCount >= 10 && !this.coreFound && !this.corePosition) {
+                    if (Math.random() < 0.15) {
+                        cell.type = 'core';
+                        this.corePosition = {x: cell.x, y: cell.y};
+                        this.log('💎 深渊核心出现！找到它可以完成任务', 'reward');
+                        return;
+                    }
+                }
+                
                 if (this.revealedCount % 5 === 0 && this.revealedCount > 0) {
                     cell.type = 'rift';
                     this.riftCount++;
@@ -730,7 +843,10 @@
                 } else {
                     cell.type = 'safe';
                     cell.number = this.countAdjacentMines(cell.x, cell.y);
-                    if (Math.random() < 0.3) {
+                    // 资源嗅觉畸变+20%火把概率
+                    let torchChance = 0.3;
+                    if (this.mutation === 'sense') torchChance = 0.5;
+                    if (Math.random() < torchChance) {
                         cell.hasTorch = true;
                         cell.torchAmount = Math.floor(Math.random() * 3) + 1;
                     }
@@ -960,6 +1076,9 @@
                             } else if (cell.type === 'mine') {
                                 cellDiv.classList.add('mine');
                                 cellDiv.textContent = '💀';
+                            } else if (cell.type === 'core') {
+                                cellDiv.classList.add('core');
+                                cellDiv.textContent = '💎';
                             }
                             
                             if (cell.polluted) {
@@ -1007,6 +1126,84 @@
             
             restart() {
                 this.init();
+            }
+            
+            // Day4: 撤退功能
+            retreat() {
+                if (this.gameOver || this.gameWon) return;
+                
+                // 强迫症畸变：必须揭示完所有格
+                if (this.mutation === 'obsessive') {
+                    const remaining = this.edgeCells.size;
+                    if (remaining > 0) {
+                        this.log(`强迫症畸变：还有 ${remaining} 个迷雾格未揭示，不能撤退！`, 'warning');
+                        return;
+                    }
+                }
+                
+                // 计算得分
+                this.calculateScore();
+                
+                if (this.coreFound) {
+                    // 胜利
+                    this.gameWon = true;
+                    document.getElementById('winOverlay').classList.add('show');
+                    document.getElementById('winReason').textContent = '成功找到深渊核心并撤退！';
+                    this.log('🎉 任务完成！获得深渊核心并成功撤退', 'reward');
+                } else {
+                    // 撤退但未找到核心
+                    this.gameWon = true;
+                    document.getElementById('winOverlay').classList.add('show');
+                    document.getElementById('winReason').textContent = '撤退了，但未找到深渊核心...';
+                    document.getElementById('winTitle').textContent = '任务结束';
+                    this.log('任务结束：撤退时未找到深渊核心', 'warning');
+                }
+            }
+            
+            // 计算得分
+            calculateScore() {
+                let score = 0;
+                let breakdown = [];
+                
+                // 基础分：揭示格数 × 10
+                const revealScore = this.revealedCount * 10;
+                score += revealScore;
+                breakdown.push(`揭示格数: ${this.revealedCount} × 10 = ${revealScore}`);
+                
+                // 核心奖励
+                if (this.coreFound) {
+                    score += 500;
+                    breakdown.push('找到核心: +500');
+                }
+                
+                // 火把剩余奖励
+                const torchScore = this.torch * 20;
+                score += torchScore;
+                breakdown.push(`剩余火把: ${this.torch} × 20 = ${torchScore}`);
+                
+                // 深渊裂隙奖励
+                const riftScore = this.riftCount * 50;
+                score += riftScore;
+                breakdown.push(`发现裂隙: ${this.riftCount} × 50 = ${riftScore}`);
+                
+                // 畸变惩罚/奖励
+                if (this.mutation) {
+                    const data = this.mutationData[this.mutation];
+                    if (data.type === 'positive') {
+                        score += 100;
+                        breakdown.push(`正向畸变: +100`);
+                    } else if (data.type === 'negative') {
+                        score -= 50;
+                        breakdown.push(`负向畸变: -50`);
+                    } else if (data.type === 'easter') {
+                        score += 200;
+                        breakdown.push(`彩蛋畸变: +200`);
+                    }
+                }
+                
+                this.score = score;
+                document.getElementById('scoreDisplay').textContent = `得分: ${score}`;
+                document.getElementById('scoreBreakdown').innerHTML = breakdown.join('<br>');
             }
             
             autoReveal() {
