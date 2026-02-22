@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS12 - 深渊扫雷</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-title {
+            color: #e94560;
+            font-size: 24px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .game-subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .info-item {
+            background: #1a1a2e;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid #2a2a3a;
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .info-value {
+            color: #e94560;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(16, 30px);
+            grid-template-rows: repeat(16, 30px);
+            gap: 2px;
+            background: #0f0f1a;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #2a2a3a;
+            user-select: none;
+        }
+        
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        /* 未揭示 */
+        .cell.hidden {
+            background: #2a2a3a;
+            border: 2px solid #3a3a4a;
+        }
+        
+        .cell.hidden:hover {
+            background: #3a3a4a;
+            border-color: #e94560;
+        }
+        
+        /* 已揭示安全格 */
+        .cell.revealed {
+            background: #1a1a2e;
+            border: 1px solid #2a2a3a;
+            color: #27ae60;
+        }
+        
+        /* 数字颜色 */
+        .cell.num-1 { color: #3498db; }
+        .cell.num-2 { color: #27ae60; }
+        .cell.num-3 { color: #e74c3c; }
+        .cell.num-4 { color: #9b59b6; }
+        .cell.num-5 { color: #f39c12; }
+        .cell.num-6 { color: #1abc9c; }
+        .cell.num-7 { color: #34495e; }
+        .cell.num-8 { color: #7f8c8d; }
+        
+        /* 雷格（踩中后显示） */
+        .cell.mine {
+            background: #3a1a1e;
+            border: 2px solid #e94560;
+            color: #e94560;
+        }
+        
+        /* 标记 */
+        .cell.marked {
+            background: #3a3a1e;
+            border: 2px solid #f39c12;
+            color: #f39c12;
+        }
+        
+        .cell.marked::after {
+            content: '🚩';
+            font-size: 12px;
+        }
+        
+        /* 核心（找到后显示） */
+        .cell.core {
+            background: #2a2a1e;
+            border: 2px solid #f39c12;
+            color: #f39c12;
+            animation: glow 2s infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px #f39c12; }
+            50% { box-shadow: 0 0 15px #f39c12; }
+        }
+        
+        /* 污染格 */
+        .cell.polluted {
+            position: relative;
+        }
+        
+        .cell.polluted::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid #9b59b6;
+            border-radius: 4px;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a3a;
+            color: #e0e0e0;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            border-color: #e94560;
+            background: #2a1a2e;
+        }
+        
+        .btn.primary {
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+        
+        .btn.primary:hover {
+            background: #1a3a2e;
+        }
+        
+        .log-panel {
+            width: 100%;
+            max-width: 600px;
+            height: 120px;
+            background: #0f0f1a;
+            border: 2px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            padding: 3px 0;
+            border-left: 2px solid #3a3a4a;
+            padding-left: 8px;
+            margin-bottom: 3px;
+            color: #888;
+        }
+        
+        .log-entry.event { border-left-color: #e94560; color: #e94560; }
+        .log-entry.reward { border-left-color: #27ae60; color: #27ae60; }
+        .log-entry.warning { border-left-color: #f39c12; color: #f39c12; }
+        .log-entry.info { border-left-color: #3498db; color: #3498db; }
+        
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .game-over-overlay.show {
+            display: flex;
+        }
+        
+        .game-over-title {
+            color: #e94560;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .game-over-reason {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            max-width: 600px;
+            font-size: 12px;
+            color: #888;
+            line-height: 1.6;
+        }
+        
+        .instructions strong {
+            color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-title">DS12 - 深渊扫雷</div>
+    <div class="game-subtitle">原版扫雷 + F3/F4 机制</div>
+    
+    <div class="game-info">
+        <div class="info-item">
+            <div class="info-label">剩余雷数</div>
+            <div class="info-value" id="mineCount">40</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">印记</div>
+            <div class="info-value" id="markCount">0/3</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">核心</div>
+            <div class="info-value" id="coreStatus">未找到</div>
+        </div>
+    </div>
+    
+    <div class="grid-container" id="gridContainer"></div>
+    
+    <div class="controls">
+        <button class="btn" onclick="game.restart()">重新开始</button>
+        <button class="btn primary" onclick="game.retreat()">撤退</button>
+    </div>
+    
+    <div class="log-panel" id="logPanel"></div>
+    
+    <div class="instructions">
+        <strong>操作说明：</strong><br>
+        • 左键点击：揭示格子<br>
+        • 右键点击：标记/取消标记雷<br>
+        • 数字：周围8格雷数<br>
+        • 0格：自动连锁揭示周围<br>
+        • 踩雷：触发F3深渊侵蚀（不结束游戏）
+    </div>
+    
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-title">游戏结束</div>
+        <div class="game-over-reason" id="gameOverReason"></div>
+        <button class="btn" onclick="game.restart()">重新开始</button>
+    </div>
+
+    <script>
+        class DeepSweeper {
+            constructor() {
+                this.rows = 16;
+                this.cols = 16;
+                this.mineCount = 40;
+                this.grid = [];
+                this.revealed = [];
+                this.marked = [];
+                this.polluted = []; // 污染格
+                this.marks = 0; // 印记
+                this.coreFound = false;
+                this.gameOver = false;
+                this.gameWon = false;
+                this.init();
+            }
+            
+            init() {
+                this.createGrid();
+                this.placeMines();
+                this.calculateNumbers();
+                this.placeCore();
+                this.render();
+                this.log('游戏开始！左键揭示，右键标记。找到核心后可以选择撤退。', 'info');
+            }
+            
+            createGrid() {
+                this.grid = [];
+                this.revealed = [];
+                this.marked = [];
+                this.polluted = [];
+                this.marks = 0;
+                this.coreFound = false;
+                this.gameOver = false;
+                this.gameWon = false;
+                
+                for (let y = 0; y < this.rows; y++) {
+                    this.grid[y] = [];
+                    this.revealed[y] = [];
+                    this.marked[y] = [];
+                    this.polluted[y] = [];
+                    for (let x = 0; x < this.cols; x++) {
+                        this.grid[y][x] = {
+                            x, y,
+                            isMine: false,
+                            number: 0,
+                            hasCore: false
+                        };
+                        this.revealed[y][x] = false;
+                        this.marked[y][x] = false;
+                        this.polluted[y][x] = false;
+                    }
+                }
+            }
+            
+            placeMines() {
+                let placed = 0;
+                while (placed < this.mineCount) {
+                    const x = Math.floor(Math.random() * this.cols);
+                    const y = Math.floor(Math.random() * this.rows);
+                    if (!this.grid[y][x].isMine) {
+                        this.grid[y][x].isMine = true;
+                        placed++;
+                    }
+                }
+            }
+            
+            calculateNumbers() {
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        if (this.grid[y][x].isMine) continue;
+                        this.grid[y][x].number = this.countAdjacentMines(x, y);
+                    }
+                }
+            }
+            
+            countAdjacentMines(x, y) {
+                let count = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (this.isValid(nx, ny) && this.grid[ny][nx].isMine) {
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+            
+            placeCore() {
+                // 在安全格中随机选一个藏核心
+                const safeCells = [];
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        if (!this.grid[y][x].isMine && this.grid[y][x].number === 0) {
+                            safeCells.push({x, y});
+                        }
+                    }
+                }
+                if (safeCells.length > 0) {
+                    const pos = safeCells[Math.floor(Math.random() * safeCells.length)];
+                    this.grid[pos.y][pos.x].hasCore = true;
+                }
+            }
+            
+            isValid(x, y) {
+                return x >= 0 && x < this.cols && y >= 0 && y < this.rows;
+            }
+            
+            reveal(x, y) {
+                if (this.gameOver || this.gameWon) return;
+                if (!this.isValid(x, y)) return;
+                if (this.revealed[y][x] || this.marked[y][x]) return;
+                
+                const cell = this.grid[y][x];
+                
+                // 踩雷 - 触发F3
+                if (cell.isMine) {
+                    this.triggerF3(x, y);
+                    return;
+                }
+                
+                // 揭示格子
+                this.revealed[y][x] = true;
+                
+                // 检查是否找到核心
+                if (cell.hasCore) {
+                    this.coreFound = true;
+                    this.log('💎 找到深渊核心！现在可以选择撤退', 'reward');
+                    this.updateUI();
+                }
+                
+                // 0格连锁
+                if (cell.number === 0) {
+                    this.chainReveal(x, y);
+                }
+                
+                this.render();
+                this.checkWin();
+            }
+            
+            chainReveal(x, y) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (this.isValid(nx, ny) && !this.revealed[ny][nx] && !this.marked[ny][nx]) {
+                            const cell = this.grid[ny][nx];
+                            if (!cell.isMine) {
+                                this.revealed[ny][nx] = true;
+                                if (cell.hasCore) {
+                                    this.coreFound = true;
+                                    this.log('💎 找到深渊核心！', 'reward');
+                                }
+                                if (cell.number === 0) {
+                                    this.chainReveal(nx, ny);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // F3触发 - 踩雷后的深渊侵蚀
+            triggerF3(x, y) {
+                this.log(`💀 踩中雷格！触发F3深渊侵蚀...`, 'event');
+                
+                // 显示踩中的雷
+                this.revealed[y][x] = true;
+                this.render();
+                
+                // 印记+1
+                this.marks++;
+                this.log(`获得印记+1 (${this.marks}/3)`, 'info');
+                
+                // 检查畸变
+                if (this.marks >= 3) {
+                    this.triggerMutation();
+                }
+                
+                // 污染2圈
+                this.polluteArea(x, y, 2);
+                
+                // 强制揭示3格
+                this.forceReveal(x, y);
+                
+                this.updateUI();
+            }
+            
+            // 污染区域
+            polluteArea(x, y, radius) {
+                let pollutedCount = 0;
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const nx = x + dx, ny = y + dy;
+                        if (this.isValid(nx, ny) && !this.revealed[ny][nx] && !this.marked[ny][nx]) {
+                            this.polluted[ny][nx] = true;
+                            pollutedCount++;
+                        }
+                    }
+                }
+                this.log(`⚠️ 深渊污染扩散，${pollutedCount}格被污染（数字可能±1）`, 'warning');
+            }
+            
+            // 强制揭示3格
+            forceReveal(centerX, centerY) {
+                const candidates = [];
+                
+                // 收集2圈内未揭示且未标记的格子
+                for (let dy = -2; dy <= 2; dy++) {
+                    for (let dx = -2; dx <= 2; dx++) {
+                        const nx = centerX + dx, ny = centerY + dy;
+                        if (this.isValid(nx, ny) && !this.revealed[ny][nx] && !this.marked[ny][nx]) {
+                            candidates.push({x: nx, y: ny});
+                        }
+                    }
+                }
+                
+                // 随机选3格
+                const shuffled = candidates.sort(() => Math.random() - 0.5);
+                const selected = shuffled.slice(0, 3);
+                
+                let revealCount = 0;
+                selected.forEach(pos => {
+                    const cell = this.grid[pos.y][pos.x];
+                    this.revealed[pos.y][pos.x] = true;
+                    revealCount++;
+                    
+                    if (cell.isMine) {
+                        this.log(`⚡ 强制揭示触雷！再次污染！`, 'event');
+                        this.polluteArea(pos.x, pos.y, 2);
+                    } else if (cell.hasCore) {
+                        this.coreFound = true;
+                        this.log('💎 强制揭示发现核心！', 'reward');
+                    }
+                });
+                
+                this.log(`强制揭示完成！共揭示${revealCount}格`, 'info');
+                this.render();
+            }
+            
+            // 触发畸变
+            triggerMutation() {
+                this.log('👁️ 印记累积达到3！深渊畸变降临...', 'event');
+                this.log('【数字模糊】所有数字显示±1误差', 'warning');
+                // 这里可以实现具体的负面效果
+            }
+            
+            // 获取显示数字（考虑污染）
+            getDisplayNumber(x, y) {
+                let num = this.grid[y][x].number;
+                
+                // 污染效果：±1误差
+                if (this.polluted[y][x] && this.marks >= 3) {
+                    const error = Math.random() < 0.5 ? -1 : 1;
+                    num = Math.max(0, Math.min(8, num + error));
+                }
+                
+                return num;
+            }
+            
+            toggleMark(x, y) {
+                if (this.gameOver || this.gameWon) return;
+                if (!this.isValid(x, y)) return;
+                if (this.revealed[y][x]) return;
+                
+                this.marked[y][x] = !this.marked[y][x];
+                this.render();
+                this.updateUI();
+            }
+            
+            retreat() {
+                if (this.gameOver || this.gameWon) return;
+                
+                let msg = '确定要撤退吗？';
+                if (this.coreFound) {
+                    msg = '✅ 已找到核心！撤退将获得胜利！\n\n确定要撤退吗？';
+                } else {
+                    msg = '⚠️ 未找到核心！撤退将结束游戏。\n\n确定要撤退吗？';
+                }
+                
+                if (confirm(msg)) {
+                    this.gameWon = true;
+                    const overlay = document.getElementById('gameOverOverlay');
+                    const title = document.querySelector('.game-over-title');
+                    const reason = document.getElementById('gameOverReason');
+                    
+                    if (this.coreFound) {
+                        title.textContent = '🎉 胜利！';
+                        title.style.color = '#27ae60';
+                        reason.textContent = '成功找到深渊核心并撤退！';
+                    } else {
+                        title.textContent = '游戏结束';
+                        title.style.color = '#e94560';
+                        reason.textContent = '撤退时未找到核心';
+                    }
+                    
+                    overlay.classList.add('show');
+                }
+            }
+            
+            checkWin() {
+                // 原版扫雷胜利：标记所有雷
+                // DS12：找到核心 + 选择撤退
+                // 不需要自动胜利
+            }
+            
+            render() {
+                const container = document.getElementById('gridContainer');
+                container.innerHTML = '';
+                
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        
+                        if (this.marked[y][x]) {
+                            cell.classList.add('marked');
+                        } else if (this.revealed[y][x]) {
+                            const gridCell = this.grid[y][x];
+                            if (gridCell.isMine) {
+                                cell.classList.add('mine');
+                                cell.textContent = '💀';
+                            } else if (gridCell.hasCore) {
+                                cell.classList.add('core');
+                                cell.textContent = '💎';
+                            } else {
+                                cell.classList.add('revealed');
+                                if (this.polluted[y][x]) {
+                                    cell.classList.add('polluted');
+                                }
+                                const num = this.getDisplayNumber(x, y);
+                                if (num > 0) {
+                                    cell.textContent = num;
+                                    cell.classList.add(`num-${num}`);
+                                }
+                            }
+                        } else {
+                            cell.classList.add('hidden');
+                        }
+                        
+                        cell.onclick = () => this.reveal(x, y);
+                        cell.oncontextmenu = (e) => {
+                            e.preventDefault();
+                            this.toggleMark(x, y);
+                        };
+                        
+                        container.appendChild(cell);
+                    }
+                }
+            }
+            
+            updateUI() {
+                const remainingMines = this.mineCount - this.marked.flat().filter(m => m).length;
+                document.getElementById('mineCount').textContent = remainingMines;
+                document.getElementById('markCount').textContent = `${this.marks}/3`;
+                document.getElementById('coreStatus').textContent = this.coreFound ? '已找到！' : '未找到';
+                document.getElementById('coreStatus').style.color = this.coreFound ? '#27ae60' : '#e94560';
+            }
+            
+            log(message, type = 'info') {
+                const panel = document.getElementById('logPanel');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                panel.appendChild(entry);
+                panel.scrollTop = panel.scrollHeight;
+            }
+            
+            restart() {
+                document.getElementById('gameOverOverlay').classList.remove('show');
+                document.getElementById('logPanel').innerHTML = '';
+                this.init();
+                this.updateUI();
+            }
+        }
+        
+        const game = new DeepSweeper();
+    </script>
+</body>
+</html>
