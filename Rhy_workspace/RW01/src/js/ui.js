@@ -39,6 +39,10 @@ class UI {
 
     render() {
         const container = document.getElementById('contentArea');
+        if (!container) {
+            console.error('UI render error: contentArea not found');
+            return;
+        }
         container.innerHTML = '';
 
         switch (this.currentTab) {
@@ -63,21 +67,34 @@ class UI {
     // ===== 顶部栏更新 =====
 
     updateTopBar() {
+        const realmName = document.getElementById('realmName');
+        const expFill = document.getElementById('expFill');
+        const expText = document.getElementById('expText');
+        const stoneCount = document.getElementById('stoneCount');
+
+        if (!realmName || !expFill || !expText || !stoneCount) {
+            return; // 元素可能还没加载
+        }
+
         // 境界名
-        document.getElementById('realmName').textContent = game.getRealmName();
+        realmName.textContent = game.getRealmName();
 
         // 经验进度
         const exp = game.getExpProgress();
-        document.getElementById('expFill').style.width = `${exp.percent}%`;
-        document.getElementById('expText').textContent = `${exp.current}/${exp.needed}`;
+        expFill.style.width = `${exp.percent}%`;
+        expText.textContent = `${exp.current}/${exp.needed}`;
 
         // 灵石
-        document.getElementById('stoneCount').textContent = GameState.resources.stone.toLocaleString();
+        stoneCount.textContent = GameState.resources.stone.toLocaleString();
     }
 
     // ===== 宗门页面 =====
 
     renderSect(container) {
+        if (!container) {
+            console.error('renderSect error: container is undefined');
+            return;
+        }
         const list = document.createElement('div');
         list.className = 'list-container';
 
@@ -151,6 +168,10 @@ class UI {
     // ===== 弟子页面 =====
 
     renderDisciples(container) {
+        if (!container) {
+            console.error('renderDisciples error: container is undefined');
+            return;
+        }
         // 子页签
         const subTabs = document.createElement('div');
         subTabs.className = 'sub-tabs';
@@ -258,6 +279,10 @@ class UI {
     // ===== 订单页面 =====
 
     renderOrders(container) {
+        if (!container) {
+            console.error('renderOrders error: container is undefined');
+            return;
+        }
         checkDailyReset();
 
         // 刷新按钮
@@ -342,6 +367,10 @@ class UI {
     // ===== 背包页面 =====
 
     renderBag(container) {
+        if (!container) {
+            console.error('renderBag error: container is undefined');
+            return;
+        }
         const div = document.createElement('div');
 
         // 材料
@@ -371,6 +400,10 @@ class UI {
     // ===== 战场页面 =====
 
     renderBattle(container) {
+        if (!container) {
+            console.error('renderBattle error: container is undefined');
+            return;
+        }
         const div = document.createElement('div');
 
         // 上阵槽位
@@ -455,18 +488,86 @@ class UI {
             return;
         }
 
-        const names = available.map(d => `${d.name} (Lv.${d.level})`).join('\n');
-        const choice = prompt(`选择上阵弟子:\n${names}\n\n输入名字:`);
+        // 创建选择弹窗
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
 
-        if (choice) {
-            const disciple = available.find(d => d.name === choice.trim());
-            if (disciple) {
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+        `;
+
+        const title = document.createElement('h3');
+        title.textContent = '选择上阵弟子';
+        title.style.cssText = 'margin-bottom: 16px; text-align: center;';
+        content.appendChild(title);
+
+        const list = document.createElement('div');
+        list.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
+
+        available.forEach(disciple => {
+            const q = CONFIG.DISCIPLE_QUALITIES[disciple.quality];
+            const btn = document.createElement('button');
+            btn.style.cssText = `
+                padding: 12px;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                color: ${q.color};
+                cursor: pointer;
+                text-align: left;
+            `;
+            btn.innerHTML = `
+                <div style="font-weight: bold;">${disciple.name}</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    Lv.${disciple.level} | HP:${disciple.hp}/${disciple.maxHp} | 攻:${disciple.atk}
+                </div>
+            `;
+            btn.onclick = () => {
                 game.battle.assignDisciple(slotIndex, disciple.id);
+                modal.remove();
                 this.render();
-            } else {
-                alert('弟子不存在或不在空闲状态');
-            }
-        }
+            };
+            list.appendChild(btn);
+        });
+
+        content.appendChild(list);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '取消';
+        cancelBtn.style.cssText = `
+            margin-top: 16px;
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        `;
+        cancelBtn.onclick = () => modal.remove();
+        content.appendChild(cancelBtn);
+
+        modal.appendChild(content);
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+        document.body.appendChild(modal);
     }
 
     showNewDrop() {
@@ -482,8 +583,13 @@ class UI {
         const bubbles = document.getElementById('congratsBubbles');
         const unlock = document.getElementById('unlockContent');
 
-        const realmName = CONFIG.REALMS[newRealm].name;
-        const unlocks = CONFIG.REALMS[newRealm].unlocks;
+        if (!overlay || !title || !text || !bubbles || !unlock) {
+            console.error('showLevelUp error: required elements not found');
+            return;
+        }
+
+        const realmName = CONFIG.REALMS[newRealm]?.name || '未知境界';
+        const unlocks = CONFIG.REALMS[newRealm]?.unlocks || [];
 
         title.textContent = '轰！';
         text.textContent = `突破至 ${realmName}！`;
