@@ -6,6 +6,7 @@ class Game {
         this.ui = null;
         this.battle = null;
         this.lastOrderRefresh = Date.now();
+        this.gameLoopInterval = null;
     }
 
     init() {
@@ -28,7 +29,7 @@ class Game {
     }
 
     gameLoop() {
-        setInterval(() => {
+        this.gameLoopInterval = setInterval(() => {
             this.update();
         }, 1000);
     }

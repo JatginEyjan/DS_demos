@@ -84,9 +84,10 @@ class BattleSystem {
         const recoveryRate = baseRecovery + pharmacyBonus + levelBonus;
 
         // 恢复逻辑会在tick中检查
-        const recoveryInterval = setInterval(() => {
+        disciple.recoveryInterval = setInterval(() => {
             if (disciple.state !== 'recovering') {
-                clearInterval(recoveryInterval);
+                clearInterval(disciple.recoveryInterval);
+                disciple.recoveryInterval = null;
                 return;
             }
 
@@ -95,7 +96,8 @@ class BattleSystem {
             if (disciple.hp >= disciple.maxHp) {
                 disciple.hp = disciple.maxHp;
                 disciple.state = 'battling';
-                clearInterval(recoveryInterval);
+                clearInterval(disciple.recoveryInterval);
+                disciple.recoveryInterval = null;
             }
 
             if (window.ui) window.ui.renderBattle();
@@ -124,6 +126,11 @@ class BattleSystem {
     removeDisciple(slotIndex) {
         const disciple = GameState.battleSlots[slotIndex];
         if (disciple) {
+            // 清理恢复定时器
+            if (disciple.recoveryInterval) {
+                clearInterval(disciple.recoveryInterval);
+                disciple.recoveryInterval = null;
+            }
             disciple.state = 'idle';
             GameState.battleSlots[slotIndex] = null;
         }
