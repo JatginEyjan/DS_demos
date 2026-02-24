@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>少年宗门 - RW01</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 顶部信息栏 -->
+    <header class="top-bar">
+        <div class="sect-info">
+            <span class="sect-name">👤 掌门:</span>
+            <span class="realm-name" id="realmName">练气期</span>
+            <div class="exp-bar">
+                <div class="exp-fill" id="expFill"></div>
+                <span class="exp-text" id="expText">0/3</span>
+            </div>
+        </div>
+        <div class="currency">
+            <span class="stone-icon">💎</span>
+            <span class="stone-count" id="stoneCount">1000</span>
+        </div>
+    </header>
+
+    <!-- 中央内容区 -->
+    <main class="content-area" id="contentArea">
+        <!-- 动态加载内容 -->
+    </main>
+
+    <!-- 底部页签栏 -->
+    <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="sect">宗门</button>
+        <button class="tab-btn" data-tab="disciple">弟子</button>
+        <button class="tab-btn" data-tab="order">订单</button>
+        <button class="tab-btn" data-tab="bag">背包</button>
+        <button class="tab-btn" data-tab="battle">战场</button>
+    </nav>
+
+    <!-- 升级特效层 -->
+    <div class="level-up-overlay" id="levelUpOverlay">
+        <div class="level-up-effect">
+            <div class="light-burst"></div>
+            <h1 class="level-up-title">轰！</h1>
+            <p class="level-up-text" id="levelUpText">突破至 筑基期！</p>
+            <div class="congrats-bubbles" id="congratsBubbles"></div>
+            <div class="unlock-content" id="unlockContent"></div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/battle.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
