@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS13 - 深渊凝视</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 开始界面：选角 -->
+    <div id="startScreen" class="screen active">
+        <h1>DS13 - 深渊凝视</h1>
+        <div class="character-creation">
+            <h2>角色创建</h2>
+            <button id="rollBtn" class="btn btn-primary">Roll点生成角色</button>
+            <div id="statsDisplay" class="stats-display"></div>
+            <button id="startBtn" class="btn btn-primary" disabled>开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 村庄界面 -->
+    <div id="villageScreen" class="screen">
+        <header class="village-header">
+            <h2>🏘️ 边缘村庄</h2>
+            <div class="player-status">
+                <span>意志: <span id="villageSan">?</span></span>
+                <span>血量: <span id="villageHp">?</span></span>
+                <span>电量: <span id="villageEnergy">?</span></span>
+                <span>体力: <span id="villageStamina">?</span></span>
+                <span>💰: <span id="villageMoney">0</span></span>
+            </div>
+        </header>
+        <div class="village-content">
+            <div class="shop-section">
+                <h3>🛒 商店</h3>
+                <div id="shopItems" class="shop-grid"></div>
+            </div>
+            <div class="info-section">
+                <h3>📜 情报</h3>
+                <div id="intelContent">...</div>
+            </div>
+            <div class="inventory-section">
+                <h3>🎒 背包 (<span id="backpackCount">0</span>/<span id="backpackMax">?</span>)</h3>
+                <div id="backpackContent"></div>
+            </div>
+        </div>
+        <button id="enterDungeonBtn" class="btn btn-danger">⚠️ 进入地牢</button>
+    </div>
+
+    <!-- 地牢界面 -->
+    <div id="dungeonScreen" class="screen">
+        <header class="dungeon-header">
+            <div class="dungeon-stats">
+                <span class="stat">🧠 <span id="dungeonSan">?</span></span>
+                <span class="stat">❤️ <span id="dungeonHp">?</span></span>
+                <span class="stat">⚡ <span id="dungeonEnergy">?</span></span>
+                <span class="stat">💪 <span id="dungeonStamina">?</span></span>
+            </div>
+            <div class="dungeon-actions">
+                <button id="radarScanBtn" class="btn btn-secondary">📡 雷达扫描</button>
+                <button id="retreatBtn" class="btn btn-warning">🏃 撤离</button>
+            </div>
+        </header>
+        <div class="dungeon-main">
+            <div id="dungeonGrid" class="dungeon-grid"></div>
+            <div class="dungeon-log" id="dungeonLog"></div>
+        </div>
+        <div class="equipment-bar">
+            <div class="equipped-radar">雷达: <span id="equippedRadar">Lv.1</span></div>
+            <div class="equipped-pickaxe">镐子: <span id="equippedPickaxe">单格镐</span></div>
+        </div>
+    </div>
+
+    <!-- 游戏结束 -->
+    <div id="gameOverScreen" class="screen">
+        <h1 id="gameOverTitle">游戏结束</h1>
+        <p id="gameOverReason"></p>
+        <button id="returnVillageBtn" class="btn btn-primary">返回村庄</button>
+    </div>
+
+    <!-- 绿眼惊吓效果 -->
+    <div id="greenEyeFlash" class="green-eye-flash"></div>
+
+    <script src="js/data.js"></script>
+    <script src="js/dungeon.js"></script>
+    <script src="js/greenEye.js"></script>
+    <script src="js/radar.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>

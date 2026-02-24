@@ -1,0 +1,466 @@
+/* DS13 - 深渊凝视 - 样式 */
+
+:root {
+    --bg-dark: #0a0a0f;
+    --bg-panel: #1a1a2e;
+    --bg-grid: #0f0f1a;
+    --accent-green: #27ae60;
+    --accent-red: #e74c3c;
+    --accent-yellow: #f39c12;
+    --accent-purple: #9b59b6;
+    --accent-blue: #3498db;
+    --text-primary: #ecf0f1;
+    --text-secondary: #7f8c8d;
+    --grid-wall: #2c3e50;
+    --grid-empty: #1a1a2e;
+    --grid-danger-1: #f39c12;
+    --grid-danger-2: #e67e22;
+    --grid-danger-3: #e74c3c;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* 屏幕切换 */
+.screen {
+    display: none;
+    width: 100vw;
+    height: 100vh;
+    padding: 20px;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 开始界面 */
+#startScreen {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#startScreen h1 {
+    font-size: 48px;
+    color: var(--accent-green);
+    margin-bottom: 40px;
+    text-shadow: 0 0 20px rgba(39, 174, 96, 0.5);
+}
+
+.character-creation {
+    background: var(--bg-panel);
+    padding: 40px;
+    border-radius: 16px;
+    border: 2px solid var(--accent-green);
+    min-width: 400px;
+}
+
+.character-creation h2 {
+    margin-bottom: 20px;
+    color: var(--accent-yellow);
+}
+
+.stats-display {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+    font-size: 18px;
+    line-height: 2;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--bg-panel);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+}
+
+.stat-value {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+/* 按钮 */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 8px;
+}
+
+.btn-primary {
+    background: var(--accent-green);
+    color: var(--bg-dark);
+}
+
+.btn-primary:hover {
+    background: #2ecc71;
+    box-shadow: 0 0 15px rgba(39, 174, 96, 0.5);
+}
+
+.btn-primary:disabled {
+    background: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border: 2px solid var(--accent-blue);
+}
+
+.btn-secondary:hover {
+    background: var(--accent-blue);
+}
+
+.btn-danger {
+    background: var(--accent-red);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+}
+
+.btn-warning {
+    background: var(--accent-yellow);
+    color: var(--bg-dark);
+}
+
+/* 村庄界面 */
+.village-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.village-header h2 {
+    color: var(--accent-yellow);
+}
+
+.player-status {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+}
+
+.player-status span {
+    color: var(--text-secondary);
+}
+
+.player-status span span {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+.village-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    flex: 1;
+    overflow: auto;
+}
+
+.shop-section, .info-section, .inventory-section {
+    background: var(--bg-panel);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.shop-section h3, .info-section h3, .inventory-section h3 {
+    color: var(--accent-blue);
+    margin-bottom: 16px;
+}
+
+.shop-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-dark);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.shop-item:hover {
+    border-color: var(--accent-green);
+}
+
+.shop-item.purchased {
+    opacity: 0.5;
+    border-color: var(--accent-green);
+}
+
+.item-info {
+    flex: 1;
+}
+
+.item-name {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.item-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.item-price {
+    color: var(--accent-yellow);
+    font-weight: bold;
+    margin-right: 12px;
+}
+
+/* 地牢界面 */
+.dungeon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.dungeon-stats {
+    display: flex;
+    gap: 24px;
+}
+
+.dungeon-stats .stat {
+    font-size: 18px;
+}
+
+.dungeon-stats .stat span {
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+.dungeon-main {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+}
+
+.dungeon-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+    background: var(--bg-grid);
+    padding: 20px;
+    border-radius: 12px;
+    flex: 1;
+    max-width: 600px;
+    aspect-ratio: 1;
+}
+
+.grid-cell {
+    background: var(--grid-wall);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    position: relative;
+}
+
+.grid-cell:hover {
+    background: #34495e;
+}
+
+.grid-cell.revealed {
+    background: var(--grid-empty);
+    cursor: default;
+}
+
+.grid-cell.revealed.danger-1 {
+    background: rgba(243, 156, 18, 0.2);
+    border: 2px solid var(--grid-danger-1);
+}
+
+.grid-cell.revealed.danger-2 {
+    background: rgba(230, 126, 34, 0.2);
+    border: 2px solid var(--grid-danger-2);
+}
+
+.grid-cell.revealed.danger-3 {
+    background: rgba(231, 76, 60, 0.2);
+    border: 2px solid var(--grid-danger-3);
+}
+
+.grid-cell.player {
+    background: var(--accent-green);
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.8);
+}
+
+.grid-cell.green-eye-visible {
+    animation: greenEyePulse 1s infinite;
+}
+
+@keyframes greenEyePulse {
+    0%, 100% { box-shadow: 0 0 5px var(--accent-green); }
+    50% { box-shadow: 0 0 20px var(--accent-green), inset 0 0 10px var(--accent-green); }
+}
+
+.grid-cell .danger-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    font-size: 10px;
+}
+
+.dungeon-log {
+    flex: 1;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 600px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.log-entry {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--bg-dark);
+    animation: fadeIn 0.3s;
+}
+
+.log-entry.danger {
+    color: var(--accent-red);
+}
+
+.log-entry.warning {
+    color: var(--accent-yellow);
+}
+
+.log-entry.success {
+    color: var(--accent-green);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.equipment-bar {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 16px;
+    background: var(--bg-panel);
+    border-radius: 12px;
+    margin-top: 16px;
+}
+
+.equipment-bar > div {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.equipment-bar span {
+    color: var(--accent-blue);
+    font-weight: bold;
+}
+
+/* 绿眼惊吓效果 */
+.green-eye-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(39, 174, 96, 0.8) 0%, rgba(10, 10, 15, 0.95) 70%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: greenEyeFlash 0.5s ease-out;
+}
+
+.green-eye-flash.show {
+    display: flex;
+}
+
+.green-eye-flash::before {
+    content: '👁️';
+    font-size: 200px;
+    animation: greenEyeStare 2s infinite;
+}
+
+@keyframes greenEyeFlash {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0.8; }
+}
+
+@keyframes greenEyeStare {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* 游戏结束 */
+#gameOverScreen {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#gameOverScreen h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+#gameOverScreen.death h1 {
+    color: var(--accent-red);
+}
+
+#gameOverScreen.escape h1 {
+    color: var(--accent-green);
+}
+
+#gameOverScreen.madness h1 {
+    color: var(--accent-purple);
+}
