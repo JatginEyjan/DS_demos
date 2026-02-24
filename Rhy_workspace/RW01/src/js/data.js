@@ -41,11 +41,11 @@ const CONFIG = {
         }
     },
 
-    // 弟子品质配置
+    // 弟子品质配置 - 调整数值让1级弟子能打4只+怪物
     DISCIPLE_QUALITIES: {
-        blue: { name: '蓝色', color: '#3498db', hpBase: 60, atkBase: 10, hpGrowth: 10, atkGrowth: 2, costMult: 1 },
-        purple: { name: '紫色', color: '#9b59b6', hpBase: 80, atkBase: 15, hpGrowth: 15, atkGrowth: 3, costMult: 2 },
-        orange: { name: '橙色', color: '#f39c12', hpBase: 100, atkBase: 20, hpGrowth: 20, atkGrowth: 4, costMult: 4 }
+        blue: { name: '蓝色', color: '#3498db', hpBase: 100, atkBase: 15, hpGrowth: 15, atkGrowth: 3, costMult: 1 },
+        purple: { name: '紫色', color: '#9b59b6', hpBase: 130, atkBase: 22, hpGrowth: 20, atkGrowth: 4, costMult: 2 },
+        orange: { name: '橙色', color: '#f39c12', hpBase: 160, atkBase: 30, hpGrowth: 25, atkGrowth: 5, costMult: 4 }
     },
 
     // 招募配置
@@ -66,7 +66,7 @@ const CONFIG = {
             urgent: { name: '紧急', color: '#f39c12', weight: 0.3, expMult: 2.5, stoneMult: 2.5, timeLimit: 180000 }, // 3分钟
             limited: { name: '限时', color: '#e74c3c', weight: 0.1, expMult: 5, stoneMult: 5, timeLimit: 90000 } // 1.5分钟
         },
-        baseReward: { exp: 20, stone: 100 }
+        baseReward: { exp: 20, stone: 200 }
     },
 
     // 材料配置
@@ -76,12 +76,13 @@ const CONFIG = {
         leather: { name: '兽皮', icon: '🐾' }
     },
 
-    // 怪物配置
+    // 怪物配置 - 调整数值，1级弟子(100hp/15atk)能打4只+
+    // 战斗模拟: 弟子15atk vs 怪物20hp，2回合击杀；怪物5atk，4只共造成约40伤害
     MONSTERS: [
-        { name: '野狼', hp: 30, atk: 5, drops: { herb: [1, 2] } },
-        { name: '野猪', hp: 50, atk: 8, drops: { ore: [1, 2] } },
-        { name: '黑熊', hp: 80, atk: 12, drops: { leather: [1, 2] } },
-        { name: '妖蛇', hp: 100, atk: 15, drops: { herb: [1, 2], ore: [1, 2], leather: [1, 2] } }
+        { name: '野狼', hp: 20, atk: 5, drops: { herb: [1, 2] } },
+        { name: '山猪', hp: 25, atk: 6, drops: { ore: [1, 2] } },
+        { name: '黑熊', hp: 35, atk: 8, drops: { leather: [1, 2] } },
+        { name: '妖蛇', hp: 40, atk: 10, drops: { herb: [1, 2], ore: [1, 2], leather: [1, 2] } }
     ],
 
     // 弟子名字库
@@ -219,7 +220,7 @@ function generateOrder() {
 
     const requirements = {};
     selectedMaterials.forEach(mat => {
-        requirements[mat] = Math.floor(Math.random() * 5) + 2; // 2-6个
+        requirements[mat] = Math.floor(Math.random() * 3) + 2; // 2-4个，更平衡
     });
 
     const base = CONFIG.ORDER.baseReward;

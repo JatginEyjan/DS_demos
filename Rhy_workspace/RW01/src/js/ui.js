@@ -223,7 +223,7 @@ class UI {
                 <div class="item-action">
                     ${isMaxLevel ? 
                         '<span style="color: var(--text-secondary)">已达境界上限</span>' :
-                        `<button class="btn btn-primary" ${!canUpgrade ? 'disabled' : ''} onclick="game.upgradeDisciple(${disciple.id})">
+                        `<button class="btn btn-primary" ${!canUpgrade ? 'disabled' : ''} onclick="ui.doUpgradeDisciple(${disciple.id})">
                             升级 ${upgradeCost}💎
                         </button>`
                     }
@@ -361,6 +361,22 @@ class UI {
         const success = game.completeOrder(orderId);
         if (!success) {
             alert('材料不足');
+        } else {
+            // 成功完成后刷新当前页签
+            this.render();
+            this.updateTopBar();
+        }
+    }
+
+    doUpgradeDisciple(discipleId) {
+        const result = game.upgradeDisciple(discipleId);
+        if (!result.success) {
+            alert(result.reason || '升级失败');
+        } else {
+            // 升级成功后刷新弟子列表和顶部栏
+            this.render();
+            this.updateTopBar();
+            alert('弟子升级成功！');
         }
     }
 
@@ -425,21 +441,32 @@ class UI {
             } else {
                 const q = CONFIG.DISCIPLE_QUALITIES[disciple.quality];
                 const isRecovering = disciple.state === 'recovering';
+                const discipleHpPercent = (disciple.hp / disciple.maxHp) * 100;
+                const monsterHpPercent = (monster.currentHp / monster.hp) * 100;
 
                 slot.innerHTML = `
                     <div style="color: ${q.color}; font-weight: bold; margin-bottom: 8px;">
-                        ${disciple.name}
+                        ${disciple.name} Lv.${disciple.level}
                     </div>
-                    <div style="font-size: 13px; margin-bottom: 8px;">
-                        ${isRecovering ? 
-                            `<span style="color: var(--accent-gold)">恢复中...</span>` :
-                            `HP: ${disciple.hp}/${disciple.maxHp}`
-                        }
+                    <div style="margin-bottom: 4px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">
+                            ${isRecovering ? '⚡恢复中' : '⚔️战斗中'} HP: ${disciple.hp}/${disciple.maxHp}
+                        </div>
+                        <div style="width: 100%; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${discipleHpPercent}%; height: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); border-radius: 4px; transition: width 0.3s ease;"></div>
+                        </div>
                     </div>
-                    <div style="font-size: 13px; color: var(--text-secondary);">vs</div>
-                    <div style="font-size: 13px; margin-top: 8px;">
-                        ${monster.name}<br>
-                        HP: ${monster.currentHp}/${monster.hp}
+                    <div style="font-size: 13px; color: var(--text-secondary); margin: 8px 0;">VS</div>
+                    <div style="margin-bottom: 8px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">
+                            👹 ${monster.name} HP: ${monster.currentHp}/${monster.hp}
+                        </div>
+                        <div style="width: 100%; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${monsterHpPercent}%; height: 100%; background: linear-gradient(90deg, #9b59b6, #8e44ad); border-radius: 4px; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <div style="font-size: 11px; color: var(--accent-gold);">
+                        攻击: ${disciple.atk} | 恢复: ${game.battle.getRecoveryTime(index)}s
                     </div>
                     <button class="btn btn-secondary" style="margin-top: 8px; padding: 5px 10px; font-size: 12px;" 
                         onclick="game.battle.removeDisciple(${index}); ui.render()">
