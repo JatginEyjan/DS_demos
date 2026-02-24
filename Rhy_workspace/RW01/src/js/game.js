@@ -15,6 +15,7 @@ class Game {
         // 初始化UI
         this.ui = new UI();
         this.ui.init();
+        ui = this.ui; // 赋值给全局变量，供HTML事件调用
 
         // 初始化战斗系统
         this.battle = battleSystem;
