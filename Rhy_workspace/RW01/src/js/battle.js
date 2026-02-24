@@ -53,8 +53,11 @@ class BattleSystem {
             }
         }
 
-        // 更新UI
-        if (window.ui) window.ui.renderBattle();
+        // 更新UI - 如果当前在战场页签则刷新
+        if (window.ui && window.ui.currentTab === 'battle') {
+            window.ui.render();
+            window.ui.updateTopBar();
+        }
     }
 
     onMonsterDefeated(slotIndex) {

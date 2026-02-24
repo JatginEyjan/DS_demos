@@ -444,16 +444,25 @@ class UI {
                 const discipleHpPercent = (disciple.hp / disciple.maxHp) * 100;
                 const monsterHpPercent = (monster.currentHp / monster.hp) * 100;
 
+                // 恢复中时使用绿色血条，战斗中用红色
+                const hpBarColor = isRecovering 
+                    ? 'linear-gradient(90deg, #27ae60, #2ecc71)' 
+                    : 'linear-gradient(90deg, #e74c3c, #c0392b)';
+                const statusText = isRecovering 
+                    ? '<span style="color: #2ecc71; font-size: 14px; font-weight: bold;">⚡ 恢复中...</span>' 
+                    : '<span style="color: var(--text-secondary);">⚔️ 战斗中</span>';
+
                 slot.innerHTML = `
                     <div style="color: ${q.color}; font-weight: bold; margin-bottom: 8px;">
                         ${disciple.name} Lv.${disciple.level}
                     </div>
                     <div style="margin-bottom: 4px;">
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">
-                            ${isRecovering ? '⚡恢复中' : '⚔️战斗中'} HP: ${disciple.hp}/${disciple.maxHp}
+                        <div style="font-size: 11px; margin-bottom: 2px; display: flex; justify-content: space-between;">
+                            ${statusText}
+                            <span>HP: ${disciple.hp}/${disciple.maxHp}</span>
                         </div>
-                        <div style="width: 100%; height: 8px; background: var(--bg-tertiary); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${discipleHpPercent}%; height: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); border-radius: 4px; transition: width 0.3s ease;"></div>
+                        <div style="width: 100%; height: 10px; background: var(--bg-tertiary); border-radius: 5px; overflow: hidden;">
+                            <div style="width: ${discipleHpPercent}%; height: 100%; background: ${hpBarColor}; border-radius: 5px; transition: width 0.3s ease;"></div>
                         </div>
                     </div>
                     <div style="font-size: 13px; color: var(--text-secondary); margin: 8px 0;">VS</div>
@@ -466,7 +475,7 @@ class UI {
                         </div>
                     </div>
                     <div style="font-size: 11px; color: var(--accent-gold);">
-                        攻击: ${disciple.atk} | 恢复: ${game.battle.getRecoveryTime(index)}s
+                        攻击: ${disciple.atk}${isRecovering ? ` | 还需: ${game.battle.getRecoveryTime(index)}秒` : ''}
                     </div>
                     <button class="btn btn-secondary" style="margin-top: 8px; padding: 5px 10px; font-size: 12px;" 
                         onclick="game.battle.removeDisciple(${index}); ui.render()">

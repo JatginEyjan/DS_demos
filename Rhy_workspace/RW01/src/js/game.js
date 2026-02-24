@@ -134,6 +134,7 @@ class Game {
         for (const [key, building] of Object.entries(CONFIG.BUILDINGS)) {
             if (building.unlockRealm === realm) {
                 GameState.buildings[key].built = true;
+                GameState.buildings[key].level = 1; // 解锁时初始等级为1
             }
         }
     }
@@ -172,7 +173,11 @@ class Game {
             this.updateBattleSlots();
         }
 
-        this.ui.renderSect();
+        // 刷新UI
+        if (this.ui.currentTab === 'sect') {
+            this.ui.render();
+        }
+        this.ui.updateTopBar();
         return true;
     }
 
@@ -192,7 +197,11 @@ class Game {
         building.built = true;
         building.level = 1;
 
-        this.ui.renderSect();
+        // 刷新UI
+        if (this.ui.currentTab === 'sect') {
+            this.ui.render();
+        }
+        this.ui.updateTopBar();
         return true;
     }
 
