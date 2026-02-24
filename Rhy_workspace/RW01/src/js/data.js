@@ -134,7 +134,7 @@ let GameState = {
     // 建筑
     buildings: {
         inn: { level: 1, built: true },
-        pharmacy: { level: 0, built: true },
+        pharmacy: { level: 1, built: true },
         weapons: { level: 0, built: false },
         armor: { level: 0, built: false }
     },
