@@ -40,10 +40,20 @@ class Game {
 
         // 检查订单自动刷新
         const now = Date.now();
-        if (now - this.lastOrderRefresh > CONFIG.ORDER.autoRefreshInterval) {
+        const timeSinceLastRefresh = now - this.lastOrderRefresh;
+        
+        // 更新倒计时显示（如果当前在订单页签）
+        if (this.ui.currentTab === 'order' && GameState.orders.length < CONFIG.ORDER.maxCount) {
+            const remaining = Math.max(0, CONFIG.ORDER.autoRefreshInterval - timeSinceLastRefresh);
+            this.ui.updateOrderCountdown(Math.ceil(remaining / 1000));
+        }
+        
+        if (timeSinceLastRefresh > CONFIG.ORDER.autoRefreshInterval) {
             if (GameState.orders.length < CONFIG.ORDER.maxCount) {
                 generateOrder();
-                this.ui.renderOrders();
+                if (this.ui.currentTab === 'order') {
+                    this.ui.render();
+                }
             }
             this.lastOrderRefresh = now;
         }
@@ -86,7 +96,7 @@ class Game {
 
         // 给予奖励
         GameState.resources.stone += order.reward.stone;
-        GameState.sectMaster.ordersCompleted++;
+        GameState.sectMaster.exp += order.reward.exp;
 
         // 移除订单
         GameState.orders.splice(orderIndex, 1);
@@ -95,8 +105,10 @@ class Game {
         this.checkLevelUp();
 
         // 刷新UI
-        this.ui.renderOrders();
-        this.ui.renderBag();
+        if (this.ui.currentTab === 'order') {
+            this.ui.render();
+        }
+        this.ui.updateTopBar();
 
         return true;
     }
@@ -104,15 +116,16 @@ class Game {
     // 检查掌门升级
     checkLevelUp() {
         const master = GameState.sectMaster;
+        const currentRealm = CONFIG.REALMS[master.realm];
 
-        if (master.ordersCompleted >= master.ordersNeeded) {
+        if (master.exp >= currentRealm.expRequired) {
+            // 扣除经验
+            master.exp -= currentRealm.expRequired;
+            
             // 升级
             master.realm++;
-            master.ordersCompleted = 0;
 
             if (master.realm < CONFIG.REALMS.length) {
-                master.ordersNeeded = CONFIG.REALMS[master.realm].orderCount;
-
                 // 播放升级特效
                 this.ui.showLevelUp(master.realm);
 
@@ -307,10 +320,11 @@ class Game {
 
     getExpProgress() {
         const master = GameState.sectMaster;
+        const currentRealm = CONFIG.REALMS[master.realm];
         return {
-            current: master.ordersCompleted,
-            needed: master.ordersNeeded,
-            percent: (master.ordersCompleted / master.ordersNeeded) * 100
+            current: master.exp,
+            needed: currentRealm.expRequired,
+            percent: (master.exp / currentRealm.expRequired) * 100
         };
     }
 }

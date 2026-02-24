@@ -2,13 +2,13 @@
 // 所有游戏数据、配置、初始状态
 
 const CONFIG = {
-    // 掌门境界配置
+    // 掌门境界配置 - expRequired为升级所需经验（与订单经验统一）
     REALMS: [
-        { name: '练气期', orderCount: 3, maxDiscipleLevel: 3, unlocks: [] },
-        { name: '筑基期', orderCount: 5, maxDiscipleLevel: 5, unlocks: ['weapons'] },
-        { name: '金丹期', orderCount: 8, maxDiscipleLevel: 8, unlocks: ['armor'] },
-        { name: '元婴期', orderCount: 12, maxDiscipleLevel: 12, unlocks: [] },
-        { name: '化神期', orderCount: 20, maxDiscipleLevel: 15, unlocks: [] }
+        { name: '练气期', expRequired: 100, maxDiscipleLevel: 3, unlocks: [] },
+        { name: '筑基期', expRequired: 160, maxDiscipleLevel: 5, unlocks: ['weapons'] },
+        { name: '金丹期', expRequired: 240, maxDiscipleLevel: 8, unlocks: ['armor'] },
+        { name: '元婴期', expRequired: 360, maxDiscipleLevel: 12, unlocks: [] },
+        { name: '化神期', expRequired: 600, maxDiscipleLevel: 15, unlocks: [] }
     ],
 
     // 建筑配置
@@ -123,8 +123,7 @@ let GameState = {
     // 掌门信息
     sectMaster: {
         realm: 0, // 当前境界索引
-        ordersCompleted: 0, // 当前境界已完成订单数
-        ordersNeeded: 3 // 当前境界需要订单数
+        exp: 0 // 当前经验值
     },
 
     // 资源

@@ -88,6 +88,14 @@ class UI {
         stoneCount.textContent = GameState.resources.stone.toLocaleString();
     }
 
+    // 更新订单倒计时
+    updateOrderCountdown(seconds) {
+        const countdownEl = document.getElementById('orderCountdown');
+        if (countdownEl) {
+            countdownEl.textContent = `${seconds}秒后出现新订单`;
+        }
+    }
+
     // ===== 宗门页面 =====
 
     renderSect(container) {
@@ -348,12 +356,25 @@ class UI {
         });
 
         container.appendChild(list);
+
+        // 显示新订单倒计时（如果订单未满）
+        if (GameState.orders.length < CONFIG.ORDER.maxCount) {
+            const countdownDiv = document.createElement('div');
+            countdownDiv.style.cssText = 'text-align: center; padding: 16px; color: var(--text-secondary); font-size: 13px;';
+            countdownDiv.id = 'orderCountdown';
+            countdownDiv.textContent = '20秒后出现新订单';
+            container.appendChild(countdownDiv);
+        }
     }
 
     doRefreshOrders() {
         const result = game.refreshOrders();
         if (!result.success) {
             alert(result.reason);
+        } else {
+            // 刷新成功后刷新界面
+            this.render();
+            this.updateTopBar();
         }
     }
 
