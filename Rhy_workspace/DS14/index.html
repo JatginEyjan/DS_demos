@@ -8,7 +8,30 @@
 </head>
 <body>
     <div id="game-container">
-        <!-- 状态栏 -->
+        <!-- 村庄界面 -->
+        <div id="village-screen" class="screen">
+            <h1>🏘️ 边缘村庄</h1>
+            <div class="village-stats">
+                <span>💰 金钱: <span id="village-money">0</span></span>
+                <span>📦 背包: <span id="village-backpack">5</span>格</span>
+            </div>
+            <div class="shop-section">
+                <h2>🛒 商店</h2>
+                <div id="shop-items"></div>
+            </div>
+            <div class="equipment-section">
+                <h2>🎒 当前装备</h2>
+                <div id="current-equipment">
+                    <div>雷达: <span id="equip-radar">Lv1</span></div>
+                    <div>镐子: <span id="equip-pickaxe">单格镐</span></div>
+                </div>
+            </div>
+            <button id="enter-dungeon-btn" class="btn success">⚔️ 进入地牢</button>
+        </div>
+
+        <!-- 地牢界面 -->
+        <div id="dungeon-screen" class="screen hidden">
+            <!-- 状态栏 -->
         <div id="status-bar">
             <div class="stat">
                 <span class="stat-label">HP</span>

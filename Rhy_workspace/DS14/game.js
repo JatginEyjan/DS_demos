@@ -1,18 +1,45 @@
 // DS14 - 游戏主逻辑
 
 const GameState = {
+    // 基础状态
     hp: 100,
     maxHp: 100,
     san: 100,
     maxSan: 100,
     turn: 1,
     roomLevel: 1,
+    
+    // 地牢状态
     dungeon: null,
     greenEyesFollowing: [], // 跟随的绿眼
     lastRoomHadSanctuary: false,
+    
+    // 装备状态
     radarLevel: 1,
+    pickaxeType: 'single', // single, cross, horizontal
     inventory: [],
-    isGameOver: false
+    
+    // 局外状态
+    money: 0,
+    backpackSize: 5,
+    
+    // 游戏状态
+    isGameOver: false,
+    inDungeon: false
+};
+
+// 商店配置
+const SHOP = {
+    radars: [
+        { level: 1, name: '雷达 Lv1', price: 0, desc: '显示1-2级危险，3级显示安全' },
+        { level: 2, name: '雷达 Lv2', price: 200, desc: '显示1-3级危险，看绿眼掉5SAN' },
+        { level: 3, name: '雷达 Lv3', price: 500, desc: '显示1-3级危险，看绿眼掉3SAN' }
+    ],
+    pickaxes: [
+        { type: 'single', name: '单格镐', price: 0, damage: 30, desc: '挖掘1格，伤害30' },
+        { type: 'cross', name: '十字镐', price: 150, damage: 25, desc: '挖掘十字5格，伤害25' },
+        { type: 'horizontal', name: '横排镐', price: 250, damage: 40, desc: '挖掘横向3格，伤害40' }
+    ]
 };
 
 class Game {
@@ -22,8 +49,97 @@ class Game {
     }
 
     init() {
-        this.startNewRoom();
+        this.showVillage();
         this.bindEvents();
+    }
+
+    // 显示村庄
+    showVillage() {
+        GameState.inDungeon = false;
+        document.getElementById('village-screen').classList.remove('hidden');
+        document.getElementById('dungeon-screen').classList.add('hidden');
+        this.renderShop();
+        this.updateVillageUI();
+    }
+
+    // 渲染商店
+    renderShop() {
+        const container = document.getElementById('shop-items');
+        let html = '<h3>雷达</h3>';
+        
+        SHOP.radars.forEach(radar => {
+            const owned = GameState.radarLevel === radar.level;
+            const canAfford = GameState.money >= radar.price;
+            html += `
+                <div class="shop-item">
+                    <span>${radar.name} - ${radar.desc}</span>
+                    <span>${radar.price}💰</span>
+                    ${owned ? '<span>已拥有</span>' : `<button class="btn ${canAfford ? '' : 'disabled'}" onclick="game.buyRadar(${radar.level}, ${radar.price})" ${!canAfford ? 'disabled' : ''}>购买</button>`}
+                </div>
+            `;
+        });
+
+        html += '<h3>镐子</h3>';
+        SHOP.pickaxes.forEach(pick => {
+            const owned = GameState.pickaxeType === pick.type;
+            const canAfford = GameState.money >= pick.price;
+            html += `
+                <div class="shop-item">
+                    <span>${pick.name} - ${pick.desc}</span>
+                    <span>${pick.price}💰</span>
+                    ${owned ? '<span>已拥有</span>' : `<button class="btn ${canAfford ? '' : 'disabled'}" onclick="game.buyPickaxe('${pick.type}', ${pick.price})" ${!canAfford ? 'disabled' : ''}>购买</button>`}
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // 购买雷达
+    buyRadar(level, price) {
+        if (GameState.money >= price) {
+            GameState.money -= price;
+            GameState.radarLevel = level;
+            this.renderShop();
+            this.updateVillageUI();
+            this.log(`购买了雷达 Lv${level}！`, 'success');
+        }
+    }
+
+    // 购买镐子
+    buyPickaxe(type, price) {
+        if (GameState.money >= price) {
+            GameState.money -= price;
+            GameState.pickaxeType = type;
+            this.renderShop();
+            this.updateVillageUI();
+            this.log(`购买了${SHOP.pickaxes.find(p => p.type === type).name}！`, 'success');
+        }
+    }
+
+    // 更新村庄UI
+    updateVillageUI() {
+        document.getElementById('village-money').textContent = GameState.money;
+        document.getElementById('village-backpack').textContent = GameState.backpackSize;
+        document.getElementById('equip-radar').textContent = `Lv${GameState.radarLevel}`;
+        document.getElementById('equip-pickaxe').textContent = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType).name;
+    }
+
+    // 进入地牢
+    enterDungeon() {
+        // 重置状态
+        GameState.hp = GameState.maxHp;
+        GameState.san = GameState.maxSan;
+        GameState.turn = 1;
+        GameState.roomLevel = 1;
+        GameState.greenEyesFollowing = [];
+        GameState.inDungeon = true;
+        
+        document.getElementById('village-screen').classList.add('hidden');
+        document.getElementById('dungeon-screen').classList.remove('hidden');
+        
+        this.startNewRoom();
+        this.bindDungeonEvents();
         this.updateUI();
     }
 
@@ -86,7 +202,42 @@ class Game {
 
         // 重新开始
         document.getElementById('restart-btn').addEventListener('click', () => {
-            location.reload();
+            document.getElementById('game-over-modal').classList.add('hidden');
+            GameState.isGameOver = false;
+            this.showVillage();
+        });
+    }
+
+    // 绑定地牢事件
+    bindDungeonEvents() {
+        // 雷达按钮
+        document.getElementById('radar-btn').addEventListener('click', () => {
+            this.useRadar();
+        });
+
+        // 撤退按钮
+        document.getElementById('retreat-btn').addEventListener('click', () => {
+            this.retreat();
+        });
+
+        // 避难所按钮
+        document.getElementById('rest-btn').addEventListener('click', () => {
+            this.restInSanctuary();
+        });
+
+        document.getElementById('full-retreat-btn').addEventListener('click', () => {
+            this.fullRetreat();
+        });
+
+        document.getElementById('continue-btn').addEventListener('click', () => {
+            document.getElementById('sanctuary-modal').classList.add('hidden');
+        });
+
+        // 重新开始
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('game-over-modal').classList.add('hidden');
+            GameState.isGameOver = false;
+            this.showVillage();
         });
     }
 
@@ -142,8 +293,23 @@ class Game {
     dig(x, y) {
         if (GameState.isGameOver) return;
 
-        const result = GameState.dungeon.dig(x, y);
-        if (!result) return;
+        // 根据镐子类型确定挖掘范围
+        const digTargets = this.getDigTargets(x, y);
+        let foundSomething = false;
+        let greenEyesFound = [];
+
+        // 挖掘所有目标格子
+        digTargets.forEach(pos => {
+            const result = GameState.dungeon.dig(pos.x, pos.y);
+            if (result) {
+                foundSomething = true;
+                if (result.type === 'greenEye') {
+                    greenEyesFound.push(result.eye);
+                }
+            }
+        });
+
+        if (!foundSomething) return;
 
         // 消耗回合
         GameState.turn++;
@@ -152,27 +318,53 @@ class Game {
         this.audio.playDig();
 
         // 处理挖掘结果
-        switch(result.type) {
-            case 'empty':
-                this.log('挖掘了一面墙，里面什么都没有。');
-                break;
-            case 'door':
-                this.log('发现了通往下一层的门！', 'success');
-                this.showDoorOption();
-                break;
-            case 'sanctuary':
-                this.log('发现了一个避难所！', 'success');
-                this.showSanctuaryModal();
-                break;
-            case 'greenEye':
-                this.log('墙后隐藏着一只绿眼！它苏醒了！', 'danger');
-                this.audio.playHeartbeat();
-                this.encounterGreenEye(result.eye);
-                break;
+        if (greenEyesFound.length > 0) {
+            this.log(`墙后隐藏着 ${greenEyesFound.length} 只绿眼！它们苏醒了！`, 'danger');
+            this.audio.playHeartbeat();
+            greenEyesFound.forEach(eye => this.encounterGreenEye(eye));
+        } else {
+            // 检查是否挖到门或避难所
+            const mainResult = GameState.dungeon.grid[y][x];
+            if (mainResult.revealed) {
+                switch(mainResult.type) {
+                    case 'door':
+                        this.log('发现了通往下一层的门！', 'success');
+                        this.showDoorOption();
+                        break;
+                    case 'sanctuary':
+                        this.log('发现了一个避难所！', 'success');
+                        this.showSanctuaryModal();
+                        break;
+                    default:
+                        this.log(`挖掘了 ${digTargets.length} 面墙。`);
+                }
+            }
         }
 
         // 回合结束结算
         this.endTurn();
+    }
+
+    // 根据镐子类型获取挖掘目标
+    getDigTargets(x, y) {
+        const targets = [{x, y}]; // 主目标
+
+        switch(GameState.pickaxeType) {
+            case 'cross':
+                // 十字镐：上下左右
+                targets.push({x: x-1, y}, {x: x+1, y}, {x, y: y-1}, {x, y: y+1});
+                break;
+            case 'horizontal':
+                // 横排镐：左右
+                targets.push({x: x-1, y}, {x: x+1, y});
+                break;
+        }
+
+        // 过滤掉超出边界的
+        const size = GameState.dungeon.size;
+        return targets.filter(pos => 
+            pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size
+        );
     }
 
     encounterGreenEye(eye) {
@@ -207,15 +399,17 @@ class Game {
     }
 
     attackGreenEye(eye) {
-        // 100%命中，固定伤害30（需要2-3次攻击）
-        const damage = 30;
+        // 根据镐子类型确定伤害
+        const pickaxe = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType);
+        const damage = pickaxe.damage;
         eye.hp -= damage;
         
-        this.log(`你攻击了绿眼，造成 ${damage} 点伤害！`, 'success');
+        this.log(`你用${pickaxe.name}攻击了绿眼，造成 ${damage} 点伤害！`, 'success');
         
         if (eye.hp <= 0) {
             GameState.dungeon.defeatGreenEye(eye);
-            this.log('绿眼被消灭了！', 'success');
+            this.log('绿眼被消灭了！获得50💰', 'success');
+            GameState.money += 50; // 击败绿眼获得金钱
             this.audio.stopHeartbeat();
         } else {
             this.log(`绿眼还有 ${eye.hp} 点生命值...`, 'warning');
@@ -381,16 +575,19 @@ class Game {
     }
 
     fullRetreat() {
-        // 完全撤离，带走所有物品
-        alert(`完全撤离成功！带走了所有物品。\n最终到达：房间 ${GameState.roomLevel}\n剩余HP：${GameState.hp}\n剩余SAN：${GameState.san}`);
-        location.reload();
+        // 完全撤离，获得房间等级 x 100 的金钱
+        const bonus = GameState.roomLevel * 100;
+        GameState.money += bonus;
+        alert(`完全撤离成功！\n最终到达：房间 ${GameState.roomLevel}\n获得撤离奖励：${bonus}💰\n总金钱：${GameState.money}💰`);
+        this.showVillage();
     }
 
     retreat() {
-        // 普通撤退，只能带走房间层级数量的物品
-        const canTake = GameState.roomLevel;
-        alert(`撤退成功！\n只能带走 ${canTake} 个物品（当前房间层级）。\n最终到达：房间 ${GameState.roomLevel}`);
-        location.reload();
+        // 普通撤退，获得房间等级 x 50 的金钱
+        const bonus = GameState.roomLevel * 50;
+        GameState.money += bonus;
+        alert(`撤退成功！\n最终到达：房间 ${GameState.roomLevel}\n获得基础奖励：${bonus}💰\n总金钱：${GameState.money}💰`);
+        this.showVillage();
     }
 
     gameOver(reason) {

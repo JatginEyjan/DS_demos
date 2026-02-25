@@ -286,6 +286,72 @@ body {
     50% { opacity: 0.5; transform: scale(1.2); }
 }
 
+/* 村庄界面 */
+#village-screen {
+    text-align: center;
+    padding: 20px;
+}
+
+#village-screen h1 {
+    color: #27ae60;
+    margin-bottom: 20px;
+}
+
+.village-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 30px;
+    font-size: 18px;
+}
+
+.shop-section, .equipment-section {
+    background: #1a1a2e;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 2px solid #2a2a3a;
+}
+
+.shop-section h2, .equipment-section h2 {
+    color: #f39c12;
+    margin-bottom: 15px;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #0f0f1a;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.shop-item h3 {
+    margin: 15px 0 10px;
+    color: #3498db;
+}
+
+.shop-item .btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#current-equipment {
+    font-size: 16px;
+    line-height: 2;
+}
+
+#current-equipment span {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.screen.hidden {
+    display: none !important;
+}
+
 /* 移动端适配 */
 @media (max-width: 600px) {
     #game-container {
