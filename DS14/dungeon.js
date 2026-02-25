@@ -113,7 +113,17 @@ class Dungeon {
     // 挖掘墙体
     dig(x, y) {
         const cell = this.grid[y][x];
-        if (cell.type !== 'wall' || cell.revealed) return null;
+        // 已经揭示的不能挖
+        if (cell.revealed) return null;
+        
+        // 可以挖掘的类型：wall, door, sanctuary, 或者有绿眼的位置
+        const eye = this.getGreenEyeAt(x, y);
+        const canDig = cell.type === 'wall' || 
+                       cell.type === 'door' || 
+                       cell.type === 'sanctuary' ||
+                       eye !== undefined;
+        
+        if (!canDig) return null;
 
         cell.revealed = true;
 
@@ -123,8 +133,7 @@ class Dungeon {
         } else if (cell.type === 'sanctuary') {
             this.sanctuaryFound = true;
             return { type: 'sanctuary' };
-        } else if (this.isGreenEyeHere(x, y)) {
-            const eye = this.getGreenEyeAt(x, y);
+        } else if (eye && !eye.defeated) {
             eye.active = true;
             return { type: 'greenEye', eye };
         } else {

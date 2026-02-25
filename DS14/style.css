@@ -285,6 +285,36 @@ body {
     gap: 10px;
 }
 
+/* 调试面板 */
+#debug-panel {
+    background: #1a1a2e;
+    border: 2px solid #f39c12;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#debug-panel h3 {
+    color: #f39c12;
+    margin-bottom: 10px;
+}
+
+#debug-content {
+    font-size: 12px;
+    font-family: monospace;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#debug-content div {
+    padding: 3px 0;
+    border-bottom: 1px solid #2a2a3a;
+}
+
 /* 雷达标记 */
 .radar-marker {
     animation: radarPulse 2s infinite;

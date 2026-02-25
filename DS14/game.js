@@ -211,6 +211,28 @@ class Game {
             GameState.isGameOver = false;
             this.showVillage();
         });
+        
+        // 调试按钮
+        document.getElementById('debug-btn').addEventListener('click', () => {
+            const panel = document.getElementById('debug-panel');
+            panel.classList.toggle('hidden');
+        });
+        
+        document.getElementById('clear-debug-btn').addEventListener('click', () => {
+            document.getElementById('debug-content').innerHTML = '';
+        });
+    }
+    
+    // 调试日志
+    debugLog(message) {
+        const content = document.getElementById('debug-content');
+        if (content) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            content.appendChild(entry);
+            content.scrollTop = content.scrollHeight;
+        }
+        console.log(message);
     }
 
     // 绑定地牢事件
@@ -308,6 +330,17 @@ class Game {
 
     dig(x, y) {
         if (GameState.isGameOver) return;
+        
+        this.debugLog(`尝试挖掘: (${x}, ${y})`);
+        
+        // 检查格子是否存在
+        if (!GameState.dungeon.grid[y] || !GameState.dungeon.grid[y][x]) {
+            this.debugLog(`错误: 格子 (${x}, ${y}) 不存在`);
+            return;
+        }
+        
+        const cell = GameState.dungeon.grid[y][x];
+        this.debugLog(`格子类型: ${cell.type}, 已揭示: ${cell.revealed}`);
 
         // 根据镐子类型确定挖掘范围
         const digTargets = this.getDigTargets(x, y);
@@ -316,16 +349,23 @@ class Game {
 
         // 挖掘所有目标格子
         digTargets.forEach(pos => {
+            this.debugLog(`  挖掘目标: (${pos.x}, ${pos.y})`);
             const result = GameState.dungeon.dig(pos.x, pos.y);
             if (result) {
                 foundSomething = true;
+                this.debugLog(`  结果: ${result.type}`);
                 if (result.type === 'greenEye') {
                     greenEyesFound.push(result.eye);
                 }
+            } else {
+                this.debugLog(`  结果: null (无法挖掘或已揭示)`);
             }
         });
 
-        if (!foundSomething) return;
+        if (!foundSomething) {
+            this.debugLog(`挖掘失败: 没有可挖掘的格子`);
+            return;
+        }
 
         // 消耗回合
         GameState.turn++;
