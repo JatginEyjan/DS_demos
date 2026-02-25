@@ -22,6 +22,7 @@ const GameState = {
     // 局外状态
     money: 0,
     backpackSize: 5,
+    keys: 0, // 钥匙数量
     
     // 游戏状态
     isGameOver: false,
@@ -235,37 +236,10 @@ class Game {
         console.log(message);
     }
 
-    // 绑定地牢事件
+    // 绑定地牢事件（只在 init 中调用一次）
     bindDungeonEvents() {
-        // 雷达按钮
-        document.getElementById('radar-btn').addEventListener('click', () => {
-            this.useRadar();
-        });
-
-        // 撤退按钮
-        document.getElementById('retreat-btn').addEventListener('click', () => {
-            this.retreat();
-        });
-
-        // 避难所按钮
-        document.getElementById('rest-btn').addEventListener('click', () => {
-            this.restInSanctuary();
-        });
-
-        document.getElementById('full-retreat-btn').addEventListener('click', () => {
-            this.fullRetreat();
-        });
-
-        document.getElementById('continue-btn').addEventListener('click', () => {
-            document.getElementById('sanctuary-modal').classList.add('hidden');
-        });
-
-        // 重新开始
-        document.getElementById('restart-btn').addEventListener('click', () => {
-            document.getElementById('game-over-modal').classList.add('hidden');
-            GameState.isGameOver = false;
-            this.showVillage();
-        });
+        // 这些事件已在 bindEvents() 中绑定，无需重复
+        // 避免每次进入地牢时重复添加监听器
     }
 
     renderGrid() {
@@ -310,17 +284,23 @@ class Game {
                 } else {
                     cell.classList.add('wall');
                     cell.style.cursor = 'pointer';
-                    // 确保事件绑定到正确的坐标
-                    const bindDig = (cx, cy) => {
-                        return (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log(`Digging at ${cx}, ${cy}`); // 调试用
-                            this.dig(cx, cy);
-                        };
-                    };
-                    cell.addEventListener('click', bindDig(x, y));
-                    cell.addEventListener('touchstart', bindDig(x, y), {passive: false});
+                    // 使用 data 属性存储坐标，避免闭包问题
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const cx = parseInt(e.currentTarget.dataset.x);
+                        const cy = parseInt(e.currentTarget.dataset.y);
+                        console.log(`Digging at ${cx}, ${cy}`);
+                        this.dig(cx, cy);
+                    });
+                    cell.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const cx = parseInt(e.currentTarget.dataset.x);
+                        const cy = parseInt(e.currentTarget.dataset.y);
+                        console.log(`Digging at ${cx}, ${cy}`);
+                        this.dig(cx, cy);
+                    }, {passive: false});
                 }
 
                 gridEl.appendChild(cell);
@@ -344,7 +324,7 @@ class Game {
 
         // 根据镐子类型确定挖掘范围
         const digTargets = this.getDigTargets(x, y);
-        let foundSomething = false;
+        let mainResult = null; // 主目标的挖掘结果
         let greenEyesFound = [];
 
         // 挖掘所有目标格子
@@ -352,8 +332,11 @@ class Game {
             this.debugLog(`  挖掘目标: (${pos.x}, ${pos.y})`);
             const result = GameState.dungeon.dig(pos.x, pos.y);
             if (result) {
-                foundSomething = true;
                 this.debugLog(`  结果: ${result.type}`);
+                // 记录主目标的结果
+                if (pos.x === x && pos.y === y) {
+                    mainResult = result;
+                }
                 if (result.type === 'greenEye') {
                     greenEyesFound.push(result.eye);
                 }
@@ -362,8 +345,9 @@ class Game {
             }
         });
 
-        if (!foundSomething) {
-            this.debugLog(`挖掘失败: 没有可挖掘的格子`);
+        // 关键修复：只要主目标被挖掘了，就继续执行
+        if (!mainResult) {
+            this.debugLog(`挖掘失败: 主目标 (${x},${y}) 无法挖掘`);
             return;
         }
 
@@ -379,21 +363,23 @@ class Game {
             this.audio.playHeartbeat();
             greenEyesFound.forEach(eye => this.encounterGreenEye(eye));
         } else {
-            // 检查是否挖到门或避难所
-            const mainResult = GameState.dungeon.grid[y][x];
-            if (mainResult.revealed) {
-                switch(mainResult.type) {
-                    case 'door':
-                        this.log('发现了通往下一层的门！', 'success');
-                        this.showDoorOption();
-                        break;
-                    case 'sanctuary':
-                        this.log('发现了一个避难所！', 'success');
-                        this.showSanctuaryModal();
-                        break;
-                    default:
-                        this.log(`挖掘了 ${digTargets.length} 面墙。`);
-                }
+            // 处理主目标的特殊类型
+            switch(mainResult.type) {
+                case 'key':
+                    GameState.keys++;
+                    this.log('发现了一把钥匙！', 'success');
+                    this.updateUI();
+                    break;
+                case 'door':
+                    this.log('发现了通往下一层的门！', 'success');
+                    this.showDoorOption();
+                    break;
+                case 'sanctuary':
+                    this.log('发现了避难所入口！', 'success');
+                    this.showSanctuaryEntrance(x, y);
+                    break;
+                default:
+                    this.log(`挖掘了 ${digTargets.length} 面墙。`);
             }
         }
 
