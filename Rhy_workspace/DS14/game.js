@@ -177,6 +177,11 @@ class Game {
     }
 
     bindEvents() {
+        // 进入地牢按钮
+        document.getElementById('enter-dungeon-btn').addEventListener('click', () => {
+            this.enterDungeon();
+        });
+
         // 雷达按钮
         document.getElementById('radar-btn').addEventListener('click', () => {
             this.useRadar();
