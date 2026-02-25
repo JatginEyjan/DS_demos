@@ -12,32 +12,60 @@ class UI {
 
     bindEvents() {
         // 开始界面
-        document.getElementById('rollBtn')?.addEventListener('click', () => {
+        const rollBtn = document.getElementById('rollBtn');
+        const startBtn = document.getElementById('startBtn');
+        const enterDungeonBtn = document.getElementById('enterDungeonBtn');
+        const radarScanBtn = document.getElementById('radarScanBtn');
+        const retreatBtn = document.getElementById('retreatBtn');
+        const returnVillageBtn = document.getElementById('returnVillageBtn');
+
+        // 添加点击和触摸事件
+        this.addTouchEvent(rollBtn, () => {
             game.rollCharacter();
-            document.getElementById('startBtn').disabled = false;
+            if (startBtn) startBtn.disabled = false;
         });
 
-        document.getElementById('startBtn')?.addEventListener('click', () => {
+        this.addTouchEvent(startBtn, () => {
             game.enterVillage();
         });
 
-        // 村庄界面
-        document.getElementById('enterDungeonBtn')?.addEventListener('click', () => {
+        this.addTouchEvent(enterDungeonBtn, () => {
             game.enterDungeon();
         });
 
-        // 地牢界面
-        document.getElementById('radarScanBtn')?.addEventListener('click', () => {
+        this.addTouchEvent(radarScanBtn, () => {
             this.scanRadar();
         });
 
-        document.getElementById('retreatBtn')?.addEventListener('click', () => {
+        this.addTouchEvent(retreatBtn, () => {
             game.retreat();
         });
 
-        // 游戏结束
-        document.getElementById('returnVillageBtn')?.addEventListener('click', () => {
+        this.addTouchEvent(returnVillageBtn, () => {
             game.enterVillage();
+        });
+
+        // 防止双击缩放
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.target.click();
+        }, { passive: false });
+    }
+
+    // 添加触摸事件支持
+    addTouchEvent(element, callback) {
+        if (!element) return;
+        
+        element.addEventListener('click', callback);
+        element.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            element.style.transform = 'scale(0.95)';
+        }, { passive: false });
+        
+        element.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            element.style.transform = 'scale(1)';
+            callback();
         });
     }
 

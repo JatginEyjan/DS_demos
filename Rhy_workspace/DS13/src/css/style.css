@@ -464,3 +464,173 @@ body {
 #gameOverScreen.madness h1 {
     color: var(--accent-purple);
 }
+
+/* ==================== 移动端适配 ==================== */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .screen {
+        padding: 10px;
+        overflow-y: auto;
+    }
+
+    /* 开始界面 */
+    #startScreen h1 {
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    .character-creation {
+        min-width: auto;
+        width: 100%;
+        max-width: 350px;
+        padding: 20px;
+    }
+
+    .stats-display {
+        font-size: 14px;
+        padding: 15px;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        font-size: 14px;
+        min-height: 44px;
+        min-width: 100px;
+    }
+
+    /* 村庄界面 */
+    .village-header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .village-header h2 {
+        font-size: 18px;
+    }
+
+    .player-status {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        font-size: 12px;
+    }
+
+    .village-content {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .shop-section, .info-section, .inventory-section {
+        padding: 12px;
+    }
+
+    .shop-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .item-info {
+        width: 100%;
+    }
+
+    .item-name {
+        font-size: 14px;
+    }
+
+    .item-desc {
+        font-size: 11px;
+    }
+
+    /* 地牢界面 */
+    .dungeon-header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .dungeon-stats {
+        gap: 12px;
+        font-size: 12px;
+    }
+
+    .dungeon-stats .stat {
+        font-size: 14px;
+    }
+
+    .dungeon-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .dungeon-actions .btn {
+        flex: 1;
+        font-size: 12px;
+        padding: 10px 5px;
+    }
+
+    .dungeon-main {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .dungeon-grid {
+        max-width: 100%;
+        padding: 10px;
+        gap: 2px;
+    }
+
+    .grid-cell {
+        font-size: 14px;
+        min-height: 28px;
+    }
+
+    .dungeon-log {
+        max-height: 150px;
+        font-size: 12px;
+        padding: 10px;
+    }
+
+    .equipment-bar {
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    /* 绿眼效果 */
+    .green-eye-flash::before {
+        font-size: 120px;
+    }
+
+    /* 游戏结束 */
+    #gameOverScreen h1 {
+        font-size: 32px;
+    }
+
+    #gameOverReason {
+        font-size: 14px;
+        padding: 0 20px;
+    }
+}
+
+/* 更小屏幕 */
+@media (max-width: 375px) {
+    .grid-cell {
+        min-height: 24px;
+        font-size: 12px;
+    }
+
+    .dungeon-grid {
+        gap: 1px;
+    }
+
+    .player-status span {
+        font-size: 11px;
+    }
+}
