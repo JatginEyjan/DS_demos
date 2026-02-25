@@ -113,21 +113,20 @@ class Dungeon {
     // 挖掘墙体
     dig(x, y) {
         const cell = this.grid[y][x];
+        
+        // 安全检查
+        if (!cell) return null;
+        
         // 已经揭示的不能挖
         if (cell.revealed) return null;
         
-        // 可以挖掘的类型：wall, door, sanctuary, 或者有绿眼的位置
+        // 获取该位置的绿眼
         const eye = this.getGreenEyeAt(x, y);
-        const canDig = cell.type === 'wall' || 
-                       cell.type === 'door' || 
-                       cell.type === 'sanctuary' ||
-                       eye !== undefined;
         
-        if (!canDig) return null;
-
+        // 标记为已揭示
         cell.revealed = true;
 
-        // 检查是否挖到特殊内容
+        // 根据类型返回结果
         if (cell.type === 'door') {
             return { type: 'door' };
         } else if (cell.type === 'sanctuary') {
@@ -137,6 +136,7 @@ class Dungeon {
             eye.active = true;
             return { type: 'greenEye', eye };
         } else {
+            // wall 或 empty 都返回 empty
             cell.type = 'empty';
             return { type: 'empty' };
         }
