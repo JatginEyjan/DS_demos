@@ -1,0 +1,302 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 状态栏 */
+#status-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    background: #1a1a2e;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #2a2a3a;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #888;
+}
+
+.stat-bar {
+    width: 100%;
+    height: 8px;
+    background: #0a0a0f;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    background: #e94560;
+    transition: width 0.3s;
+}
+
+.bar-fill.sanity {
+    background: #7c3aed;
+}
+
+/* 地牢网格 */
+#dungeon-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    background: #0f0f1a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 3px solid #2a2a3a;
+    aspect-ratio: 1;
+}
+
+.cell {
+    aspect-ratio: 1;
+    background: #2c3e50;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 20px;
+}
+
+.cell:hover {
+    background: #34495e;
+}
+
+.cell.wall {
+    background: #1a252f;
+    border: 1px solid #2c3e50;
+}
+
+.cell.dug {
+    background: #1a1a2e;
+    cursor: default;
+}
+
+.cell.player {
+    background: #27ae60;
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+}
+
+.cell.green-eye {
+    background: #e94560;
+    animation: pulse 1s infinite;
+}
+
+.cell.door {
+    background: #f39c12;
+}
+
+.cell.sanctuary {
+    background: #3498db;
+}
+
+.cell.radar-safe::after {
+    content: '✓';
+    color: #27ae60;
+    font-size: 12px;
+}
+
+.cell.radar-danger::after {
+    content: '!';
+    color: #e94560;
+    font-size: 12px;
+}
+
+.cell.radar-unknown::after {
+    content: '?';
+    color: #888;
+    font-size: 12px;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* 控制按钮 */
+#controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    background: #1a1a2e;
+    border: 2px solid #2a2a3a;
+    color: #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    border-color: #27ae60;
+}
+
+.btn.warning {
+    border-color: #e94560;
+}
+
+.btn.warning:hover {
+    background: #e94560;
+}
+
+.btn.success {
+    border-color: #27ae60;
+}
+
+.btn.success:hover {
+    background: #27ae60;
+}
+
+.btn.secondary {
+    border-color: #888;
+}
+
+/* 雷达显示 */
+#radar-display {
+    background: #1a1a2e;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+}
+
+#radar-display h3 {
+    color: #3498db;
+    margin-bottom: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 日志 */
+#log-panel {
+    background: #0f0f1a;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #2a2a3a;
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.log-entry {
+    padding: 5px 0;
+    border-left: 3px solid #3a3a4a;
+    padding-left: 10px;
+    margin-bottom: 5px;
+}
+
+.log-entry.danger {
+    border-left-color: #e94560;
+    color: #e94560;
+}
+
+.log-entry.success {
+    border-left-color: #27ae60;
+    color: #27ae60;
+}
+
+.log-entry.warning {
+    border-left-color: #f39c12;
+    color: #f39c12;
+}
+
+/* 弹窗 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #1a1a2e;
+    padding: 30px;
+    border-radius: 12px;
+    border: 3px solid #2a2a3a;
+    text-align: center;
+    max-width: 400px;
+}
+
+.modal-content h2 {
+    margin-bottom: 15px;
+    color: #e94560;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #888;
+}
+
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 移动端适配 */
+@media (max-width: 600px) {
+    #game-container {
+        padding: 10px;
+    }
+
+    #status-bar {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 10px;
+    }
+
+    .cell {
+        font-size: 16px;
+    }
+
+    .btn {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+
+    #log-panel {
+        max-height: 120px;
+    }
+}

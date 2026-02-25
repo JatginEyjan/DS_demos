@@ -115,6 +115,7 @@ class UI {
         // 雷达
         for (const [key, item] of Object.entries(CONFIG.SHOP_ITEMS.radar)) {
             const owned = GameState.equipment.radar === key;
+            const btnId = `buy-radar-${key}`;
             html += `
                 <div class="shop-item ${owned ? 'purchased' : ''}">
                     <div class="item-info">
@@ -123,7 +124,7 @@ class UI {
                     </div>
                     <div>
                         <span class="item-price">${item.price}💰</span>
-                        ${owned ? '<span>已装备</span>' : `<button class="btn btn-secondary" onclick="ui.buyItem('radar', '${key}')">购买</button>`}
+                        ${owned ? '<span>已装备</span>' : `<button id="${btnId}" class="btn btn-secondary buy-btn" data-type="radar" data-key="${key}">购买</button>`}
                     </div>
                 </div>
             `;
@@ -132,6 +133,7 @@ class UI {
         // 镐子
         for (const [key, item] of Object.entries(CONFIG.SHOP_ITEMS.pickaxe)) {
             const owned = GameState.equipment.pickaxe === key;
+            const btnId = `buy-pickaxe-${key}`;
             html += `
                 <div class="shop-item ${owned ? 'purchased' : ''}">
                     <div class="item-info">
@@ -140,7 +142,7 @@ class UI {
                     </div>
                     <div>
                         <span class="item-price">${item.price}💰</span>
-                        ${owned ? '<span>已装备</span>' : `<button class="btn btn-secondary" onclick="ui.buyItem('pickaxe', '${key}')">购买</button>`}
+                        ${owned ? '<span>已装备</span>' : `<button id="${btnId}" class="btn btn-secondary buy-btn" data-type="pickaxe" data-key="${key}">购买</button>`}
                     </div>
                 </div>
             `;
@@ -148,6 +150,7 @@ class UI {
 
         // 消耗品
         for (const [key, item] of Object.entries(CONFIG.SHOP_ITEMS.consumables)) {
+            const btnId = `buy-cons-${key}`;
             html += `
                 <div class="shop-item">
                     <div class="item-info">
@@ -156,13 +159,29 @@ class UI {
                     </div>
                     <div>
                         <span class="item-price">${item.price}💰</span>
-                        <button class="btn btn-secondary" onclick="ui.buyConsumable('${key}')">购买</button>
+                        <button id="${btnId}" class="btn btn-secondary buy-cons-btn" data-key="${key}">购买</button>
                     </div>
                 </div>
             `;
         }
 
         container.innerHTML = html;
+
+        // 绑定购买按钮事件
+        container.querySelectorAll('.buy-btn').forEach(btn => {
+            this.addTouchEvent(btn, () => {
+                const type = btn.dataset.type;
+                const key = btn.dataset.key;
+                this.buyItem(type, key);
+            });
+        });
+
+        container.querySelectorAll('.buy-cons-btn').forEach(btn => {
+            this.addTouchEvent(btn, () => {
+                const key = btn.dataset.key;
+                this.buyConsumable(key);
+            });
+        });
     }
 
     renderBackpack() {
@@ -295,8 +314,17 @@ class UI {
             return;
         }
 
+        // 显示扫描结果到格子
+        GameState.lastRadarScan = result.results;
+        
         this.log('雷达扫描完成！', 'success');
         this.renderDungeon();
+        
+        // 5秒后清除扫描结果
+        setTimeout(() => {
+            GameState.lastRadarScan = null;
+            this.renderDungeon();
+        }, 5000);
     }
 
     // 更新状态显示

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS14 - 深渊回响</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 状态栏 -->
+        <div id="status-bar">
+            <div class="stat">
+                <span class="stat-label">HP</span>
+                <div class="stat-bar"><div id="hp-bar" class="bar-fill"></div></div>
+                <span id="hp-value">100/100</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">SAN</span>
+                <div class="stat-bar"><div id="san-bar" class="bar-fill sanity"></div></div>
+                <span id="san-value">100/100</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">回合</span>
+                <span id="turn-value">1</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">房间</span>
+                <span id="room-value">1</span>
+            </div>
+        </div>
+
+        <!-- 地牢网格 -->
+        <div id="dungeon-grid"></div>
+
+        <!-- 控制按钮 -->
+        <div id="controls">
+            <button id="radar-btn" class="btn">📡 雷达扫描</button>
+            <button id="retreat-btn" class="btn warning">🏃 撤退</button>
+        </div>
+
+        <!-- 雷达扫描结果 -->
+        <div id="radar-display" class="hidden">
+            <h3>雷达扫描结果</h3>
+            <div id="radar-content"></div>
+        </div>
+
+        <!-- 日志 -->
+        <div id="log-panel">
+            <div class="log-entry">欢迎来到DS14 - 深渊回响</div>
+            <div class="log-entry">点击墙体进行挖掘，寻找通往下一层的门...</div>
+        </div>
+
+        <!-- 避难所界面 -->
+        <div id="sanctuary-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>🏠 避难所</h2>
+                <p>你找到了一个安全的避难所。</p>
+                <p>在这里你可以恢复状态，或者选择完全撤离。</p>
+                <div class="modal-actions">
+                    <button id="rest-btn" class="btn">休息恢复</button>
+                    <button id="full-retreat-btn" class="btn success">完全撤离</button>
+                    <button id="continue-btn" class="btn secondary">继续探索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏结束 -->
+        <div id="game-over-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="game-over-title">游戏结束</h2>
+                <p id="game-over-reason"></p>
+                <button id="restart-btn" class="btn">重新开始</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="dungeon.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
