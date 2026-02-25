@@ -261,10 +261,15 @@ class Game {
     useRadar() {
         const results = GameState.dungeon.scan(GameState.radarLevel);
         
-        // 显示雷达结果
+        // 在网格上显示雷达扫描效果
+        this.showRadarOnGrid(results);
+        
+        // 显示雷达结果面板
         const display = document.getElementById('radar-display');
         const content = document.getElementById('radar-content');
         content.innerHTML = '';
+        
+        let sanLossTotal = 0;
         
         results.forEach(r => {
             const cell = document.createElement('div');
@@ -274,15 +279,70 @@ class Game {
             // 如果是绿眼且雷达等级>=2，掉SAN
             if (r.actual === 'greenEye' && GameState.radarLevel >= 2) {
                 const sanLoss = GameState.radarLevel === 2 ? 5 : 3;
-                GameState.san -= sanLoss;
-                this.log(`雷达捕捉到了绿眼！SAN值下降 ${sanLoss}！`, 'danger');
+                sanLossTotal += sanLoss;
             }
         });
         
+        // 统一扣除SAN
+        if (sanLossTotal > 0) {
+            GameState.san -= sanLossTotal;
+            this.log(`雷达捕捉到绿眼！SAN值下降 ${sanLossTotal}！`, 'danger');
+        }
+        
         display.classList.remove('hidden');
-        setTimeout(() => display.classList.add('hidden'), 3000);
+        setTimeout(() => display.classList.add('hidden'), 5000);
         
         this.updateUI();
+    }
+
+    showRadarOnGrid(results) {
+        // 清除之前的雷达标记
+        document.querySelectorAll('.radar-marker').forEach(el => el.remove());
+        
+        results.forEach(r => {
+            const cell = document.querySelector(`.cell[data-x="${r.x}"][data-y="${r.y}"]`);
+            if (cell) {
+                const marker = document.createElement('div');
+                marker.className = 'radar-marker';
+                
+                // 根据雷达显示类型设置不同标记
+                switch(r.display) {
+                    case 'safe':
+                        marker.textContent = '✓';
+                        marker.style.color = '#27ae60';
+                        break;
+                    case 'danger-3':
+                        marker.textContent = '!!!';
+                        marker.style.color = '#e94560';
+                        break;
+                    case '?':
+                        marker.textContent = '?';
+                        marker.style.color = '#f39c12';
+                        break;
+                    default:
+                        marker.textContent = '•';
+                        marker.style.color = '#888';
+                }
+                
+                marker.style.cssText = `
+                    position: absolute;
+                    top: 2px;
+                    right: 2px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    pointer-events: none;
+                    animation: radarPulse 2s infinite;
+                `;
+                
+                cell.style.position = 'relative';
+                cell.appendChild(marker);
+                
+                // 5秒后移除标记
+                setTimeout(() => {
+                    marker.remove();
+                }, 5000);
+            }
+        });
     }
 
     getRadarText(display) {
@@ -298,12 +358,11 @@ class Game {
     showDoorOption() {
         if (confirm('是否前往下一层？（取消则继续探索当前层）')) {
             GameState.roomLevel++;
-            // 保存未击败的绿眼到跟随列表
-            GameState.dungeon.greenEyes.forEach(eye => {
-                if (!eye.defeated && !eye.active) {
-                    GameState.greenEyesFollowing.push(eye);
-                }
-            });
+            // 保存活跃的未击败绿眼到跟随列表（50%概率）
+            const activeEyes = GameState.dungeon.greenEyes.filter(eye => eye.active && !eye.defeated);
+            if (activeEyes.length > 0) {
+                this.log(`${activeEyes.length} 个绿眼试图跟随你...`, 'warning');
+            }
             this.startNewRoom();
         }
     }

@@ -276,6 +276,16 @@ body {
     gap: 10px;
 }
 
+/* 雷达标记 */
+.radar-marker {
+    animation: radarPulse 2s infinite;
+}
+
+@keyframes radarPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
 /* 移动端适配 */
 @media (max-width: 600px) {
     #game-container {
