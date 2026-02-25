@@ -287,14 +287,18 @@ class Game {
                     }
                 } else {
                     cell.classList.add('wall');
-                    // 同时支持点击和触摸
-                    const digHandler = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.dig(x, y);
+                    cell.style.cursor = 'pointer';
+                    // 确保事件绑定到正确的坐标
+                    const bindDig = (cx, cy) => {
+                        return (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log(`Digging at ${cx}, ${cy}`); // 调试用
+                            this.dig(cx, cy);
+                        };
                     };
-                    cell.addEventListener('click', digHandler);
-                    cell.addEventListener('touchstart', digHandler, {passive: false});
+                    cell.addEventListener('click', bindDig(x, y));
+                    cell.addEventListener('touchstart', bindDig(x, y), {passive: false});
                 }
 
                 gridEl.appendChild(cell);
