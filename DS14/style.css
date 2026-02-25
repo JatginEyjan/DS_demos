@@ -11,8 +11,9 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
-    overflow: hidden;
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 20px 0;
 }
 
 #game-container {
@@ -96,6 +97,8 @@ body {
 .cell.wall {
     background: #1a252f;
     border: 1px solid #2c3e50;
+    cursor: pointer;
+    touch-action: manipulation;
 }
 
 .cell.dug {

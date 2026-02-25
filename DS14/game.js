@@ -287,7 +287,14 @@ class Game {
                     }
                 } else {
                     cell.classList.add('wall');
-                    cell.addEventListener('click', () => this.dig(x, y));
+                    // 同时支持点击和触摸
+                    const digHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.dig(x, y);
+                    };
+                    cell.addEventListener('click', digHandler);
+                    cell.addEventListener('touchstart', digHandler, {passive: false});
                 }
 
                 gridEl.appendChild(cell);
