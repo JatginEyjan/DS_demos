@@ -7,9 +7,10 @@ class Dungeon {
         this.grid = [];
         this.playerPos = { x: 0, y: 0 };
         this.doorPos = null;
-        this.sanctuaryPos = null;
+        this.sanctuaryEntrancePos = null; // 避难所入口位置
+        this.sanctuaryRoom = null; // 避难所房间（独立）
         this.greenEyes = []; // 绿眼数组，每个房间可能有多个
-        this.sanctuaryFound = false;
+        this.keyPos = null; // 钥匙位置
         this.generate();
     }
 
@@ -31,18 +32,21 @@ class Dungeon {
         this.grid[0][0].revealed = true;
         this.playerPos = { x: 0, y: 0 };
 
-        // 随机生成门的位置（远离起点）
+        // 1. 生成唯一门（远离起点）
         this.placeDoor();
 
-        // 生成避难所（如果不连刷）
+        // 2. 生成钥匙（随机位置，不在起点）
+        this.placeKey();
+
+        // 3. 生成避难所入口（如果不连刷）
         if (!GameState.lastRoomHadSanctuary) {
-            this.placeSanctuary();
+            this.placeSanctuaryEntrance();
         }
 
-        // 生成新绿眼（每个房间固定1个）
+        // 4. 生成新绿眼（每个房间固定1个）
         this.placeGreenEye();
 
-        // 随机挖开一些路径（确保可达性）
+        // 5. 随机挖开一些路径（确保可达性）
         this.carvePath();
     }
 
@@ -61,19 +65,50 @@ class Dungeon {
         }
     }
 
-    placeSanctuary() {
+    placeKey() {
+        // 每层地牢随机埋藏1把钥匙
+        let placed = false;
+        let attempts = 0;
+        while (!placed && attempts < 100) {
+            const x = Math.floor(Math.random() * this.size);
+            const y = Math.floor(Math.random() * this.size);
+            // 钥匙放在空地上，需要挖掘才能发现
+            if (this.grid[y][x].type === 'wall' && !(x === 0 && y === 0)) {
+                this.grid[y][x].type = 'key';
+                this.keyPos = { x, y };
+                placed = true;
+            }
+            attempts++;
+        }
+    }
+
+    placeSanctuaryEntrance() {
+        // 生成避难所入口（点击进入独立房间）
         let placed = false;
         let attempts = 0;
         while (!placed && attempts < 50) {
             const x = Math.floor(Math.random() * this.size);
             const y = Math.floor(Math.random() * this.size);
             if (this.grid[y][x].type === 'wall' && !(x === 0 && y === 0)) {
-                this.grid[y][x].type = 'sanctuary';
-                this.sanctuaryPos = { x, y };
+                this.grid[y][x].type = 'sanctuary-entrance';
+                this.sanctuaryEntrancePos = { x, y };
                 placed = true;
             }
             attempts++;
         }
+    }
+
+    generateSanctuaryRoom() {
+        // 生成避难所房间（3x3 安全区）
+        return {
+            size: 3,
+            playerPos: { x: 1, y: 1 },
+            grid: [
+                [{type: 'empty'}, {type: 'empty'}, {type: 'empty'}],
+                [{type: 'empty'}, {type: 'heal-stone'}, {type: 'empty'}],
+                [{type: 'empty'}, {type: 'exit'}, {type: 'empty'}]
+            ]
+        };
     }
 
     placeGreenEye() {
@@ -129,9 +164,11 @@ class Dungeon {
         // 根据类型返回结果
         if (cell.type === 'door') {
             return { type: 'door' };
-        } else if (cell.type === 'sanctuary') {
-            this.sanctuaryFound = true;
-            return { type: 'sanctuary' };
+        } else if (cell.type === 'sanctuary-entrance') {
+            return { type: 'sanctuary-entrance', x, y };
+        } else if (cell.type === 'key') {
+            this.keyPos = null; // 钥匙被挖掉了
+            return { type: 'key' };
         } else if (eye && !eye.defeated) {
             eye.active = true;
             return { type: 'greenEye', eye };
@@ -173,7 +210,8 @@ class Dungeon {
 
     getRadarDisplay(cell, radarLevel) {
         if (cell.type === 'door') return '?';
-        if (cell.type === 'sanctuary') return '?';
+        if (cell.type === 'sanctuary-entrance') return '?';
+        if (cell.type === 'key') return '?';
         
         // 绿眼是3级危险
         if (this.isGreenEyeHere(cell.x, cell.y)) {

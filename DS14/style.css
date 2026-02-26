@@ -28,7 +28,7 @@ body {
 /* 状态栏 */
 #status-bar {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     background: #1a1a2e;
     padding: 15px;
@@ -124,10 +124,69 @@ body {
 
 .cell.door {
     background: #f39c12;
+    animation: glow 2s infinite;
 }
 
-.cell.sanctuary {
+.cell.door.clickable:hover {
+    background: #e67e22;
+    box-shadow: 0 0 15px rgba(243, 156, 18, 0.8);
+}
+
+.cell.sanctuary-entrance {
     background: #3498db;
+    animation: glow 2s infinite;
+}
+
+.cell.sanctuary-entrance.clickable:hover {
+    background: #2980b9;
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
+}
+
+.cell.key-found {
+    background: #f1c40f;
+    animation: sparkle 1.5s infinite;
+}
+
+.cell.clickable {
+    cursor: pointer;
+}
+
+/* 避难所房间样式 */
+.cell.sanctuary-cell {
+    background: #1e3a5f;
+}
+
+.cell.sanctuary-cell.empty {
+    background: #1e3a5f;
+}
+
+.cell.heal-stone {
+    background: #9b59b6;
+    animation: pulse 2s infinite;
+}
+
+.cell.heal-stone.clickable:hover {
+    background: #8e44ad;
+    box-shadow: 0 0 15px rgba(155, 89, 182, 0.8);
+}
+
+.cell.exit {
+    background: #27ae60;
+}
+
+.cell.exit.clickable:hover {
+    background: #2ecc71;
+    box-shadow: 0 0 15px rgba(39, 174, 96, 0.8);
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px currentColor; }
+    50% { box-shadow: 0 0 20px currentColor; }
+}
+
+@keyframes sparkle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }
 
 .cell.radar-safe::after {
@@ -398,7 +457,7 @@ body {
     }
 
     #status-bar {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         padding: 10px;
     }
 

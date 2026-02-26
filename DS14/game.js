@@ -8,25 +8,26 @@ const GameState = {
     maxSan: 100,
     turn: 1,
     roomLevel: 1,
-    
+
     // 地牢状态
     dungeon: null,
     greenEyesFollowing: [], // 跟随的绿眼
     lastRoomHadSanctuary: false,
-    
+
     // 装备状态
     radarLevel: 1,
     pickaxeType: 'single', // single, cross, horizontal
     inventory: [],
-    
+
     // 局外状态
     money: 0,
     backpackSize: 5,
     keys: 0, // 钥匙数量
-    
+
     // 游戏状态
     isGameOver: false,
-    inDungeon: false
+    inDungeon: false,
+    inSanctuary: false // 是否在避难所房间
 };
 
 // 商店配置
@@ -134,7 +135,9 @@ class Game {
         GameState.turn = 1;
         GameState.roomLevel = 1;
         GameState.greenEyesFollowing = [];
+        GameState.keys = 0; // 重置钥匙
         GameState.inDungeon = true;
+        GameState.inSanctuary = false; // 不在避难所
         
         document.getElementById('village-screen').classList.add('hidden');
         document.getElementById('dungeon-screen').classList.remove('hidden');
@@ -165,7 +168,7 @@ class Game {
         GameState.greenEyesFollowing = [];
         
         // 检查是否生成避难所
-        GameState.lastRoomHadSanctuary = GameState.dungeon.sanctuaryPos !== null;
+        GameState.lastRoomHadSanctuary = GameState.dungeon.sanctuaryEntrancePos !== null;
         
         this.renderGrid();
         this.log(`进入了房间 ${GameState.roomLevel} (${GameState.dungeon.size}x${GameState.dungeon.size})`, 'system');
@@ -245,6 +248,13 @@ class Game {
     renderGrid() {
         const gridEl = document.getElementById('dungeon-grid');
         gridEl.innerHTML = '';
+
+        // 如果在避难所房间，渲染避难所网格
+        if (GameState.inSanctuary && GameState.dungeon.sanctuaryRoom) {
+            this.renderSanctuaryRoom();
+            return;
+        }
+
         gridEl.style.gridTemplateColumns = `repeat(${GameState.dungeon.size}, 1fr)`;
 
         for (let y = 0; y < GameState.dungeon.size; y++) {
@@ -266,11 +276,30 @@ class Game {
                     cell.classList.add('dug');
                     
                     if (gridCell.type === 'door') {
-                        cell.classList.add('door');
+                        cell.classList.add('door', 'clickable');
                         cell.textContent = '🚪';
-                    } else if (gridCell.type === 'sanctuary') {
-                        cell.classList.add('sanctuary');
+                        cell.style.cursor = 'pointer';
+                        cell.title = '点击使用钥匙进入下一层';
+                        // 门点击事件
+                        cell.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.handleDoorClick();
+                        });
+                    } else if (gridCell.type === 'sanctuary-entrance') {
+                        cell.classList.add('sanctuary-entrance', 'clickable');
                         cell.textContent = '🏠';
+                        cell.style.cursor = 'pointer';
+                        cell.title = '点击进入避难所';
+                        // 避难所入口点击事件
+                        cell.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.enterSanctuaryRoom();
+                        });
+                    } else if (gridCell.type === 'key') {
+                        cell.classList.add('key-found');
+                        cell.textContent = '🗝️';
                     } else {
                         // 检查是否有绿眼
                         const eye = GameState.dungeon.getGreenEyeAt(x, y);
@@ -301,6 +330,56 @@ class Game {
                         console.log(`Digging at ${cx}, ${cy}`);
                         this.dig(cx, cy);
                     }, {passive: false});
+                }
+
+                gridEl.appendChild(cell);
+            }
+        }
+    }
+
+    // 渲染避难所房间
+    renderSanctuaryRoom() {
+        const gridEl = document.getElementById('dungeon-grid');
+        const room = GameState.dungeon.sanctuaryRoom;
+        gridEl.style.gridTemplateColumns = `repeat(${room.size}, 1fr)`;
+
+        for (let y = 0; y < room.size; y++) {
+            for (let x = 0; x < room.size; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell sanctuary-cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+
+                const roomCell = room.grid[y][x];
+
+                // 玩家位置
+                if (x === room.playerPos.x && y === room.playerPos.y) {
+                    cell.classList.add('player');
+                    cell.textContent = '🧑';
+                }
+                else if (roomCell.type === 'heal-stone') {
+                    cell.classList.add('heal-stone', 'clickable');
+                    cell.textContent = '💎';
+                    cell.title = '点击恢复 HP/SAN';
+                    cell.style.cursor = 'pointer';
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.restInSanctuary();
+                    });
+                }
+                else if (roomCell.type === 'exit') {
+                    cell.classList.add('exit', 'clickable');
+                    cell.textContent = '🚪';
+                    cell.title = '点击返回地牢';
+                    cell.style.cursor = 'pointer';
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.exitSanctuary();
+                    });
+                }
+                else {
+                    cell.classList.add('empty');
+                    cell.textContent = '';
                 }
 
                 gridEl.appendChild(cell);
@@ -367,16 +446,14 @@ class Game {
             switch(mainResult.type) {
                 case 'key':
                     GameState.keys++;
-                    this.log('发现了一把钥匙！', 'success');
+                    this.log('🗝️ 发现了一把钥匙！现在可以开启通往下一层的门了。', 'success');
                     this.updateUI();
                     break;
                 case 'door':
-                    this.log('发现了通往下一层的门！', 'success');
-                    this.showDoorOption();
+                    this.log('🚪 发现了通往下一层的门！需要钥匙才能开启。', 'success');
                     break;
-                case 'sanctuary':
-                    this.log('发现了避难所入口！', 'success');
-                    this.showSanctuaryEntrance(x, y);
+                case 'sanctuary-entrance':
+                    this.log('🏠 发现了避难所入口！点击进入可以安全休息。', 'success');
                     break;
                 default:
                     this.log(`挖掘了 ${digTargets.length} 面墙。`);
@@ -591,16 +668,48 @@ class Game {
         }
     }
 
-    showDoorOption() {
-        if (confirm('是否前往下一层？（取消则继续探索当前层）')) {
-            GameState.roomLevel++;
-            // 保存活跃的未击败绿眼到跟随列表（50%概率）
-            const activeEyes = GameState.dungeon.greenEyes.filter(eye => eye.active && !eye.defeated);
-            if (activeEyes.length > 0) {
-                this.log(`${activeEyes.length} 个绿眼试图跟随你...`, 'warning');
+    // 处理门点击
+    handleDoorClick() {
+        if (GameState.keys > 0) {
+            // 有钥匙，消耗钥匙并进入下一层
+            if (confirm('使用钥匙开启通往下一层的门？')) {
+                GameState.keys--;
+                GameState.roomLevel++;
+                this.log('使用钥匙打开了门，进入了下一层...', 'success');
+                
+                // 保存活跃的未击败绿眼到跟随列表（50%概率）
+                const activeEyes = GameState.dungeon.greenEyes.filter(eye => eye.active && !eye.defeated);
+                if (activeEyes.length > 0) {
+                    this.log(`${activeEyes.length} 个绿眼试图跟随你...`, 'warning');
+                }
+                
+                this.startNewRoom();
+                this.updateUI();
             }
-            this.startNewRoom();
+        } else {
+            // 没钥匙
+            this.log('🚪 门被锁住了！需要找到钥匙才能开启。', 'warning');
+            alert('门被锁住了！你需要先找到钥匙。\n\n继续探索地牢寻找钥匙吧。');
         }
+    }
+
+    // 进入避难所房间
+    enterSanctuaryRoom() {
+        GameState.inSanctuary = true;
+        GameState.dungeon.sanctuaryRoom = GameState.dungeon.generateSanctuaryRoom();
+        this.log('进入了避难所，这里很安全...', 'success');
+        this.renderGrid();
+    }
+
+    // 退出避难所
+    exitSanctuary() {
+        GameState.inSanctuary = false;
+        this.log('离开了避难所，返回地牢...', 'system');
+        this.renderGrid();
+    }
+
+    showDoorOption() {
+        // 已废弃，改为 handleDoorClick
     }
 
     showSanctuaryModal() {
@@ -609,10 +718,18 @@ class Game {
 
     restInSanctuary() {
         // 恢复状态
-        GameState.hp = Math.min(GameState.hp + 30, GameState.maxHp);
-        GameState.san = Math.min(GameState.san + 30, GameState.maxSan);
-        this.log('在避难所休息，恢复了30点HP和SAN！', 'success');
-        document.getElementById('sanctuary-modal').classList.add('hidden');
+        const hpRestore = 30;
+        const sanRestore = 30;
+        const oldHp = GameState.hp;
+        const oldSan = GameState.san;
+        
+        GameState.hp = Math.min(GameState.hp + hpRestore, GameState.maxHp);
+        GameState.san = Math.min(GameState.san + sanRestore, GameState.maxSan);
+        
+        const actualHpRestore = GameState.hp - oldHp;
+        const actualSanRestore = GameState.san - oldSan;
+        
+        this.log(`💎 触摸治愈之石，恢复了 ${actualHpRestore} HP 和 ${actualSanRestore} SAN！`, 'success');
         this.updateUI();
     }
 
@@ -655,6 +772,12 @@ class Game {
         document.getElementById('san-value').textContent = `${GameState.san}/${GameState.maxSan}`;
         document.getElementById('turn-value').textContent = GameState.turn;
         document.getElementById('room-value').textContent = GameState.roomLevel;
+        
+        // 更新钥匙显示
+        const keyElement = document.getElementById('key-value');
+        if (keyElement) {
+            keyElement.textContent = GameState.keys;
+        }
         
         document.getElementById('hp-bar').style.width = `${(GameState.hp / GameState.maxHp) * 100}%`;
         document.getElementById('san-bar').style.width = `${(GameState.san / GameState.maxSan) * 100}%`;
