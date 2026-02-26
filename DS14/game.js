@@ -8,6 +8,7 @@ const GameState = {
     maxSan: 100,
     turn: 1,
     roomLevel: 1,
+    oxygen: 20, // 初始氧气
 
     // 地牢状态
     dungeon: null,
@@ -134,6 +135,7 @@ class Game {
         GameState.san = GameState.maxSan;
         GameState.turn = 1;
         GameState.roomLevel = 1;
+        GameState.oxygen = 20; // 初始氧气
         GameState.greenEyesFollowing = [];
         GameState.keys = 0; // 重置钥匙
         GameState.inDungeon = true;
@@ -150,6 +152,7 @@ class Game {
     startNewRoom() {
         // 生成新房
         GameState.dungeon = new Dungeon(GameState.roomLevel);
+        GameState.oxygen = 20; // 每个房间重置氧气
         
         // 处理跟随的绿眼（50%概率）
         GameState.greenEyesFollowing.forEach(eye => {
@@ -171,7 +174,7 @@ class Game {
         GameState.lastRoomHadSanctuary = GameState.dungeon.sanctuaryEntrancePos !== null;
         
         this.renderGrid();
-        this.log(`进入了房间 ${GameState.roomLevel} (${GameState.dungeon.size}x${GameState.dungeon.size})`, 'system');
+        this.log(`进入了房间 ${GameState.roomLevel} (${GameState.dungeon.size}x${GameState.dungeon.size})，氧气剩余：${GameState.oxygen}`, 'system');
         
         // 如果有绿眼跟随，提示
         const followingCount = GameState.dungeon.greenEyes.length - 1; // 减去新生成的1个
@@ -552,6 +555,21 @@ class Game {
     }
 
     endTurn() {
+        // 氧气消耗
+        if (!GameState.inSanctuary) {
+            GameState.oxygen--;
+            if (GameState.oxygen <= 0) {
+                GameState.hp -= 5;
+                this.log('缺氧！生命值下降 5 点！', 'danger');
+                if (GameState.hp <= 0) {
+                    this.gameOver('窒息');
+                    return;
+                }
+            } else if (GameState.oxygen <= 5) {
+                this.log(`⚠️ 氧气即将耗尽！剩余 ${GameState.oxygen} 回合`, 'warning');
+            }
+        }
+
         // 绿眼攻击结算
         const attacks = GameState.dungeon.resolveGreenEyeAttacks();
         
