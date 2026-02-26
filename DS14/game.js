@@ -357,24 +357,37 @@ class Game {
                     cell.classList.add('player');
                     cell.textContent = '🧑';
                 }
-                else if (roomCell.type === 'heal-stone') {
-                    cell.classList.add('heal-stone', 'clickable');
-                    cell.textContent = '💎';
-                    cell.title = '点击恢复 HP/SAN';
+                else if (roomCell.type === 'heal') {
+                    // 普通回复格子 - 无需挖掘，直接点击
+                    cell.classList.add('heal', 'clickable');
+                    cell.textContent = '💚';
+                    cell.title = '点击恢复 30 HP 和 30 SAN';
                     cell.style.cursor = 'pointer';
                     cell.addEventListener('click', (e) => {
                         e.preventDefault();
-                        this.restInSanctuary();
+                        this.healInSanctuary();
                     });
                 }
-                else if (roomCell.type === 'exit') {
-                    cell.classList.add('exit', 'clickable');
-                    cell.textContent = '🚪';
-                    cell.title = '点击返回地牢';
+                else if (roomCell.type === 'full-heal') {
+                    // 完全回复格子 - 无需挖掘，直接点击
+                    cell.classList.add('full-heal', 'clickable');
+                    cell.textContent = '❤️';
+                    cell.title = '点击恢复全部 HP 和 SAN';
                     cell.style.cursor = 'pointer';
                     cell.addEventListener('click', (e) => {
                         e.preventDefault();
-                        this.exitSanctuary();
+                        this.fullHealInSanctuary();
+                    });
+                }
+                else if (roomCell.type === 'full-retreat') {
+                    // 完全撤退格子
+                    cell.classList.add('full-retreat', 'clickable');
+                    cell.textContent = '🏃';
+                    cell.title = '点击完全撤退，带战利品回村庄';
+                    cell.style.cursor = 'pointer';
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.retreatFromSanctuary();
                     });
                 }
                 else {
@@ -716,21 +729,48 @@ class Game {
         document.getElementById('sanctuary-modal').classList.remove('hidden');
     }
 
-    restInSanctuary() {
-        // 恢复状态
-        const hpRestore = 30;
-        const sanRestore = 30;
+    // 普通回复（避难所）- 回复 30 HP 和 30 SAN
+    healInSanctuary() {
+        const healAmount = 30;
         const oldHp = GameState.hp;
         const oldSan = GameState.san;
-        
-        GameState.hp = Math.min(GameState.hp + hpRestore, GameState.maxHp);
-        GameState.san = Math.min(GameState.san + sanRestore, GameState.maxSan);
-        
-        const actualHpRestore = GameState.hp - oldHp;
-        const actualSanRestore = GameState.san - oldSan;
-        
-        this.log(`💎 触摸治愈之石，恢复了 ${actualHpRestore} HP 和 ${actualSanRestore} SAN！`, 'success');
+
+        GameState.hp = Math.min(GameState.maxHp, GameState.hp + healAmount);
+        GameState.san = Math.min(GameState.maxSan, GameState.san + healAmount);
+
+        const hpRestored = GameState.hp - oldHp;
+        const sanRestored = GameState.san - oldSan;
+
+        this.log(`💚 舒适的休息恢复了 ${hpRestored} HP 和 ${sanRestored} SAN！`, 'success');
         this.updateUI();
+    }
+
+    // 完全回复（避难所）
+    fullHealInSanctuary() {
+        const oldHp = GameState.hp;
+        const oldSan = GameState.san;
+
+        GameState.hp = GameState.maxHp;
+        GameState.san = GameState.maxSan;
+
+        const hpRestored = GameState.maxHp - oldHp;
+        const sanRestored = GameState.maxSan - oldSan;
+
+        this.log(`❤️ 圣光笼罩！完全恢复了 ${hpRestored} HP 和 ${sanRestored} SAN！`, 'success');
+        this.updateUI();
+    }
+
+    // 完全撤退（避难所）
+    retreatFromSanctuary() {
+        if (confirm('确定要完全撤退吗？\n将带战利品返回村庄。')) {
+            this.log('🏃 从避难所完全撤退...', 'system');
+            this.fullRetreat();
+        }
+    }
+
+    restInSanctuary() {
+        // 旧方法保留（兼容）
+        this.fullHealInSanctuary();
     }
 
     fullRetreat() {

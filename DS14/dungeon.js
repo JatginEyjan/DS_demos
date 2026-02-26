@@ -100,13 +100,16 @@ class Dungeon {
 
     generateSanctuaryRoom() {
         // 生成避难所房间（3x3 安全区）
+        // [普通回复] [完全回复] [普通回复]
+        // [  空   ] [玩家位置] [  空   ]
+        // [  空   ] [完全撤退] [  空   ]
         return {
             size: 3,
             playerPos: { x: 1, y: 1 },
             grid: [
+                [{type: 'heal'}, {type: 'full-heal'}, {type: 'heal'}],
                 [{type: 'empty'}, {type: 'empty'}, {type: 'empty'}],
-                [{type: 'empty'}, {type: 'heal-stone'}, {type: 'empty'}],
-                [{type: 'empty'}, {type: 'exit'}, {type: 'empty'}]
+                [{type: 'empty'}, {type: 'full-retreat'}, {type: 'empty'}]
             ]
         };
     }
