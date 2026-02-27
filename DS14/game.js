@@ -124,9 +124,21 @@ class Game {
     // 更新村庄UI
     updateVillageUI() {
         document.getElementById('village-money').textContent = GameState.money;
-        document.getElementById('village-backpack').textContent = GameState.backpackSize;
-        document.getElementById('equip-radar').textContent = `Lv${GameState.radarLevel}`;
-        document.getElementById('equip-pickaxe').textContent = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType).name;
+        const backpackMaxElement = document.getElementById('village-backpack-max');
+        if (backpackMaxElement) {
+            backpackMaxElement.textContent = GameState.backpackSize;
+        }
+        
+        // 如果有装备显示，更新它们（兼容旧的UI）
+        const radarElement = document.getElementById('equip-radar');
+        if (radarElement) {
+            radarElement.textContent = `Lv${GameState.radarLevel}`;
+        }
+        const pickaxeElement = document.getElementById('equip-pickaxe');
+        if (pickaxeElement) {
+            const pickaxe = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType);
+            if (pickaxe) pickaxeElement.textContent = pickaxe.name;
+        }
     }
 
     // 进入地牢
