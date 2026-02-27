@@ -1,3 +1,4 @@
+// Test: sessions_spawn communication successful - dogsend received task
 // DS14 - 游戏主逻辑
 
 const GameState = {

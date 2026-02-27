@@ -28,7 +28,7 @@ body {
 /* 状态栏 */
 #status-bar {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 10px;
     background: #1a1a2e;
     padding: 15px;
