@@ -282,24 +282,12 @@ class Game {
                         cell.classList.add('door', 'clickable');
                         cell.textContent = '🚪';
                         cell.style.cursor = 'pointer';
-                        cell.title = '点击使用钥匙进入下一层';
-                        // 门点击事件
-                        cell.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.handleDoorClick();
-                        });
+                        cell.title = '移动到这里进入下一层';
                     } else if (gridCell.type === 'sanctuary-entrance') {
                         cell.classList.add('sanctuary-entrance', 'clickable');
                         cell.textContent = '🏠';
                         cell.style.cursor = 'pointer';
-                        cell.title = '点击进入避难所';
-                        // 避难所入口点击事件
-                        cell.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.enterSanctuaryRoom();
-                        });
+                        cell.title = '移动到这里进入避难所';
                     } else if (gridCell.type === 'key') {
                         cell.classList.add('key-found');
                         cell.textContent = '🗝️';
@@ -313,6 +301,23 @@ class Game {
                             cell.textContent = '';
                         }
                     }
+
+                    // 允许点击移动
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const cx = parseInt(e.currentTarget.dataset.x);
+                        const cy = parseInt(e.currentTarget.dataset.y);
+                        this.dig(cx, cy);
+                    });
+                    cell.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const cx = parseInt(e.currentTarget.dataset.x);
+                        const cy = parseInt(e.currentTarget.dataset.y);
+                        this.dig(cx, cy);
+                    }, {passive: false});
+
                 } else {
                     cell.classList.add('wall');
                     cell.style.cursor = 'pointer';
@@ -406,7 +411,17 @@ class Game {
     dig(x, y) {
         if (GameState.isGameOver) return;
         
-        this.debugLog(`尝试挖掘: (${x}, ${y})`);
+        // 检查是否相邻
+        const px = GameState.dungeon.playerPos.x;
+        const py = GameState.dungeon.playerPos.y;
+        const isAdjacent = Math.abs(x - px) + Math.abs(y - py) === 1;
+
+        if (!isAdjacent) {
+            this.log('太远了！只能点击相邻的格子。', 'warning');
+            return;
+        }
+        
+        this.debugLog(`尝试点击: (${x}, ${y})`);
         
         // 检查格子是否存在
         if (!GameState.dungeon.grid[y] || !GameState.dungeon.grid[y][x]) {
@@ -416,6 +431,16 @@ class Game {
         
         const cell = GameState.dungeon.grid[y][x];
         this.debugLog(`格子类型: ${cell.type}, 已揭示: ${cell.revealed}`);
+
+        // 移动逻辑：如果格子已揭示，或者是空地，或者是避难所入口，或者是门
+        if (cell.revealed) {
+            this.log(`🏃 移动到 (${x}, ${y})`);
+            GameState.dungeon.playerPos.x = x;
+            GameState.dungeon.playerPos.y = y;
+            GameState.turn++;
+            this.endTurn();
+            return;
+        }
 
         // 根据镐子类型确定挖掘范围
         const digTargets = this.getDigTargets(x, y);
@@ -830,6 +855,20 @@ class Game {
         document.getElementById('san-value').textContent = `${GameState.san}/${GameState.maxSan}`;
         document.getElementById('turn-value').textContent = GameState.turn;
         document.getElementById('room-value').textContent = GameState.roomLevel;
+        
+        // 更新氧气显示
+        const oxygenElement = document.getElementById('oxygen-value');
+        if (oxygenElement) {
+            oxygenElement.textContent = GameState.oxygen;
+            // 如果氧气极低，显示为红色
+            if (GameState.oxygen <= 5 && !GameState.inSanctuary) {
+                oxygenElement.style.color = '#e94560';
+                oxygenElement.style.fontWeight = 'bold';
+            } else {
+                oxygenElement.style.color = '';
+                oxygenElement.style.fontWeight = '';
+            }
+        }
         
         // 更新钥匙显示
         const keyElement = document.getElementById('key-value');
