@@ -155,6 +155,19 @@ class Game {
         GameState.oxygen = 20; // 初始氧气
         GameState.greenEyesFollowing = [];
         GameState.keys = 0; // 重置钥匙
+        
+        // 初始化雷达电量
+        if (GameState.radarLevel === 1) GameState.radarMaxCharge = 3;
+        else if (GameState.radarLevel === 2) GameState.radarMaxCharge = 5;
+        else if (GameState.radarLevel === 3) GameState.radarMaxCharge = 7;
+        GameState.radarCharge = GameState.radarMaxCharge;
+        
+        // 初始化镐子耐久
+        if (GameState.pickaxeType === 'single') GameState.pickaxeMaxDurability = 20;
+        else if (GameState.pickaxeType === 'cross') GameState.pickaxeMaxDurability = 15;
+        else if (GameState.pickaxeType === 'horizontal') GameState.pickaxeMaxDurability = 10;
+        GameState.pickaxeDurability = GameState.pickaxeMaxDurability;
+        
         GameState.inDungeon = true;
         GameState.inSanctuary = false; // 不在避难所
         
