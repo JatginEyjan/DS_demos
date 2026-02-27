@@ -46,8 +46,24 @@ class Dungeon {
         // 4. 生成新绿眼（每个房间固定1个）
         this.placeGreenEye();
 
-        // 5. 随机挖开一些路径（确保可达性）
+        // 5. 生成消耗品
+        this.placeItems();
+
+        // 6. 随机挖开一些路径（确保可达性）
         this.carvePath();
+    }
+
+    placeItems() {
+        const items = ['health', 'sanity', 'oxygen'];
+        // 30%概率生成在空地上
+        for (let y = 0; y < this.size; y++) {
+            for (let x = 0; x < this.size; x++) {
+                if (this.grid[y][x].type === 'wall' && Math.random() < 0.3) {
+                    // 仅在空位置生成
+                    this.grid[y][x].item = items[Math.floor(Math.random() * items.length)];
+                }
+            }
+        }
     }
 
     placeDoor() {

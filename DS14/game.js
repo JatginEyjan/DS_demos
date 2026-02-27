@@ -18,7 +18,11 @@ const GameState = {
 
     // 装备状态
     radarLevel: 1,
+    radarCharge: 0,
+    radarMaxCharge: 0,
     pickaxeType: 'single', // single, cross, horizontal
+    pickaxeDurability: 0,
+    pickaxeMaxDurability: 0,
     inventory: [],
 
     // 局外状态
@@ -424,6 +428,13 @@ class Game {
     dig(x, y) {
         if (GameState.isGameOver) return;
         
+        if (GameState.pickaxeDurability <= 0) {
+            this.log('镐子耐久耗尽！', 'danger');
+            return;
+        }
+        
+        GameState.pickaxeDurability--;
+
         // 检查是否相邻
         const px = GameState.dungeon.playerPos.x;
         const py = GameState.dungeon.playerPos.y;
@@ -641,6 +652,12 @@ class Game {
     }
 
     useRadar() {
+        if (GameState.radarCharge <= 0) {
+            this.log('雷达电量耗尽！', 'danger');
+            return;
+        }
+        
+        GameState.radarCharge--;
         const results = GameState.dungeon.scan(GameState.radarLevel);
         
         // 在网格上显示雷达扫描效果
