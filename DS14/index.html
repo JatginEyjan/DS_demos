@@ -14,19 +14,27 @@
             <h1>🏘️ 边缘村庄</h1>
             <div class="village-stats">
                 <span>💰 金钱: <span id="village-money">0</span></span>
-                <span>📦 背包: <span id="village-backpack">5</span>格</span>
             </div>
+            
             <div class="shop-section">
                 <h2>🛒 商店</h2>
                 <div id="shop-items"></div>
             </div>
-            <div class="equipment-section">
-                <h2>🎒 当前装备</h2>
-                <div id="current-equipment">
-                    <div>雷达: <span id="equip-radar">Lv1</span></div>
-                    <div>镐子: <span id="equip-pickaxe">单格镐</span></div>
+            
+            <div class="backpack-section">
+                <h2>🎒 背包配置 (<span id="village-backpack-count">0</span>/<span id="village-backpack-max">5</span>)</h2>
+                <div class="backpack-grid" id="village-backpack-grid">
+                    <!-- 背包格子将在这里生成 -->
                 </div>
+                <div class="backpack-actions">
+                    <button id="equip-radar-btn" class="btn">装备雷达</button>
+                    <button id="equip-pickaxe-btn" class="btn">更换镐子</button>
+                    <button id="buy-consumable-btn" class="btn">购买消耗品</button>
+                    <button id="clear-backpack-btn" class="btn warning">清空背包</button>
+                </div>
+                <p class="backpack-warning" id="backpack-warning"></p>
             </div>
+            
             <button id="enter-dungeon-btn" class="btn success">⚔️ 进入地牢</button>
         </div>
 
