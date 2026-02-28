@@ -23,7 +23,11 @@ const GameState = {
     pickaxeType: 'single', // single, cross, horizontal
     pickaxeDurability: 0,
     pickaxeMaxDurability: 0,
-    inventory: [],
+    // 默认背包里有初始雷达和初始单格镐（因为商店里它们是“已拥有”）
+    inventory: [
+        { id: 'radar_1', name: '雷达 Lv1', type: 'radar', level: 1 },
+        { id: 'pickaxe_single', name: '单格镐', type: 'pickaxe', pickaxeType: 'single' }
+    ],
 
     // 局外状态
     money: 0,
@@ -521,13 +525,6 @@ class Game {
     dig(x, y) {
         if (GameState.isGameOver) return;
         
-        if (GameState.pickaxeDurability <= 0) {
-            this.log('镐子耐久耗尽！', 'danger');
-            return;
-        }
-        
-        GameState.pickaxeDurability--;
-
         // 检查是否相邻
         const px = GameState.dungeon.playerPos.x;
         const py = GameState.dungeon.playerPos.y;
@@ -568,6 +565,20 @@ class Game {
             this.endTurn();
             return;
         }
+        
+        // 挖掘逻辑开始：检查镐子耐久
+        if (GameState.pickaxeDurability <= 0) {
+            this.log('当前镐子耐久耗尽！', 'danger');
+            
+            // 自动尝试从背包寻找可用的镐子
+            const availablePickaxeIndex = GameState.inventory.findIndex(item => item.type === 'pickaxe');
+            if (availablePickaxeIndex !== -1) {
+                if (confirm('当前镐子坏了，背包里有其他镐子，是否切换？')) {
+                    this.switchPickaxe();
+                }
+            }
+            return;
+        }
 
         // 根据镐子类型确定挖掘范围
         const digTargets = this.getDigTargets(x, y);
@@ -600,6 +611,11 @@ class Game {
 
         // 消耗回合
         GameState.turn++;
+        
+        // 消耗镐子耐久
+        if (GameState.pickaxeDurability > 0) {
+            GameState.pickaxeDurability--;
+        }
 
         // 播放挖掘音效
         this.audio.playDig();
@@ -752,6 +768,29 @@ class Game {
 
         this.updateUI();
         this.renderGrid();
+    }
+
+    switchPickaxe() {
+        const availablePickaxeIndex = GameState.inventory.findIndex(item => item.type === 'pickaxe');
+        if (availablePickaxeIndex !== -1) {
+            const newPickaxe = GameState.inventory[availablePickaxeIndex];
+            
+            // 替换装备
+            GameState.pickaxeType = newPickaxe.pickaxeType;
+            if (GameState.pickaxeType === 'single') GameState.pickaxeMaxDurability = 20;
+            else if (GameState.pickaxeType === 'cross') GameState.pickaxeMaxDurability = 15;
+            else if (GameState.pickaxeType === 'horizontal') GameState.pickaxeMaxDurability = 10;
+            
+            GameState.pickaxeDurability = GameState.pickaxeMaxDurability;
+            
+            // 从背包中移除
+            GameState.inventory.splice(availablePickaxeIndex, 1);
+            
+            this.log(`已切换镐子：${newPickaxe.name}，耐久恢复满！`, 'success');
+            this.updateUI();
+        } else {
+            this.log('背包中没有备用镐子！', 'warning');
+        }
     }
 
     switchRadar() {
@@ -1042,6 +1081,16 @@ class Game {
         const keyElement = document.getElementById('key-value');
         if (keyElement) {
             keyElement.textContent = GameState.keys;
+        }
+        
+        // 更新雷达电量和镐子耐久度
+        const radarChargeElement = document.getElementById('radar-charge');
+        if (radarChargeElement) {
+            radarChargeElement.textContent = `${GameState.radarCharge}/${GameState.radarMaxCharge}`;
+        }
+        const pickaxeDurElement = document.getElementById('pickaxe-durability');
+        if (pickaxeDurElement) {
+            pickaxeDurElement.textContent = `${GameState.pickaxeDurability}/${GameState.pickaxeMaxDurability}`;
         }
         
         document.getElementById('hp-bar').style.width = `${(GameState.hp / GameState.maxHp) * 100}%`;
