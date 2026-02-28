@@ -487,6 +487,64 @@ body {
     display: none !important;
 }
 
+/* 背包相关样式 */
+.backpack-section {
+    background: #1a1a2e;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 2px solid #2a2a3a;
+}
+
+.backpack-section h2 {
+    color: #f39c12;
+    margin-bottom: 15px;
+}
+
+.backpack-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.backpack-slot {
+    aspect-ratio: 1;
+    background: #0f0f1a;
+    border: 2px dashed #2a2a3a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: all 0.2s;
+}
+
+.backpack-slot.filled {
+    border-style: solid;
+    border-color: #3498db;
+    background: #1e3a5f;
+}
+
+.backpack-slot.filled:hover {
+    border-color: #f39c12;
+    transform: scale(1.05);
+}
+
+.backpack-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.backpack-warning {
+    color: #e94560;
+    font-size: 14px;
+    margin-top: 10px;
+    min-height: 20px;
+}
+
 /* 移动端适配 */
 @media (max-width: 600px) {
     #game-container {

@@ -27,7 +27,7 @@ const GameState = {
 
     // 局外状态
     money: 0,
-    backpackSize: 5,
+    backpackSize: 10,
     keys: 0, // 钥匙数量
 
     // 游戏状态
@@ -39,14 +39,14 @@ const GameState = {
 // 商店配置
 const SHOP = {
     radars: [
-        { level: 1, name: '雷达 Lv1', price: 0, desc: '显示1-2级危险，3级显示安全' },
-        { level: 2, name: '雷达 Lv2', price: 200, desc: '显示1-3级危险，看绿眼掉5SAN' },
-        { level: 3, name: '雷达 Lv3', price: 500, desc: '显示1-3级危险，看绿眼掉3SAN' }
+        { id: 'radar_1', level: 1, name: '雷达 Lv1', price: 0, desc: '显示1-2级危险，3级显示安全' },
+        { id: 'radar_2', level: 2, name: '雷达 Lv2', price: 200, desc: '显示1-3级危险，看绿眼掉5SAN' },
+        { id: 'radar_3', level: 3, name: '雷达 Lv3', price: 500, desc: '显示1-3级危险，看绿眼掉3SAN' }
     ],
     pickaxes: [
-        { type: 'single', name: '单格镐', price: 0, damage: 30, desc: '挖掘1格，伤害30' },
-        { type: 'cross', name: '十字镐', price: 150, damage: 25, desc: '挖掘十字5格，伤害25' },
-        { type: 'horizontal', name: '横排镐', price: 250, damage: 40, desc: '挖掘横向3格，伤害40' }
+        { id: 'pickaxe_single', type: 'single', name: '单格镐', price: 0, damage: 30, desc: '挖掘1格，伤害30' },
+        { id: 'pickaxe_cross', type: 'cross', name: '十字镐', price: 150, damage: 25, desc: '挖掘十字5格，伤害25' },
+        { id: 'pickaxe_horizontal', type: 'horizontal', name: '横排镐', price: 250, damage: 40, desc: '挖掘横向3格，伤害40' }
     ]
 };
 
@@ -106,22 +106,34 @@ class Game {
     // 购买雷达
     buyRadar(level, price) {
         if (GameState.money >= price) {
+            const radar = SHOP.radars.find(r => r.level === level);
+            if (GameState.inventory.length >= GameState.backpackSize) {
+                alert('背包已满！请先清理背包。');
+                return;
+            }
             GameState.money -= price;
-            GameState.radarLevel = level;
+            // 购买后放入背包，而不是直接装备
+            GameState.inventory.push({ id: radar.id, name: radar.name, type: 'radar', level: radar.level });
             this.renderShop();
             this.updateVillageUI();
-            this.log(`购买了雷达 Lv${level}！`, 'success');
+            this.log(`购买了${radar.name}，已放入背包！`, 'success');
         }
     }
 
     // 购买镐子
     buyPickaxe(type, price) {
         if (GameState.money >= price) {
+            const pickaxe = SHOP.pickaxes.find(p => p.type === type);
+            if (GameState.inventory.length >= GameState.backpackSize) {
+                alert('背包已满！请先清理背包。');
+                return;
+            }
             GameState.money -= price;
-            GameState.pickaxeType = type;
+            // 购买后放入背包，而不是直接装备
+            GameState.inventory.push({ id: pickaxe.id, name: pickaxe.name, type: 'pickaxe', pickaxeType: pickaxe.type });
             this.renderShop();
             this.updateVillageUI();
-            this.log(`购买了${SHOP.pickaxes.find(p => p.type === type).name}！`, 'success');
+            this.log(`购买了${pickaxe.name}，已放入背包！`, 'success');
         }
     }
 
@@ -133,6 +145,9 @@ class Game {
             backpackMaxElement.textContent = GameState.backpackSize;
         }
         
+        // 更新背包格子展示
+        this.renderVillageBackpack();
+        
         // 如果有装备显示，更新它们（兼容旧的UI）
         const radarElement = document.getElementById('equip-radar');
         if (radarElement) {
@@ -142,6 +157,54 @@ class Game {
         if (pickaxeElement) {
             const pickaxe = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType);
             if (pickaxe) pickaxeElement.textContent = pickaxe.name;
+        }
+    }
+    
+    // 渲染村庄背包格子
+    renderVillageBackpack() {
+        const gridElement = document.getElementById('village-backpack-grid');
+        const countElement = document.getElementById('village-backpack-count');
+        if (!gridElement) return;
+        
+        gridElement.innerHTML = '';
+        if (countElement) {
+            countElement.textContent = GameState.inventory.length;
+        }
+        
+        for (let i = 0; i < GameState.backpackSize; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'backpack-slot';
+            
+            if (i < GameState.inventory.length) {
+                const item = GameState.inventory[i];
+                slot.classList.add('filled');
+                
+                // 设置图标
+                if (item.type === 'radar') {
+                    slot.textContent = '📡';
+                    slot.title = `${item.name}\n点击装备`;
+                } else if (item.type === 'pickaxe') {
+                    slot.textContent = '🔨';
+                    slot.title = `${item.name}\n点击装备`;
+                }
+                
+                // 背包内物品可以被点击装备
+                slot.style.cursor = 'pointer';
+                slot.onclick = () => {
+                    if (item.type === 'radar') {
+                        GameState.radarLevel = item.level;
+                        this.log(`已装备 ${item.name}`, 'success');
+                        this.updateVillageUI();
+                    } else if (item.type === 'pickaxe') {
+                        GameState.pickaxeType = item.pickaxeType;
+                        this.log(`已装备 ${item.name}`, 'success');
+                        this.updateVillageUI();
+                    }
+                };
+            } else {
+                slot.classList.add('empty');
+            }
+            gridElement.appendChild(slot);
         }
     }
 
@@ -249,11 +312,28 @@ class Game {
             this.showVillage();
         });
         
+        // 背包相关按钮
+        const clearBackpackBtn = document.getElementById('clear-backpack-btn');
+        if (clearBackpackBtn) {
+            clearBackpackBtn.addEventListener('click', () => {
+                if (confirm('确定要清空背包吗？所有物品将永久丢失！')) {
+                    GameState.inventory = [];
+                    this.updateVillageUI();
+                }
+            });
+        }
+        
         // 调试按钮
         document.getElementById('debug-btn').addEventListener('click', () => {
             const panel = document.getElementById('debug-panel');
             panel.classList.toggle('hidden');
         });
+        
+        // 绑定切换雷达快捷键 (如果有对应按钮的话，这里留个后门也可以)
+        const switchRadarBtn = document.getElementById('switch-radar-btn');
+        if (switchRadarBtn) {
+            switchRadarBtn.addEventListener('click', () => this.switchRadar());
+        }
         
         document.getElementById('clear-debug-btn').addEventListener('click', () => {
             document.getElementById('debug-content').innerHTML = '';
@@ -674,9 +754,44 @@ class Game {
         this.renderGrid();
     }
 
+    switchRadar() {
+        const availableRadarIndex = GameState.inventory.findIndex(item => item.type === 'radar');
+        if (availableRadarIndex !== -1) {
+            const newRadar = GameState.inventory[availableRadarIndex];
+            
+            // 把当前雷达放回背包（如果还有电的话，但这里逻辑简化为旧雷达没电就丢弃或也放回去）
+            // 简单处理：将当前装备的雷达替换为背包里的雷达
+            // 保存当前雷达状态（这里为了简化，旧雷达直接废弃，因为没电了，或者可以存入背包带状态）
+            
+            // 替换装备
+            GameState.radarLevel = newRadar.level;
+            if (GameState.radarLevel === 1) GameState.radarMaxCharge = 3;
+            else if (GameState.radarLevel === 2) GameState.radarMaxCharge = 5;
+            else if (GameState.radarLevel === 3) GameState.radarMaxCharge = 7;
+            
+            GameState.radarCharge = GameState.radarMaxCharge;
+            
+            // 从背包中移除
+            GameState.inventory.splice(availableRadarIndex, 1);
+            
+            this.log(`已切换雷达：Lv${newRadar.level}，电量恢复满！`, 'success');
+            this.updateUI();
+        } else {
+            this.log('背包中没有备用雷达！', 'warning');
+        }
+    }
+
     useRadar() {
         if (GameState.radarCharge <= 0) {
-            this.log('雷达电量耗尽！', 'danger');
+            this.log('当前雷达电量耗尽！请切换雷达。', 'danger');
+            
+            // 自动尝试从背包寻找可用的雷达
+            const availableRadarIndex = GameState.inventory.findIndex(item => item.type === 'radar');
+            if (availableRadarIndex !== -1) {
+                if (confirm('当前雷达没电了，背包里有其他雷达，是否切换？')) {
+                    this.switchRadar();
+                }
+            }
             return;
         }
         
