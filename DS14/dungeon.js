@@ -19,8 +19,22 @@ class Dungeon {
         for (let y = 0; y < this.size; y++) {
             this.grid[y] = [];
             for (let x = 0; x < this.size; x++) {
+                // 需求2：墙格3种类型（薄50%、厚30%、陷阱20%）
+                const rand = Math.random();
+                let wallType = 'thin';
+                let thickness = 1;
+                
+                if (rand < 0.3) {
+                    wallType = 'thick';
+                    thickness = Math.floor(Math.random() * 2) + 2; // 2-3次
+                } else if (rand < 0.5) {
+                    wallType = 'trap';
+                }
+
                 this.grid[y][x] = {
                     type: 'wall',
+                    wallType: wallType,
+                    thickness: thickness,
                     revealed: false,
                     x, y
                 };
@@ -54,15 +68,32 @@ class Dungeon {
     }
 
     placeItems() {
-        const items = ['health', 'sanity', 'oxygen'];
-        // 30%概率生成在空地上
-        for (let y = 0; y < this.size; y++) {
-            for (let x = 0; x < this.size; x++) {
-                if (this.grid[y][x].type === 'wall' && Math.random() < 0.3) {
-                    // 仅在空位置生成
-                    this.grid[y][x].item = items[Math.floor(Math.random() * items.length)];
-                }
+        // 需求3：每个房间生成1-3个消耗品
+        const numItems = Math.floor(Math.random() * 3) + 1;
+        let itemsPlaced = 0;
+        let attempts = 0;
+        
+        while (itemsPlaced < numItems && attempts < 100) {
+            const x = Math.floor(Math.random() * this.size);
+            const y = Math.floor(Math.random() * this.size);
+            const cell = this.grid[y][x];
+            
+            // 只能放在未被揭示且没有其他特殊物品的墙格里
+            if (cell.type === 'wall' && !cell.item && !(x === 0 && y === 0)) {
+                // 埋在厚墙后的概率30%，薄墙后70%（如果这里原本是陷阱墙，把它改成普通墙以放置物品，或者直接放，这里不强制改变墙类型，只按需求说"埋在厚墙/薄墙后"）
+                // 实际实现：随机寻找合适的墙。如果这个格子正好符合条件：
+                const randType = Math.random();
+                let itemType = '';
+                // 血瓶40%, 理智药30%, 氧气罐20%, 炸弹10%
+                if (randType < 0.4) itemType = 'health';
+                else if (randType < 0.7) itemType = 'sanity';
+                else if (randType < 0.9) itemType = 'oxygen';
+                else itemType = 'bomb';
+                
+                cell.item = itemType;
+                itemsPlaced++;
             }
+            attempts++;
         }
     }
 
@@ -173,12 +204,27 @@ class Dungeon {
         
         // 已经揭示的不能挖
         if (cell.revealed) return null;
+
+        // 如果是厚墙，减少厚度但不揭示
+        if (cell.type === 'wall' && cell.wallType === 'thick' && cell.thickness > 1) {
+            cell.thickness--;
+            return { type: 'thick_wall_hit' };
+        }
         
         // 获取该位置的绿眼
         const eye = this.getGreenEyeAt(x, y);
         
         // 标记为已揭示
         cell.revealed = true;
+
+        // 如果是陷阱墙
+        let trapEffect = null;
+        if (cell.type === 'wall' && cell.wallType === 'trap') {
+            const r = Math.random();
+            if (r < 0.33) trapEffect = 'hp';
+            else if (r < 0.66) trapEffect = 'san';
+            else trapEffect = 'greenEye';
+        }
 
         // 根据类型返回结果
         if (cell.type === 'door') {
@@ -195,11 +241,11 @@ class Dungeon {
             const itemType = cell.item;
             cell.item = null; // 挖出后清除格子上的物品记录
             cell.type = 'empty';
-            return { type: 'item', item: itemType };
+            return { type: 'item', item: itemType, trap: trapEffect };
         } else {
             // wall 或 empty 都返回 empty
             cell.type = 'empty';
-            return { type: 'empty' };
+            return { type: 'empty', trap: trapEffect };
         }
     }
 
@@ -243,7 +289,14 @@ class Dungeon {
             return 'safe'; // Lv1-2显示安全（欺骗）
         }
         
-        if (cell.type === 'wall') return 'unknown';
+        if (cell.type === 'wall') {
+            if (radarLevel >= 2) {
+                if (cell.wallType === 'thick') return 'thick-wall';
+                if (cell.wallType === 'trap') return 'trap-wall';
+                return 'thin-wall';
+            }
+            return 'unknown';
+        }
         return 'empty';
     }
 

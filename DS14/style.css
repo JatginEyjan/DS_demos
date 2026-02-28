@@ -66,6 +66,12 @@ body {
     background: #7c3aed;
 }
 
+.stat span.danger-text {
+    color: #e94560;
+    font-weight: bold;
+    animation: pulse 1s infinite;
+}
+
 /* 地牢网格 */
 #dungeon-grid {
     display: grid;

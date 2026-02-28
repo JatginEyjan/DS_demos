@@ -754,13 +754,39 @@ class Game {
                 case 'item':
                     this.handleFoundItem(mainResult.item);
                     break;
+                case 'thick_wall_hit':
+                    this.log(`当！这是厚墙，还需要继续挖掘。`);
+                    break;
                 default:
                     this.log(`挖掘了 ${digTargets.length} 面墙。`);
+            }
+            
+            // 处理陷阱效果
+            if (mainResult.trap) {
+                this.handleTrap(mainResult.trap);
             }
         }
 
         // 回合结束结算
         this.endTurn();
+    }
+    
+    handleTrap(trapType) {
+        this.log('💥 触发了陷阱！', 'danger');
+        if (trapType === 'hp') {
+            GameState.hp -= 10;
+            this.log('受到陷阱伤害，HP -10', 'danger');
+        } else if (trapType === 'san') {
+            GameState.san -= 10;
+            this.log('精神受到冲击，SAN -10', 'danger');
+        } else if (trapType === 'greenEye') {
+            // 尝试在附近生成或激活一个绿眼
+            this.log('陷阱发出了巨大的噪音，吸引了注意...', 'danger');
+            this.audio.playHeartbeat();
+        }
+        
+        if (GameState.hp <= 0) this.gameOver('死亡');
+        if (GameState.san <= 0) this.gameOver('疯狂');
     }
     
     handleFoundItem(itemType) {
@@ -1035,9 +1061,21 @@ class Game {
                         marker.textContent = '?';
                         marker.style.color = '#f39c12';
                         break;
+                    case 'thick-wall':
+                        marker.textContent = '≡';
+                        marker.style.color = '#888';
+                        break;
+                    case 'trap-wall':
+                        marker.textContent = '☠';
+                        marker.style.color = '#8e44ad';
+                        break;
+                    case 'thin-wall':
+                        marker.textContent = '▫';
+                        marker.style.color = '#aaa';
+                        break;
                     default:
                         marker.textContent = '•';
-                        marker.style.color = '#888';
+                        marker.style.color = '#555';
                 }
                 
                 marker.style.cssText = `
@@ -1067,6 +1105,9 @@ class Game {
             case 'danger-3': return '!!! 致命';
             case '?': return '? 未知';
             case 'unknown': return '■ 墙体';
+            case 'thin-wall': return '▫ 薄墙';
+            case 'thick-wall': return '≡ 厚墙';
+            case 'trap-wall': return '☠ 陷阱墙';
             default: return '○ 空';
         }
     }
@@ -1249,6 +1290,12 @@ class Game {
         const pickaxeDurElement = document.getElementById('pickaxe-durability');
         if (pickaxeDurElement) {
             pickaxeDurElement.textContent = `${GameState.pickaxeDurability}/${GameState.pickaxeMaxDurability}`;
+            // 耐久低于30%时变红警告
+            if (GameState.pickaxeMaxDurability > 0 && (GameState.pickaxeDurability / GameState.pickaxeMaxDurability) <= 0.3) {
+                pickaxeDurElement.classList.add('danger-text');
+            } else {
+                pickaxeDurElement.classList.remove('danger-text');
+            }
         }
         
         // 更新地牢内背包（如果在的话）
