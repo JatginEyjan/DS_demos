@@ -118,14 +118,14 @@ class Dungeon {
         // 生成避难所房间（3x3 安全区）
         // [普通回复] [完全回复] [普通回复]
         // [  空   ] [玩家位置] [  空   ]
-        // [  空   ] [完全撤退] [  空   ]
+        // [下一层门] [完全撤退] [下一层门]
         return {
             size: 3,
             playerPos: { x: 1, y: 1 },
             grid: [
                 [{type: 'heal'}, {type: 'full-heal'}, {type: 'heal'}],
                 [{type: 'empty'}, {type: 'empty'}, {type: 'empty'}],
-                [{type: 'empty'}, {type: 'full-retreat'}, {type: 'empty'}]
+                [{type: 'door-next'}, {type: 'full-retreat'}, {type: 'door-next'}]
             ]
         };
     }
@@ -191,6 +191,11 @@ class Dungeon {
         } else if (eye && !eye.defeated) {
             eye.active = true;
             return { type: 'greenEye', eye };
+        } else if (cell.item) {
+            const itemType = cell.item;
+            cell.item = null; // 挖出后清除格子上的物品记录
+            cell.type = 'empty';
+            return { type: 'item', item: itemType };
         } else {
             // wall 或 empty 都返回 empty
             cell.type = 'empty';

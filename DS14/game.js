@@ -23,11 +23,15 @@ const GameState = {
     pickaxeType: 'single', // single, cross, horizontal
     pickaxeDurability: 0,
     pickaxeMaxDurability: 0,
-    inventory: [],
+    // 默认背包里有初始雷达和初始单格镐（因为商店里它们是“已拥有”）
+    inventory: [
+        { id: 'radar_1', name: '雷达 Lv1', type: 'radar', level: 1 },
+        { id: 'pickaxe_single', name: '单格镐', type: 'pickaxe', pickaxeType: 'single' }
+    ],
 
     // 局外状态
     money: 0,
-    backpackSize: 5,
+    backpackSize: 10,
     keys: 0, // 钥匙数量
 
     // 游戏状态
@@ -39,14 +43,14 @@ const GameState = {
 // 商店配置
 const SHOP = {
     radars: [
-        { level: 1, name: '雷达 Lv1', price: 0, desc: '显示1-2级危险，3级显示安全' },
-        { level: 2, name: '雷达 Lv2', price: 200, desc: '显示1-3级危险，看绿眼掉5SAN' },
-        { level: 3, name: '雷达 Lv3', price: 500, desc: '显示1-3级危险，看绿眼掉3SAN' }
+        { id: 'radar_1', level: 1, name: '雷达 Lv1', price: 0, desc: '显示1-2级危险，3级显示安全' },
+        { id: 'radar_2', level: 2, name: '雷达 Lv2', price: 200, desc: '显示1-3级危险，看绿眼掉5SAN' },
+        { id: 'radar_3', level: 3, name: '雷达 Lv3', price: 500, desc: '显示1-3级危险，看绿眼掉3SAN' }
     ],
     pickaxes: [
-        { type: 'single', name: '单格镐', price: 0, damage: 30, desc: '挖掘1格，伤害30' },
-        { type: 'cross', name: '十字镐', price: 150, damage: 25, desc: '挖掘十字5格，伤害25' },
-        { type: 'horizontal', name: '横排镐', price: 250, damage: 40, desc: '挖掘横向3格，伤害40' }
+        { id: 'pickaxe_single', type: 'single', name: '单格镐', price: 0, damage: 30, desc: '挖掘1格，伤害30' },
+        { id: 'pickaxe_cross', type: 'cross', name: '十字镐', price: 150, damage: 25, desc: '挖掘十字5格，伤害25' },
+        { id: 'pickaxe_horizontal', type: 'horizontal', name: '横排镐', price: 250, damage: 40, desc: '挖掘横向3格，伤害40' }
     ]
 };
 
@@ -106,22 +110,34 @@ class Game {
     // 购买雷达
     buyRadar(level, price) {
         if (GameState.money >= price) {
+            const radar = SHOP.radars.find(r => r.level === level);
+            if (GameState.inventory.length >= GameState.backpackSize) {
+                alert('背包已满！请先清理背包。');
+                return;
+            }
             GameState.money -= price;
-            GameState.radarLevel = level;
+            // 购买后放入背包，而不是直接装备
+            GameState.inventory.push({ id: radar.id, name: radar.name, type: 'radar', level: radar.level });
             this.renderShop();
             this.updateVillageUI();
-            this.log(`购买了雷达 Lv${level}！`, 'success');
+            this.log(`购买了${radar.name}，已放入背包！`, 'success');
         }
     }
 
     // 购买镐子
     buyPickaxe(type, price) {
         if (GameState.money >= price) {
+            const pickaxe = SHOP.pickaxes.find(p => p.type === type);
+            if (GameState.inventory.length >= GameState.backpackSize) {
+                alert('背包已满！请先清理背包。');
+                return;
+            }
             GameState.money -= price;
-            GameState.pickaxeType = type;
+            // 购买后放入背包，而不是直接装备
+            GameState.inventory.push({ id: pickaxe.id, name: pickaxe.name, type: 'pickaxe', pickaxeType: pickaxe.type });
             this.renderShop();
             this.updateVillageUI();
-            this.log(`购买了${SHOP.pickaxes.find(p => p.type === type).name}！`, 'success');
+            this.log(`购买了${pickaxe.name}，已放入背包！`, 'success');
         }
     }
 
@@ -133,6 +149,9 @@ class Game {
             backpackMaxElement.textContent = GameState.backpackSize;
         }
         
+        // 更新背包格子展示
+        this.renderVillageBackpack();
+        
         // 如果有装备显示，更新它们（兼容旧的UI）
         const radarElement = document.getElementById('equip-radar');
         if (radarElement) {
@@ -143,6 +162,163 @@ class Game {
             const pickaxe = SHOP.pickaxes.find(p => p.type === GameState.pickaxeType);
             if (pickaxe) pickaxeElement.textContent = pickaxe.name;
         }
+    }
+    
+    // 渲染背包格子 (通用)
+    renderBackpack(gridElementId, countElementId = null) {
+        const gridElement = document.getElementById(gridElementId);
+        if (!gridElement) return;
+        
+        const countElement = countElementId ? document.getElementById(countElementId) : null;
+        
+        gridElement.innerHTML = '';
+        if (countElement) {
+            countElement.textContent = GameState.inventory.length;
+        }
+        
+        for (let i = 0; i < GameState.backpackSize; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'backpack-slot';
+            
+            if (i < GameState.inventory.length) {
+                const item = GameState.inventory[i];
+                slot.classList.add('filled');
+                
+                // 设置图标
+                if (item.type === 'radar') {
+                    slot.textContent = '📡';
+                    slot.title = `${item.name}\n点击查看/操作`;
+                } else if (item.type === 'pickaxe') {
+                    slot.textContent = '🔨';
+                    slot.title = `${item.name}\n点击查看/操作`;
+                } else if (item.type === 'item') {
+                    if (item.itemType === 'health') {
+                        slot.textContent = '❤️';
+                        slot.title = `生命药水\n点击查看/操作`;
+                    } else if (item.itemType === 'sanity') {
+                        slot.textContent = '🧠';
+                        slot.title = `理智药水\n点击查看/操作`;
+                    } else if (item.itemType === 'oxygen') {
+                        slot.textContent = '💨';
+                        slot.title = `氧气罐\n点击查看/操作`;
+                    }
+                }
+                
+                // 背包交互
+                slot.style.cursor = 'pointer';
+                slot.onclick = () => {
+                    this.handleBackpackItemClick(i);
+                };
+            } else {
+                slot.classList.add('empty');
+            }
+            gridElement.appendChild(slot);
+        }
+    }
+
+    handleBackpackItemClick(index) {
+        const item = GameState.inventory[index];
+        if (!item) return;
+
+        let itemName = item.name;
+        let itemDesc = '';
+        
+        // 组装物品详情
+        if (item.type === 'radar') {
+            const r = SHOP.radars.find(r => r.level === item.level);
+            itemDesc = r ? r.desc : '显示危险';
+        } else if (item.type === 'pickaxe') {
+            const p = SHOP.pickaxes.find(p => p.type === item.pickaxeType);
+            itemDesc = p ? p.desc : '挖掘墙壁';
+        } else if (item.type === 'item') {
+            if (item.itemType === 'health') {
+                itemName = '生命药水';
+                itemDesc = '恢复 30 HP';
+            } else if (item.itemType === 'sanity') {
+                itemName = '理智药水';
+                itemDesc = '恢复 30 SAN';
+            } else if (item.itemType === 'oxygen') {
+                itemName = '氧气罐';
+                itemDesc = '恢复 10 氧气';
+            }
+        }
+
+        if (GameState.inDungeon) {
+            // 在地牢中
+            const useAction = item.type === 'item' ? '使用' : '装备';
+            if (confirm(`【物品详情】\n名称: ${itemName}\n描述: ${itemDesc}\n\n是否${useAction}该物品？`)) {
+                if (item.type === 'radar') {
+                    this.switchRadar(index);
+                } else if (item.type === 'pickaxe') {
+                    this.switchPickaxe(index);
+                } else if (item.type === 'item') {
+                    this.useItem(index);
+                }
+            }
+        } else {
+            // 在村庄中
+            const canSell = item.type === 'item';
+            const actionText = canSell ? '出售 (+30💰)' : '装备';
+            
+            if (confirm(`【物品详情】\n名称: ${itemName}\n描述: ${itemDesc}\n\n是否${actionText}？`)) {
+                if (item.type === 'radar') {
+                    // 把当前装备放回背包，替换它
+                    const oldLevel = GameState.radarLevel;
+                    const oldRadar = SHOP.radars.find(r => r.level === oldLevel);
+                    GameState.radarLevel = item.level;
+                    if (oldRadar) {
+                        GameState.inventory[index] = { id: oldRadar.id, name: oldRadar.name, type: 'radar', level: oldRadar.level };
+                    } else {
+                        GameState.inventory.splice(index, 1);
+                    }
+                    this.log(`已装备 ${item.name}`, 'success');
+                    this.updateVillageUI();
+                } else if (item.type === 'pickaxe') {
+                    // 把当前装备放回背包，替换它
+                    const oldType = GameState.pickaxeType;
+                    const oldPickaxe = SHOP.pickaxes.find(p => p.type === oldType);
+                    GameState.pickaxeType = item.pickaxeType;
+                    if (oldPickaxe) {
+                        GameState.inventory[index] = { id: oldPickaxe.id, name: oldPickaxe.name, type: 'pickaxe', pickaxeType: oldPickaxe.type };
+                    } else {
+                        GameState.inventory.splice(index, 1);
+                    }
+                    this.log(`已装备 ${item.name}`, 'success');
+                    this.updateVillageUI();
+                } else if (item.type === 'item') {
+                    GameState.money += 30;
+                    GameState.inventory.splice(index, 1);
+                    this.log(`卖出了 ${itemName}，获得 30💰`, 'success');
+                    this.updateVillageUI();
+                }
+            }
+        }
+    }
+
+    useItem(index) {
+        const item = GameState.inventory[index];
+        if (item.itemType === 'health') {
+            GameState.hp = Math.min(GameState.maxHp, GameState.hp + 30);
+            this.log('使用了生命药水，恢复 30 HP！', 'success');
+        } else if (item.itemType === 'sanity') {
+            GameState.san = Math.min(GameState.maxSan, GameState.san + 30);
+            this.log('使用了理智药水，恢复 30 SAN！', 'success');
+        } else if (item.itemType === 'oxygen') {
+            GameState.oxygen += 10;
+            this.log('使用了氧气罐，恢复 10 氧气！', 'success');
+        }
+        GameState.inventory.splice(index, 1);
+        this.updateUI();
+    }
+
+    // 渲染村庄背包格子
+    renderVillageBackpack() {
+        this.renderBackpack('village-backpack-grid', 'village-backpack-count');
+    }
+    
+    // 渲染地牢背包格子
+    renderDungeonBackpack() {
+        this.renderBackpack('dungeon-backpack-grid');
     }
 
     // 进入地牢
@@ -211,6 +387,9 @@ class Game {
         if (followingCount > 0) {
             this.log(`感觉到 ${followingCount} 个绿眼跟随而来...`, 'danger');
         }
+        
+        // 播放背景音效
+        this.audio.playBGM();
     }
 
     bindEvents() {
@@ -254,6 +433,12 @@ class Game {
             const panel = document.getElementById('debug-panel');
             panel.classList.toggle('hidden');
         });
+        
+        // 绑定切换雷达快捷键 (如果有对应按钮的话，这里留个后门也可以)
+        const switchRadarBtn = document.getElementById('switch-radar-btn');
+        if (switchRadarBtn) {
+            switchRadarBtn.addEventListener('click', () => this.switchRadar());
+        }
         
         document.getElementById('clear-debug-btn').addEventListener('click', () => {
             document.getElementById('debug-content').innerHTML = '';
@@ -428,6 +613,17 @@ class Game {
                         this.retreatFromSanctuary();
                     });
                 }
+                else if (roomCell.type === 'door-next') {
+                    // 进入下一层门
+                    cell.classList.add('door', 'clickable');
+                    cell.textContent = '🚪';
+                    cell.title = '安全屋专属：点击直接进入下一层（无需钥匙）';
+                    cell.style.cursor = 'pointer';
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.handleSanctuaryDoorClick();
+                    });
+                }
                 else {
                     cell.classList.add('empty');
                     cell.textContent = '';
@@ -441,13 +637,6 @@ class Game {
     dig(x, y) {
         if (GameState.isGameOver) return;
         
-        if (GameState.pickaxeDurability <= 0) {
-            this.log('镐子耐久耗尽！', 'danger');
-            return;
-        }
-        
-        GameState.pickaxeDurability--;
-
         // 检查是否相邻
         const px = GameState.dungeon.playerPos.x;
         const py = GameState.dungeon.playerPos.y;
@@ -474,8 +663,32 @@ class Game {
             this.log(`🏃 移动到 (${x}, ${y})`);
             GameState.dungeon.playerPos.x = x;
             GameState.dungeon.playerPos.y = y;
+            
+            // 触发特殊格子的效果
+            if (cell.type === 'door') {
+                this.handleDoorClick();
+                return; // 进入新房间，不再执行后续
+            } else if (cell.type === 'sanctuary-entrance') {
+                this.enterSanctuaryRoom();
+                return; // 进入避难所，不再执行后续
+            }
+            
             GameState.turn++;
             this.endTurn();
+            return;
+        }
+        
+        // 挖掘逻辑开始：检查镐子耐久
+        if (GameState.pickaxeDurability <= 0) {
+            this.log('当前镐子耐久耗尽！', 'danger');
+            
+            // 自动尝试从背包寻找可用的镐子
+            const availablePickaxeIndex = GameState.inventory.findIndex(item => item.type === 'pickaxe');
+            if (availablePickaxeIndex !== -1) {
+                if (confirm('当前镐子坏了，背包里有其他镐子，是否切换？')) {
+                    this.switchPickaxe();
+                }
+            }
             return;
         }
 
@@ -510,6 +723,11 @@ class Game {
 
         // 消耗回合
         GameState.turn++;
+        
+        // 消耗镐子耐久
+        if (GameState.pickaxeDurability > 0) {
+            GameState.pickaxeDurability--;
+        }
 
         // 播放挖掘音效
         this.audio.playDig();
@@ -533,6 +751,9 @@ class Game {
                 case 'sanctuary-entrance':
                     this.log('🏠 发现了避难所入口！点击进入可以安全休息。', 'success');
                     break;
+                case 'item':
+                    this.handleFoundItem(mainResult.item);
+                    break;
                 default:
                     this.log(`挖掘了 ${digTargets.length} 面墙。`);
             }
@@ -540,6 +761,31 @@ class Game {
 
         // 回合结束结算
         this.endTurn();
+    }
+    
+    handleFoundItem(itemType) {
+        if (GameState.inventory.length >= GameState.backpackSize) {
+            this.log('发现了物品，但背包已满无法拾取！', 'warning');
+            return;
+        }
+        
+        let itemObj = { type: 'item', itemType: itemType };
+        if (itemType === 'health') {
+            itemObj.name = '生命药水';
+            itemObj.id = 'item_health';
+            this.log('🎁 发现了生命药水！已放入背包。', 'success');
+        } else if (itemType === 'sanity') {
+            itemObj.name = '理智药水';
+            itemObj.id = 'item_sanity';
+            this.log('🎁 发现了理智药水！已放入背包。', 'success');
+        } else if (itemType === 'oxygen') {
+            itemObj.name = '氧气罐';
+            itemObj.id = 'item_oxygen';
+            this.log('🎁 发现了氧气罐！已放入背包。', 'success');
+        }
+        
+        GameState.inventory.push(itemObj);
+        this.updateUI();
     }
 
     // 根据镐子类型获取挖掘目标
@@ -664,9 +910,67 @@ class Game {
         this.renderGrid();
     }
 
+    switchPickaxe() {
+        const availablePickaxeIndex = GameState.inventory.findIndex(item => item.type === 'pickaxe');
+        if (availablePickaxeIndex !== -1) {
+            const newPickaxe = GameState.inventory[availablePickaxeIndex];
+            
+            // 替换装备
+            GameState.pickaxeType = newPickaxe.pickaxeType;
+            if (GameState.pickaxeType === 'single') GameState.pickaxeMaxDurability = 20;
+            else if (GameState.pickaxeType === 'cross') GameState.pickaxeMaxDurability = 15;
+            else if (GameState.pickaxeType === 'horizontal') GameState.pickaxeMaxDurability = 10;
+            
+            GameState.pickaxeDurability = GameState.pickaxeMaxDurability;
+            
+            // 从背包中移除
+            GameState.inventory.splice(availablePickaxeIndex, 1);
+            
+            this.log(`已切换镐子：${newPickaxe.name}，耐久恢复满！`, 'success');
+            this.updateUI();
+        } else {
+            this.log('背包中没有备用镐子！', 'warning');
+        }
+    }
+
+    switchRadar() {
+        const availableRadarIndex = GameState.inventory.findIndex(item => item.type === 'radar');
+        if (availableRadarIndex !== -1) {
+            const newRadar = GameState.inventory[availableRadarIndex];
+            
+            // 把当前雷达放回背包（如果还有电的话，但这里逻辑简化为旧雷达没电就丢弃或也放回去）
+            // 简单处理：将当前装备的雷达替换为背包里的雷达
+            // 保存当前雷达状态（这里为了简化，旧雷达直接废弃，因为没电了，或者可以存入背包带状态）
+            
+            // 替换装备
+            GameState.radarLevel = newRadar.level;
+            if (GameState.radarLevel === 1) GameState.radarMaxCharge = 3;
+            else if (GameState.radarLevel === 2) GameState.radarMaxCharge = 5;
+            else if (GameState.radarLevel === 3) GameState.radarMaxCharge = 7;
+            
+            GameState.radarCharge = GameState.radarMaxCharge;
+            
+            // 从背包中移除
+            GameState.inventory.splice(availableRadarIndex, 1);
+            
+            this.log(`已切换雷达：Lv${newRadar.level}，电量恢复满！`, 'success');
+            this.updateUI();
+        } else {
+            this.log('背包中没有备用雷达！', 'warning');
+        }
+    }
+
     useRadar() {
         if (GameState.radarCharge <= 0) {
-            this.log('雷达电量耗尽！', 'danger');
+            this.log('当前雷达电量耗尽！请切换雷达。', 'danger');
+            
+            // 自动尝试从背包寻找可用的雷达
+            const availableRadarIndex = GameState.inventory.findIndex(item => item.type === 'radar');
+            if (availableRadarIndex !== -1) {
+                if (confirm('当前雷达没电了，背包里有其他雷达，是否切换？')) {
+                    this.switchRadar();
+                }
+            }
             return;
         }
         
@@ -767,6 +1071,18 @@ class Game {
         }
     }
 
+    // 安全屋进入下一层门点击（无需钥匙）
+    handleSanctuaryDoorClick() {
+        if (confirm('是否直接进入下一层？（安全屋内门无需钥匙）')) {
+            GameState.roomLevel++;
+            this.log('穿过安全屋直接进入了下一层...', 'success');
+            
+            // 安全屋不携带绿眼，直接进入
+            this.startNewRoom();
+            this.updateUI();
+        }
+    }
+
     // 处理门点击
     handleDoorClick() {
         if (GameState.keys > 0) {
@@ -860,6 +1176,8 @@ class Game {
     }
 
     fullRetreat() {
+        this.audio.stopHeartbeat();
+        this.audio.stopBGM();
         // 完全撤离，获得房间等级 x 100 的金钱
         const bonus = GameState.roomLevel * 100;
         GameState.money += bonus;
@@ -868,6 +1186,8 @@ class Game {
     }
 
     retreat() {
+        this.audio.stopHeartbeat();
+        this.audio.stopBGM();
         // 普通撤退，获得房间等级 x 50 的金钱
         const bonus = GameState.roomLevel * 50;
         GameState.money += bonus;
@@ -876,6 +1196,8 @@ class Game {
     }
 
     gameOver(reason) {
+        this.audio.stopHeartbeat();
+        this.audio.stopBGM();
         GameState.isGameOver = true;
         document.getElementById('game-over-modal').classList.remove('hidden');
         document.getElementById('game-over-title').textContent = 
@@ -918,6 +1240,19 @@ class Game {
         if (keyElement) {
             keyElement.textContent = GameState.keys;
         }
+        
+        // 更新雷达电量和镐子耐久度
+        const radarChargeElement = document.getElementById('radar-charge');
+        if (radarChargeElement) {
+            radarChargeElement.textContent = `${GameState.radarCharge}/${GameState.radarMaxCharge}`;
+        }
+        const pickaxeDurElement = document.getElementById('pickaxe-durability');
+        if (pickaxeDurElement) {
+            pickaxeDurElement.textContent = `${GameState.pickaxeDurability}/${GameState.pickaxeMaxDurability}`;
+        }
+        
+        // 更新地牢内背包（如果在的话）
+        this.renderDungeonBackpack();
         
         document.getElementById('hp-bar').style.width = `${(GameState.hp / GameState.maxHp) * 100}%`;
         document.getElementById('san-bar').style.width = `${(GameState.san / GameState.maxSan) * 100}%`;
