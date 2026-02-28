@@ -474,6 +474,16 @@ class Game {
             this.log(`🏃 移动到 (${x}, ${y})`);
             GameState.dungeon.playerPos.x = x;
             GameState.dungeon.playerPos.y = y;
+            
+            // 触发特殊格子的效果
+            if (cell.type === 'door') {
+                this.handleDoorClick();
+                return; // 进入新房间，不再执行后续
+            } else if (cell.type === 'sanctuary-entrance') {
+                this.enterSanctuaryRoom();
+                return; // 进入避难所，不再执行后续
+            }
+            
             GameState.turn++;
             this.endTurn();
             return;
