@@ -187,20 +187,20 @@ class Game {
                 // 设置图标
                 if (item.type === 'radar') {
                     slot.textContent = '📡';
-                    slot.title = `${item.name}\n点击装备/使用`;
+                    slot.title = `${item.name}\n点击查看/操作`;
                 } else if (item.type === 'pickaxe') {
                     slot.textContent = '🔨';
-                    slot.title = `${item.name}\n点击装备/使用`;
+                    slot.title = `${item.name}\n点击查看/操作`;
                 } else if (item.type === 'item') {
                     if (item.itemType === 'health') {
                         slot.textContent = '❤️';
-                        slot.title = `生命药水\n点击恢复30HP\n地牢外可卖出(+30💰)`;
+                        slot.title = `生命药水\n点击查看/操作`;
                     } else if (item.itemType === 'sanity') {
                         slot.textContent = '🧠';
-                        slot.title = `理智药水\n点击恢复30SAN\n地牢外可卖出(+30💰)`;
+                        slot.title = `理智药水\n点击查看/操作`;
                     } else if (item.itemType === 'oxygen') {
                         slot.textContent = '💨';
-                        slot.title = `氧气罐\n点击恢复10氧气\n地牢外可卖出(+30💰)`;
+                        slot.title = `氧气罐\n点击查看/操作`;
                     }
                 }
                 
@@ -220,36 +220,75 @@ class Game {
         const item = GameState.inventory[index];
         if (!item) return;
 
+        let itemName = item.name;
+        let itemDesc = '';
+        
+        // 组装物品详情
+        if (item.type === 'radar') {
+            const r = SHOP.radars.find(r => r.level === item.level);
+            itemDesc = r ? r.desc : '显示危险';
+        } else if (item.type === 'pickaxe') {
+            const p = SHOP.pickaxes.find(p => p.type === item.pickaxeType);
+            itemDesc = p ? p.desc : '挖掘墙壁';
+        } else if (item.type === 'item') {
+            if (item.itemType === 'health') {
+                itemName = '生命药水';
+                itemDesc = '恢复 30 HP';
+            } else if (item.itemType === 'sanity') {
+                itemName = '理智药水';
+                itemDesc = '恢复 30 SAN';
+            } else if (item.itemType === 'oxygen') {
+                itemName = '氧气罐';
+                itemDesc = '恢复 10 氧气';
+            }
+        }
+
         if (GameState.inDungeon) {
-            // 在地牢中的逻辑
-            if (item.type === 'radar') {
-                if (confirm(`是否切换为 ${item.name}？`)) {
+            // 在地牢中
+            const useAction = item.type === 'item' ? '使用' : '装备';
+            if (confirm(`【物品详情】\n名称: ${itemName}\n描述: ${itemDesc}\n\n是否${useAction}该物品？`)) {
+                if (item.type === 'radar') {
                     this.switchRadar(index);
-                }
-            } else if (item.type === 'pickaxe') {
-                if (confirm(`是否切换为 ${item.name}？`)) {
+                } else if (item.type === 'pickaxe') {
                     this.switchPickaxe(index);
-                }
-            } else if (item.type === 'item') {
-                if (confirm(`是否使用 ${item.title.split('\\n')[0]}？`)) {
+                } else if (item.type === 'item') {
                     this.useItem(index);
                 }
             }
         } else {
-            // 在村庄中的逻辑
-            if (item.type === 'radar') {
-                GameState.radarLevel = item.level;
-                this.log(`已装备 ${item.name}`, 'success');
-                this.updateVillageUI();
-            } else if (item.type === 'pickaxe') {
-                GameState.pickaxeType = item.pickaxeType;
-                this.log(`已装备 ${item.name}`, 'success');
-                this.updateVillageUI();
-            } else if (item.type === 'item') {
-                if (confirm(`是否卖出 ${item.title.split('\\n')[0]} 获得 30💰？`)) {
+            // 在村庄中
+            const canSell = item.type === 'item';
+            const actionText = canSell ? '出售 (+30💰)' : '装备';
+            
+            if (confirm(`【物品详情】\n名称: ${itemName}\n描述: ${itemDesc}\n\n是否${actionText}？`)) {
+                if (item.type === 'radar') {
+                    // 把当前装备放回背包，替换它
+                    const oldLevel = GameState.radarLevel;
+                    const oldRadar = SHOP.radars.find(r => r.level === oldLevel);
+                    GameState.radarLevel = item.level;
+                    if (oldRadar) {
+                        GameState.inventory[index] = { id: oldRadar.id, name: oldRadar.name, type: 'radar', level: oldRadar.level };
+                    } else {
+                        GameState.inventory.splice(index, 1);
+                    }
+                    this.log(`已装备 ${item.name}`, 'success');
+                    this.updateVillageUI();
+                } else if (item.type === 'pickaxe') {
+                    // 把当前装备放回背包，替换它
+                    const oldType = GameState.pickaxeType;
+                    const oldPickaxe = SHOP.pickaxes.find(p => p.type === oldType);
+                    GameState.pickaxeType = item.pickaxeType;
+                    if (oldPickaxe) {
+                        GameState.inventory[index] = { id: oldPickaxe.id, name: oldPickaxe.name, type: 'pickaxe', pickaxeType: oldPickaxe.type };
+                    } else {
+                        GameState.inventory.splice(index, 1);
+                    }
+                    this.log(`已装备 ${item.name}`, 'success');
+                    this.updateVillageUI();
+                } else if (item.type === 'item') {
                     GameState.money += 30;
                     GameState.inventory.splice(index, 1);
-                    this.log(`卖出物品获得 30💰`, 'success');
+                    this.log(`卖出了 ${itemName}，获得 30💰`, 'success');
                     this.updateVillageUI();
                 }
             }
@@ -578,11 +617,11 @@ class Game {
                     // 进入下一层门
                     cell.classList.add('door', 'clickable');
                     cell.textContent = '🚪';
-                    cell.title = '点击消耗钥匙进入下一层';
+                    cell.title = '安全屋专属：点击直接进入下一层（无需钥匙）';
                     cell.style.cursor = 'pointer';
                     cell.addEventListener('click', (e) => {
                         e.preventDefault();
-                        this.handleDoorClick();
+                        this.handleSanctuaryDoorClick();
                     });
                 }
                 else {
@@ -1029,6 +1068,18 @@ class Game {
             case '?': return '? 未知';
             case 'unknown': return '■ 墙体';
             default: return '○ 空';
+        }
+    }
+
+    // 安全屋进入下一层门点击（无需钥匙）
+    handleSanctuaryDoorClick() {
+        if (confirm('是否直接进入下一层？（安全屋内门无需钥匙）')) {
+            GameState.roomLevel++;
+            this.log('穿过安全屋直接进入了下一层...', 'success');
+            
+            // 安全屋不携带绿眼，直接进入
+            this.startNewRoom();
+            this.updateUI();
         }
     }
 
