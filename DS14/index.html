@@ -22,17 +22,10 @@
             </div>
             
             <div class="backpack-section">
-                <h2>🎒 背包配置 (<span id="village-backpack-count">0</span>/<span id="village-backpack-max">5</span>)</h2>
+                <h2>🎒 背包配置 (<span id="village-backpack-count">0</span>/<span id="village-backpack-max">10</span>)</h2>
                 <div class="backpack-grid" id="village-backpack-grid">
                     <!-- 背包格子将在这里生成 -->
                 </div>
-                <div class="backpack-actions">
-                    <button id="equip-radar-btn" class="btn">装备雷达</button>
-                    <button id="equip-pickaxe-btn" class="btn">更换镐子</button>
-                    <button id="buy-consumable-btn" class="btn">购买消耗品</button>
-                    <button id="clear-backpack-btn" class="btn warning">清空背包</button>
-                </div>
-                <p class="backpack-warning" id="backpack-warning"></p>
             </div>
             
             <button id="enter-dungeon-btn" class="btn success">⚔️ 进入地牢</button>
@@ -80,6 +73,13 @@
 
         <!-- 地牢网格 -->
         <div id="dungeon-grid"></div>
+        
+        <!-- 地牢背包区域 -->
+        <div id="dungeon-backpack" class="dungeon-backpack-section">
+            <div class="backpack-grid" id="dungeon-backpack-grid">
+                <!-- 地牢背包格子 -->
+            </div>
+        </div>
 
         <!-- 控制按钮 -->
         <div id="controls">

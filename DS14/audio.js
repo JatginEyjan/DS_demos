@@ -6,6 +6,9 @@ class AudioManager {
         this.heartbeatOsc = null;
         this.heartbeatGain = null;
         this.isPlaying = false;
+        this.bgmOsc = null;
+        this.bgmGain = null;
+        this.isBgmPlaying = false;
         this.init();
     }
 
@@ -16,6 +19,59 @@ class AudioManager {
         } catch (e) {
             console.warn('Web Audio API not supported');
         }
+    }
+    
+    // 背景音乐
+    playBGM() {
+        if (!this.ctx || this.isBgmPlaying) return;
+        
+        // 只有用户交互后才能播放声音
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        
+        this.isBgmPlaying = true;
+        this.bgmOsc = this.ctx.createOscillator();
+        this.bgmGain = this.ctx.createGain();
+        
+        this.bgmOsc.type = 'sine';
+        this.bgmOsc.frequency.setValueAtTime(40, this.ctx.currentTime); // 极低沉的嗡嗡声
+        
+        // 缓慢起伏的音量
+        this.bgmGain.gain.setValueAtTime(0, this.ctx.currentTime);
+        const rampUp = () => {
+            if (!this.isBgmPlaying) return;
+            this.bgmGain.gain.linearRampToValueAtTime(0.05, this.ctx.currentTime + 5);
+            setTimeout(rampDown, 5000);
+        };
+        const rampDown = () => {
+            if (!this.isBgmPlaying) return;
+            this.bgmGain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 5);
+            setTimeout(rampUp, 5000);
+        };
+        
+        this.bgmOsc.connect(this.bgmGain);
+        this.bgmGain.connect(this.ctx.destination);
+        
+        this.bgmOsc.start();
+        rampUp();
+    }
+    
+    stopBGM() {
+        if (this.bgmOsc) {
+            try {
+                this.bgmOsc.stop();
+                this.bgmOsc.disconnect();
+            } catch (e) {}
+        }
+        if (this.bgmGain) {
+            try {
+                this.bgmGain.disconnect();
+            } catch (e) {}
+        }
+        this.isBgmPlaying = false;
+        this.bgmOsc = null;
+        this.bgmGain = null;
     }
 
     // 挖掘音效
