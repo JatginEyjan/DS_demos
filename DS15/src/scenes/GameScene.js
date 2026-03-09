@@ -1,4 +1,4 @@
-import Phaser from "../../vendor/phaser.esm.js";
+import * as Phaser from "../../vendor/phaser.esm.js";
 import { Player } from "../entities/Player.js";
 import { Enemy } from "../entities/Enemy.js";
 import { Weapon } from "../entities/Weapon.js";
