@@ -47,6 +47,13 @@ const UPGRADE_POOL = [
   },
 ];
 
+function formatCountdown(totalSeconds) {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const mm = String(Math.floor(safe / 60)).padStart(2, "0");
+  const ss = String(safe % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -83,12 +90,19 @@ export class GameScene extends Phaser.Scene {
       callbackScope: this,
     });
 
+    this.matchDurationSeconds = 30 * 60;
+    this.remainingSeconds = this.matchDurationSeconds;
     this.surviveSeconds = 0;
-    this.time.addEvent({
+    this.hasDiedThisRun = false;
+
+    this.countdownEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
       callback: () => {
+        if (this.isGameOver || this.awaitingUpgrade) return;
         this.surviveSeconds += 1;
+        this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
+        if (this.remainingSeconds <= 0) this.gameWin();
       },
     });
 
@@ -112,8 +126,8 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1000)
       .setScrollFactor(0);
 
-    this.expBarBg = this.add.rectangle(16, 142, 260, 14, 0x222222, 0.85).setOrigin(0, 0).setDepth(1000).setScrollFactor(0);
-    this.expBarFill = this.add.rectangle(18, 144, 0, 10, 0xf2dc6a, 1).setOrigin(0, 0).setDepth(1001).setScrollFactor(0);
+    this.expBarBg = this.add.rectangle(16, 164, 260, 14, 0x222222, 0.85).setOrigin(0, 0).setDepth(1000).setScrollFactor(0);
+    this.expBarFill = this.add.rectangle(18, 166, 0, 10, 0xf2dc6a, 1).setOrigin(0, 0).setDepth(1001).setScrollFactor(0);
 
     this.upgradeBackdrop = this.add
       .rectangle(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, 760, 360, 0x111111, 0.85)
@@ -172,6 +186,7 @@ export class GameScene extends Phaser.Scene {
   updateHud(time) {
     const dashSeconds = Math.ceil(this.player.getDashCooldownLeft(time) / 1000);
     this.hud.setText([
+      `倒计时: ${formatCountdown(this.remainingSeconds)}`,
       `HP: ${Math.max(0, this.player.hp)}/${this.player.maxHp}`,
       `生存: ${this.surviveSeconds}s`,
       `敌人: ${this.enemies.countActive(true)}`,
@@ -180,6 +195,7 @@ export class GameScene extends Phaser.Scene {
       `冲刺CD: ${dashSeconds}s`,
       `拾取范围: ${Math.floor(this.player.pickupRange)}`,
       `经验倍率: x${this.player.expGainMultiplier.toFixed(2)}`,
+      `无死亡标记: ${this.hasDiedThisRun ? "否" : "是"}`,
     ]);
 
     const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
@@ -313,7 +329,10 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
-    if (this.player.hp <= 0) this.gameOver();
+    if (this.player.hp <= 0) {
+      this.hasDiedThisRun = true;
+      this.gameOver();
+    }
   }
 
   cleanupBullets() {
@@ -322,13 +341,56 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  gameOver() {
-    this.isGameOver = true;
+  stopCombatLoops() {
     this.spawnEvent.remove(false);
+    this.countdownEvent.remove(false);
     this.player.sprite.setVelocity(0, 0);
+    for (const enemySprite of this.enemies.getChildren()) enemySprite.setVelocity(0, 0);
+  }
+
+  gameWin() {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.stopCombatLoops();
+
+    const noDeath = !this.hasDiedThisRun;
+    this.registry.set("ds15.lastRun", {
+      result: "win",
+      noDeath,
+      surviveSeconds: this.surviveSeconds,
+      finishedAt: Date.now(),
+    });
 
     this.add
-      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, "蒸汽熄火\n按 R 重开", {
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, `生存成功！\n无死亡标记: ${noDeath ? "达成" : "未达成"}\n按 R 重开`, {
+        fontSize: "42px",
+        color: "#9df0a8",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 14, y: 10 },
+        align: "center",
+      })
+      .setOrigin(0.5)
+      .setDepth(1200);
+
+    this.input.keyboard.once("keydown-R", () => {
+      this.scene.restart();
+    });
+  }
+
+  gameOver() {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.stopCombatLoops();
+
+    this.registry.set("ds15.lastRun", {
+      result: "lose",
+      noDeath: false,
+      surviveSeconds: this.surviveSeconds,
+      finishedAt: Date.now(),
+    });
+
+    this.add
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, "蒸汽熄火（失败）\n按 R 重开", {
         fontSize: "44px",
         color: "#ffbf86",
         backgroundColor: "rgba(0,0,0,0.55)",
