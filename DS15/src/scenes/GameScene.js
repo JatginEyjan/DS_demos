@@ -86,7 +86,7 @@ export class GameScene extends Phaser.Scene {
     this.spawnEvent = this.time.addEvent({
       delay: 1200,
       loop: true,
-      callback: this.spawnEnemy,
+      callback: this.spawnEnemyWave,
       callbackScope: this,
     });
 
@@ -196,6 +196,7 @@ export class GameScene extends Phaser.Scene {
       `拾取范围: ${Math.floor(this.player.pickupRange)}`,
       `经验倍率: x${this.player.expGainMultiplier.toFixed(2)}`,
       `无死亡标记: ${this.hasDiedThisRun ? "否" : "是"}`,
+      `阶段: ${this.getStageLabel()}`,
     ]);
 
     const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
@@ -217,19 +218,40 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  spawnEnemy() {
+  getStageLabel() {
+    if (this.surviveSeconds < 180) return "I";
+    if (this.surviveSeconds < 420) return "II";
+    if (this.surviveSeconds < 780) return "III";
+    return "IV";
+  }
+
+  getSpawnBatchSize() {
+    if (this.surviveSeconds < 180) return 1;
+    if (this.surviveSeconds < 420) return 2;
+    if (this.surviveSeconds < 780) return 3;
+    return 4;
+  }
+
+  spawnEnemyWave() {
     if (this.isGameOver || this.awaitingUpgrade) return;
 
-    const spawnDistance = 500;
-    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const x = this.player.sprite.x + Math.cos(angle) * spawnDistance;
-    const y = this.player.sprite.y + Math.sin(angle) * spawnDistance;
+    const batch = this.getSpawnBatchSize();
+    for (let i = 0; i < batch; i += 1) {
+      const spawnDistance = 500;
+      const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      const x = this.player.sprite.x + Math.cos(angle) * spawnDistance;
+      const y = this.player.sprite.y + Math.sin(angle) * spawnDistance;
 
-    const safeX = Phaser.Math.Clamp(x, 20, 1980);
-    const safeY = Phaser.Math.Clamp(y, 20, 1980);
+      const safeX = Phaser.Math.Clamp(x, 20, 1980);
+      const safeY = Phaser.Math.Clamp(y, 20, 1980);
 
-    const enemy = new Enemy(this, safeX, safeY);
-    this.enemies.add(enemy.sprite);
+      const profile = Enemy.createProfile(this.surviveSeconds);
+      const enemy = new Enemy(this, safeX, safeY, profile);
+      this.enemies.add(enemy.sprite);
+    }
+
+    const nextDelay = this.surviveSeconds < 180 ? 1100 : this.surviveSeconds < 420 ? 900 : this.surviveSeconds < 780 ? 760 : 640;
+    this.spawnEvent.delay = nextDelay;
   }
 
   onBulletHit(bullet, enemySprite) {
@@ -240,7 +262,7 @@ export class GameScene extends Phaser.Scene {
     if (!enemy) return;
 
     if (enemy.hit(damage)) {
-      const dropValue = Phaser.Math.Between(4, 8);
+      const dropValue = enemy.getExpReward();
       this.spawnExpOrb(enemy.sprite.x, enemy.sprite.y, dropValue);
       enemy.destroy();
     }
