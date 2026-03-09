@@ -118,6 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.enemies = this.physics.add.group();
     this.bullets = this.physics.add.group();
     this.expOrbs = this.physics.add.group();
+    this.bossProjectiles = this.physics.add.group();
     this.weapon = new Weapon(this, this.bullets);
 
     this.spawnEvent = this.time.addEvent({
@@ -131,6 +132,8 @@ export class GameScene extends Phaser.Scene {
     this.remainingSeconds = this.matchDurationSeconds;
     this.surviveSeconds = 0;
     this.hasDiedThisRun = false;
+    this.bossMilestones = new Set([300, 600, 900]);
+    this.bossSpawned = new Set();
 
     this.countdownEvent = this.time.addEvent({
       delay: 1000,
@@ -139,6 +142,7 @@ export class GameScene extends Phaser.Scene {
         if (this.isGameOver || this.awaitingUpgrade) return;
         this.surviveSeconds += 1;
         this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
+        this.trySpawnBossMilestone(this.surviveSeconds);
         if (this.remainingSeconds <= 0) this.gameWin();
       },
     });
@@ -146,6 +150,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHit, undefined, this);
     this.physics.add.overlap(this.player.sprite, this.enemies, this.onPlayerHit, undefined, this);
     this.physics.add.overlap(this.player.sprite, this.expOrbs, this.onPickupExpOrb, undefined, this);
+    this.physics.add.overlap(this.player.sprite, this.bossProjectiles, this.onBossProjectileHit, undefined, this);
 
     this.playerLevel = 1;
     this.playerExp = 0;
@@ -194,6 +199,7 @@ export class GameScene extends Phaser.Scene {
     if (this.awaitingUpgrade) {
       this.player.sprite.setVelocity(0, 0);
       for (const enemySprite of this.enemies.getChildren()) enemySprite.setVelocity(0, 0);
+    for (const p of this.bossProjectiles.getChildren()) p.destroy();
 
       if (Phaser.Input.Keyboard.JustDown(this.keys.one)) this.pickUpgradeByIndex(0);
       if (Phaser.Input.Keyboard.JustDown(this.keys.two)) this.pickUpgradeByIndex(1);
@@ -217,6 +223,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.collectNearbyOrbs();
+    this.updateBossSkills(time);
     this.updateHud(time);
   }
 
@@ -235,6 +242,7 @@ export class GameScene extends Phaser.Scene {
       `无死亡标记: ${this.hasDiedThisRun ? "否" : "是"}`,
       `阶段: ${this.getStageLabel()}`,
       `武器槽: ${this.weapon.getSummary()}`,
+      `Boss: ${this.enemies.getChildren().some((s) => s.getData("isBoss")) ? "在场" : "无"}`,
       this.lastUpgradeText ? `最近升级: ${this.lastUpgradeText}` : "",
     ]);
 
@@ -420,9 +428,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   onPlayerHit() {
+    if (this.isGameOver || this.awaitingUpgrade) return;
+    this.applyPlayerDamage(10, "contact");
+  }
+
+  onBossProjectileHit(_playerSprite, projectile) {
+    if (this.isGameOver || this.awaitingUpgrade) return;
+    projectile.destroy();
+    this.applyPlayerDamage(16, "boss-projectile");
+  }
+
+  applyPlayerDamage(amount, source = "unknown") {
     if (this.player.isInvincible || this.isGameOver || this.awaitingUpgrade) return;
 
-    this.player.hp -= 10;
+    this.player.hp -= amount;
     this.player.isInvincible = true;
 
     this.tweens.add({
@@ -443,11 +462,115 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  trySpawnBossMilestone(elapsedSeconds) {
+    if (!this.bossMilestones.has(elapsedSeconds) || this.bossSpawned.has(elapsedSeconds)) return;
+
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const x = Phaser.Math.Clamp(this.player.sprite.x + Math.cos(angle) * 460, 40, 1960);
+    const y = Phaser.Math.Clamp(this.player.sprite.y + Math.sin(angle) * 460, 40, 1960);
+
+    const profile = Enemy.createBossProfile(elapsedSeconds);
+    const boss = new Enemy(this, x, y, profile);
+    this.enemies.add(boss.sprite);
+    this.bossSpawned.add(elapsedSeconds);
+
+    this.showBossWarning(`Boss来袭：${profile.bossName}（技能：${profile.bossSkill}）`);
+  }
+
+  showBossWarning(message) {
+    const t = this.add
+      .text(this.cameras.main.midPoint.x, 90, message, {
+        fontSize: "28px",
+        color: "#ffd27a",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 12, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setDepth(1300)
+      .setScrollFactor(0);
+
+    this.tweens.add({
+      targets: t,
+      alpha: 0,
+      duration: 1300,
+      delay: 1400,
+      onComplete: () => t.destroy(),
+    });
+  }
+
+  updateBossSkills(time) {
+    const player = this.player.sprite;
+    for (const sprite of this.enemies.getChildren()) {
+      const boss = sprite.getData("entity");
+      if (!boss || !boss.isBoss) continue;
+
+      if (boss.bossSkill === "charge") {
+        if (time - boss.lastSkillAt > 4800 && boss.skillState === "idle") {
+          boss.skillState = "prep";
+          boss.lastSkillAt = time;
+          sprite.setTintFill(0xffd08a);
+          this.time.delayedCall(650, () => {
+            if (!sprite.active || this.isGameOver) return;
+            const angle = Phaser.Math.Angle.Between(sprite.x, sprite.y, player.x, player.y);
+            sprite.body.velocity.x = Math.cos(angle) * 420;
+            sprite.body.velocity.y = Math.sin(angle) * 420;
+            boss.skillState = "dash";
+            this.time.delayedCall(550, () => {
+              if (!sprite.active) return;
+              boss.skillState = "idle";
+              sprite.clearTint();
+            });
+          });
+          this.showBossWarning("裂炉督军蓄力冲锋，冲刺可规避伤害");
+        }
+      }
+
+      if (boss.bossSkill === "pulse" && time - boss.lastSkillAt > 5200) {
+        boss.lastSkillAt = time;
+        const pulse = this.add.circle(sprite.x, sprite.y, 10, 0x8dd3ff, 0.15).setDepth(20);
+        this.tweens.add({
+          targets: pulse,
+          radius: 190,
+          alpha: 0,
+          duration: 720,
+          onComplete: () => pulse.destroy(),
+        });
+        this.time.delayedCall(680, () => {
+          if (!sprite.active || this.isGameOver) return;
+          const dist = Phaser.Math.Distance.Between(sprite.x, sprite.y, player.x, player.y);
+          if (dist <= 185) this.applyPlayerDamage(22, "boss-pulse");
+        });
+        this.showBossWarning("共振主轴释放脉冲，留意圈外或冲刺无敌");
+      }
+
+      if (boss.bossSkill === "barrage" && time - boss.lastSkillAt > 4300) {
+        boss.lastSkillAt = time;
+        const base = Phaser.Math.Angle.Between(sprite.x, sprite.y, player.x, player.y);
+        for (const offset of [-0.18, 0, 0.18]) {
+          const p = this.bossProjectiles.create(sprite.x, sprite.y, "bullet");
+          p.setTint(0xff9de7);
+          p.setScale(1.2);
+          p.setData("expiresAt", time + 1700);
+          const angle = base + offset;
+          p.body.velocity.x = Math.cos(angle) * 290;
+          p.body.velocity.y = Math.sin(angle) * 290;
+        }
+        this.showBossWarning("钢雨指挥官发射扇形弹幕，注意走位/冲刺");
+      }
+    }
+
+    for (const p of this.bossProjectiles.getChildren()) {
+      const exp = p.getData("expiresAt") || 0;
+      if (time >= exp || p.x < -50 || p.y < -50 || p.x > 2050 || p.y > 2050) p.destroy();
+    }
+  }
+
   stopCombatLoops() {
     this.spawnEvent.remove(false);
     this.countdownEvent.remove(false);
     this.player.sprite.setVelocity(0, 0);
     for (const enemySprite of this.enemies.getChildren()) enemySprite.setVelocity(0, 0);
+    for (const p of this.bossProjectiles.getChildren()) p.destroy();
   }
 
   gameWin() {
