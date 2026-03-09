@@ -20,3 +20,8 @@ python3 -m http.server 8080
 浏览器打开：
 
 - `http://localhost:8080/DS15/`
+
+
+## 依赖说明
+
+- Phaser 已内置到 `DS15/vendor/phaser.esm.js`，不依赖外部 CDN，避免网络导致白屏。
