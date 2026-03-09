@@ -6,7 +6,8 @@ export class Player {
     this.sprite = scene.physics.add.sprite(x, y, "player");
     this.sprite.setCollideWorldBounds(true);
 
-    this.hp = 100;
+    this.maxHp = 100;
+    this.hp = this.maxHp;
     this.speed = 180;
 
     this.dashDistance = 150;

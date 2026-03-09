@@ -22,10 +22,12 @@ export class GameScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
       dash: Phaser.Input.Keyboard.KeyCodes.SPACE,
+      upgrade: Phaser.Input.Keyboard.KeyCodes.E,
     });
 
     this.enemies = this.physics.add.group();
     this.bullets = this.physics.add.group();
+    this.expOrbs = this.physics.add.group();
     this.weapon = new Weapon(this, this.bullets);
 
     this.spawnEvent = this.time.addEvent({
@@ -46,6 +48,12 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHit, undefined, this);
     this.physics.add.overlap(this.player.sprite, this.enemies, this.onPlayerHit, undefined, this);
+    this.physics.add.overlap(this.player.sprite, this.expOrbs, this.onPickupExpOrb, undefined, this);
+
+    this.playerLevel = 1;
+    this.playerExp = 0;
+    this.expToNext = 20;
+    this.awaitingUpgrade = false;
 
     this.hud = this.add
       .text(16, 16, "", {
@@ -57,11 +65,48 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1000)
       .setScrollFactor(0);
 
+    this.expBarBg = this.add
+      .rectangle(16, 118, 260, 14, 0x222222, 0.85)
+      .setOrigin(0, 0)
+      .setDepth(1000)
+      .setScrollFactor(0);
+
+    this.expBarFill = this.add
+      .rectangle(18, 120, 0, 10, 0xf2dc6a, 1)
+      .setOrigin(0, 0)
+      .setDepth(1001)
+      .setScrollFactor(0);
+
+    this.levelUpHint = this.add
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y - 90, "", {
+        fontSize: "24px",
+        color: "#ffe9a8",
+        backgroundColor: "rgba(0,0,0,0.6)",
+        padding: { x: 12, y: 8 },
+        align: "center",
+      })
+      .setOrigin(0.5)
+      .setDepth(1200)
+      .setScrollFactor(0)
+      .setVisible(false);
+
     this.isGameOver = false;
   }
 
   update(time) {
     if (this.isGameOver) {
+      return;
+    }
+
+    if (this.awaitingUpgrade) {
+      this.player.sprite.setVelocity(0, 0);
+      for (const enemySprite of this.enemies.getChildren()) {
+        enemySprite.setVelocity(0, 0);
+      }
+      if (Phaser.Input.Keyboard.JustDown(this.keys.upgrade)) {
+        this.applyBasicUpgrade();
+      }
+      this.updateHud(time);
       return;
     }
 
@@ -80,19 +125,27 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    const dashSeconds = Math.ceil(this.player.getDashCooldownLeft(time) / 1000);
-    this.hud.setText([
-      `HP: ${Math.max(0, this.player.hp)}`,
-      `生存: ${this.surviveSeconds}s`,
-      `敌人: ${this.enemies.countActive(true)}`,
-      `冲刺CD: ${dashSeconds}s`,
-    ]);
-
+    this.updateHud(time);
     this.cleanupBullets();
   }
 
+  updateHud(time) {
+    const dashSeconds = Math.ceil(this.player.getDashCooldownLeft(time) / 1000);
+    this.hud.setText([
+      `HP: ${Math.max(0, this.player.hp)}/${this.player.maxHp}`,
+      `生存: ${this.surviveSeconds}s`,
+      `敌人: ${this.enemies.countActive(true)}`,
+      `等级: Lv.${this.playerLevel}`,
+      `EXP: ${this.playerExp}/${this.expToNext}`,
+      `冲刺CD: ${dashSeconds}s`,
+    ]);
+
+    const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
+    this.expBarFill.width = Math.floor(256 * expRatio);
+  }
+
   spawnEnemy() {
-    if (this.isGameOver) {
+    if (this.isGameOver || this.awaitingUpgrade) {
       return;
     }
 
@@ -118,12 +171,63 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (enemy.hit(damage)) {
+      const dropValue = Phaser.Math.Between(4, 8);
+      this.spawnExpOrb(enemy.sprite.x, enemy.sprite.y, dropValue);
       enemy.destroy();
     }
   }
 
+  spawnExpOrb(x, y, value) {
+    const orb = this.physics.add.sprite(x, y, "xp_orb");
+    orb.setData("exp", value);
+    orb.setDepth(2);
+    this.expOrbs.add(orb);
+
+    this.tweens.add({
+      targets: orb,
+      scale: { from: 1, to: 1.2 },
+      yoyo: true,
+      repeat: -1,
+      duration: 280,
+    });
+  }
+
+  onPickupExpOrb(_playerSprite, orb) {
+    const exp = orb.getData("exp") ?? 0;
+    orb.destroy();
+    this.gainExp(exp);
+  }
+
+  gainExp(amount) {
+    if (!amount || amount <= 0) return;
+
+    this.playerExp += amount;
+    while (this.playerExp >= this.expToNext) {
+      this.playerExp -= this.expToNext;
+      this.playerLevel += 1;
+      this.expToNext = Math.floor(this.expToNext * 1.25);
+      this.showLevelUpEntry();
+    }
+  }
+
+  showLevelUpEntry() {
+    this.awaitingUpgrade = true;
+    this.spawnEvent.paused = true;
+    this.levelUpHint
+      .setText(`升级！Lv.${this.playerLevel}\n按 E 选择基础强化（+20 最大生命，+20 当前生命）`)
+      .setVisible(true);
+  }
+
+  applyBasicUpgrade() {
+    this.player.maxHp += 20;
+    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+    this.awaitingUpgrade = false;
+    this.spawnEvent.paused = false;
+    this.levelUpHint.setVisible(false);
+  }
+
   onPlayerHit() {
-    if (this.player.isInvincible || this.isGameOver) {
+    if (this.player.isInvincible || this.isGameOver || this.awaitingUpgrade) {
       return;
     }
 
@@ -149,12 +253,7 @@ export class GameScene extends Phaser.Scene {
 
   cleanupBullets() {
     for (const bullet of this.bullets.getChildren()) {
-      if (
-        bullet.x < -100 ||
-        bullet.y < -100 ||
-        bullet.x > 2100 ||
-        bullet.y > 2100
-      ) {
+      if (bullet.x < -100 || bullet.y < -100 || bullet.x > 2100 || bullet.y > 2100) {
         bullet.destroy();
       }
     }

@@ -28,6 +28,11 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture("bullet", 10, 10);
     g.clear();
 
+    g.fillStyle(0xf2dc6a, 1);
+    g.fillCircle(6, 6, 6);
+    g.generateTexture("xp_orb", 12, 12);
+    g.clear();
+
     g.destroy();
   }
 }
