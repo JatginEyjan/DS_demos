@@ -45,6 +45,15 @@ const UPGRADE_POOL = [
       scene.player.expGainMultiplier = Number((scene.player.expGainMultiplier * 1.2).toFixed(2));
     },
   },
+  {
+    id: "weapon",
+    label: "军械改装",
+    desc: "解锁或强化武器槽位",
+    apply: (scene) => {
+      const out = scene.weapon.applyUpgrade();
+      scene.lastUpgradeResult = out;
+    },
+  },
 ];
 
 function formatCountdown(totalSeconds) {
@@ -171,7 +180,7 @@ export class GameScene extends Phaser.Scene {
       this.player.tryDash(time);
     }
 
-    this.weapon.tryFire(time, this.player.sprite, this.enemies);
+    this.weapon.update(time, this.player.sprite, this.enemies);
 
     for (const enemySprite of this.enemies.getChildren()) {
       const entity = enemySprite.getData("entity");
@@ -180,7 +189,6 @@ export class GameScene extends Phaser.Scene {
 
     this.collectNearbyOrbs();
     this.updateHud(time);
-    this.cleanupBullets();
   }
 
   updateHud(time) {
@@ -197,6 +205,7 @@ export class GameScene extends Phaser.Scene {
       `经验倍率: x${this.player.expGainMultiplier.toFixed(2)}`,
       `无死亡标记: ${this.hasDiedThisRun ? "否" : "是"}`,
       `阶段: ${this.getStageLabel()}`,
+      `武器槽: ${this.weapon.getSummary()}`,
     ]);
 
     const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
@@ -255,16 +264,56 @@ export class GameScene extends Phaser.Scene {
   }
 
   onBulletHit(bullet, enemySprite) {
-    const damage = bullet.getData("damage") ?? 10;
     const enemy = enemySprite.getData("entity");
-    bullet.destroy();
-
     if (!enemy) return;
+
+    const kind = bullet.getData("weaponKind") || "tracking";
+    const now = this.time.now;
+
+    if (kind === "orbit") {
+      const key = "orbitHitAt";
+      const last = enemySprite.getData(key) || 0;
+      if (now - last < this.weapon.orbitDamageCooldownMs) return;
+      enemySprite.setData(key, now);
+    }
+
+    const damage = bullet.getData("damage") ?? 10;
 
     if (enemy.hit(damage)) {
       const dropValue = enemy.getExpReward();
       this.spawnExpOrb(enemy.sprite.x, enemy.sprite.y, dropValue);
       enemy.destroy();
+    }
+
+    if (kind === "aoe") {
+      this.applyAoeDamage(bullet.x, bullet.y, bullet.getData("blastRadius") || 60, Math.floor(damage * 0.65));
+      bullet.destroy();
+      return;
+    }
+
+    if (kind === "pierce") {
+      const left = (bullet.getData("pierceLeft") || 0) - 1;
+      bullet.setData("pierceLeft", left);
+      if (left < 0) bullet.destroy();
+      return;
+    }
+
+    if (kind !== "orbit") {
+      bullet.destroy();
+    }
+  }
+
+  applyAoeDamage(cx, cy, radius, damage) {
+    for (const enemySprite of this.enemies.getChildren()) {
+      const enemy = enemySprite.getData("entity");
+      if (!enemy) continue;
+      const dist = Phaser.Math.Distance.Between(cx, cy, enemySprite.x, enemySprite.y);
+      if (dist > radius) continue;
+      if (enemy.hit(damage)) {
+        const dropValue = enemy.getExpReward();
+        this.spawnExpOrb(enemy.sprite.x, enemy.sprite.y, dropValue);
+        enemy.destroy();
+      }
     }
   }
 
@@ -314,7 +363,10 @@ export class GameScene extends Phaser.Scene {
       `升级！Lv.${this.playerLevel}`,
       "按 1/2/3 选择一项强化：",
       "",
-      ...this.currentUpgradeChoices.map((item, idx) => `${idx + 1}. ${item.label} — ${item.desc}`),
+      ...this.currentUpgradeChoices.map((item, idx) => {
+        const desc = item.id === "weapon" ? `${item.desc}（${this.weapon.getUpgradePreview()}）` : item.desc;
+        return `${idx + 1}. ${item.label} — ${desc}`;
+      }),
     ];
 
     this.upgradeBackdrop.setVisible(true);
@@ -354,12 +406,6 @@ export class GameScene extends Phaser.Scene {
     if (this.player.hp <= 0) {
       this.hasDiedThisRun = true;
       this.gameOver();
-    }
-  }
-
-  cleanupBullets() {
-    for (const bullet of this.bullets.getChildren()) {
-      if (bullet.x < -100 || bullet.y < -100 || bullet.x > 2100 || bullet.y > 2100) bullet.destroy();
     }
   }
 
