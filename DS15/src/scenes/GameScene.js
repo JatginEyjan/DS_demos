@@ -3,6 +3,50 @@ import { Player } from "../entities/Player.js";
 import { Enemy } from "../entities/Enemy.js";
 import { Weapon } from "../entities/Weapon.js";
 
+const UPGRADE_POOL = [
+  {
+    id: "hp",
+    label: "生命强化",
+    desc: "+30 最大生命，+30 当前生命",
+    apply: (scene) => {
+      scene.player.maxHp += 30;
+      scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + 30);
+    },
+  },
+  {
+    id: "speed",
+    label: "蒸汽增压",
+    desc: "+12% 移速",
+    apply: (scene) => {
+      scene.player.speed = Math.floor(scene.player.speed * 1.12);
+    },
+  },
+  {
+    id: "dash",
+    label: "冲刺冷却",
+    desc: "冲刺CD -15%",
+    apply: (scene) => {
+      scene.player.dashCooldownMs = Math.max(1200, Math.floor(scene.player.dashCooldownMs * 0.85));
+    },
+  },
+  {
+    id: "pickup",
+    label: "齿轮磁场",
+    desc: "+25 拾取范围",
+    apply: (scene) => {
+      scene.player.pickupRange += 25;
+    },
+  },
+  {
+    id: "exp",
+    label: "精密拆解",
+    desc: "+20% 经验获取",
+    apply: (scene) => {
+      scene.player.expGainMultiplier = Number((scene.player.expGainMultiplier * 1.2).toFixed(2));
+    },
+  },
+];
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -22,7 +66,9 @@ export class GameScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
       dash: Phaser.Input.Keyboard.KeyCodes.SPACE,
-      upgrade: Phaser.Input.Keyboard.KeyCodes.E,
+      one: Phaser.Input.Keyboard.KeyCodes.ONE,
+      two: Phaser.Input.Keyboard.KeyCodes.TWO,
+      three: Phaser.Input.Keyboard.KeyCodes.THREE,
     });
 
     this.enemies = this.physics.add.group();
@@ -54,6 +100,7 @@ export class GameScene extends Phaser.Scene {
     this.playerExp = 0;
     this.expToNext = 20;
     this.awaitingUpgrade = false;
+    this.currentUpgradeChoices = [];
 
     this.hud = this.add
       .text(16, 16, "", {
@@ -65,25 +112,21 @@ export class GameScene extends Phaser.Scene {
       .setDepth(1000)
       .setScrollFactor(0);
 
-    this.expBarBg = this.add
-      .rectangle(16, 118, 260, 14, 0x222222, 0.85)
-      .setOrigin(0, 0)
-      .setDepth(1000)
-      .setScrollFactor(0);
+    this.expBarBg = this.add.rectangle(16, 142, 260, 14, 0x222222, 0.85).setOrigin(0, 0).setDepth(1000).setScrollFactor(0);
+    this.expBarFill = this.add.rectangle(18, 144, 0, 10, 0xf2dc6a, 1).setOrigin(0, 0).setDepth(1001).setScrollFactor(0);
 
-    this.expBarFill = this.add
-      .rectangle(18, 120, 0, 10, 0xf2dc6a, 1)
-      .setOrigin(0, 0)
-      .setDepth(1001)
-      .setScrollFactor(0);
+    this.upgradeBackdrop = this.add
+      .rectangle(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, 760, 360, 0x111111, 0.85)
+      .setDepth(1198)
+      .setScrollFactor(0)
+      .setVisible(false);
 
-    this.levelUpHint = this.add
-      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y - 90, "", {
+    this.upgradePanel = this.add
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, "", {
         fontSize: "24px",
         color: "#ffe9a8",
-        backgroundColor: "rgba(0,0,0,0.6)",
-        padding: { x: 12, y: 8 },
-        align: "center",
+        align: "left",
+        wordWrap: { width: 680 },
       })
       .setOrigin(0.5)
       .setDepth(1200)
@@ -94,18 +137,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time) {
-    if (this.isGameOver) {
-      return;
-    }
+    if (this.isGameOver) return;
 
     if (this.awaitingUpgrade) {
       this.player.sprite.setVelocity(0, 0);
-      for (const enemySprite of this.enemies.getChildren()) {
-        enemySprite.setVelocity(0, 0);
-      }
-      if (Phaser.Input.Keyboard.JustDown(this.keys.upgrade)) {
-        this.applyBasicUpgrade();
-      }
+      for (const enemySprite of this.enemies.getChildren()) enemySprite.setVelocity(0, 0);
+
+      if (Phaser.Input.Keyboard.JustDown(this.keys.one)) this.pickUpgradeByIndex(0);
+      if (Phaser.Input.Keyboard.JustDown(this.keys.two)) this.pickUpgradeByIndex(1);
+      if (Phaser.Input.Keyboard.JustDown(this.keys.three)) this.pickUpgradeByIndex(2);
+
       this.updateHud(time);
       return;
     }
@@ -120,11 +161,10 @@ export class GameScene extends Phaser.Scene {
 
     for (const enemySprite of this.enemies.getChildren()) {
       const entity = enemySprite.getData("entity");
-      if (entity) {
-        entity.update(this.player.sprite.x, this.player.sprite.y);
-      }
+      if (entity) entity.update(this.player.sprite.x, this.player.sprite.y);
     }
 
+    this.collectNearbyOrbs();
     this.updateHud(time);
     this.cleanupBullets();
   }
@@ -138,16 +178,31 @@ export class GameScene extends Phaser.Scene {
       `等级: Lv.${this.playerLevel}`,
       `EXP: ${this.playerExp}/${this.expToNext}`,
       `冲刺CD: ${dashSeconds}s`,
+      `拾取范围: ${Math.floor(this.player.pickupRange)}`,
+      `经验倍率: x${this.player.expGainMultiplier.toFixed(2)}`,
     ]);
 
     const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
     this.expBarFill.width = Math.floor(256 * expRatio);
   }
 
-  spawnEnemy() {
-    if (this.isGameOver || this.awaitingUpgrade) {
-      return;
+  collectNearbyOrbs() {
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+
+    for (const orb of this.expOrbs.getChildren()) {
+      const dist = Phaser.Math.Distance.Between(px, py, orb.x, orb.y);
+      if (dist <= this.player.pickupRange) {
+        const speed = 160 + (this.player.pickupRange - dist) * 2;
+        this.physics.moveTo(orb, px, py, speed);
+      } else {
+        orb.setVelocity(0, 0);
+      }
     }
+  }
+
+  spawnEnemy() {
+    if (this.isGameOver || this.awaitingUpgrade) return;
 
     const spawnDistance = 500;
     const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
@@ -166,9 +221,7 @@ export class GameScene extends Phaser.Scene {
     const enemy = enemySprite.getData("entity");
     bullet.destroy();
 
-    if (!enemy) {
-      return;
-    }
+    if (!enemy) return;
 
     if (enemy.hit(damage)) {
       const dropValue = Phaser.Math.Between(4, 8);
@@ -201,35 +254,49 @@ export class GameScene extends Phaser.Scene {
   gainExp(amount) {
     if (!amount || amount <= 0) return;
 
-    this.playerExp += amount;
+    const gained = Math.max(1, Math.round(amount * this.player.expGainMultiplier));
+    this.playerExp += gained;
+
     while (this.playerExp >= this.expToNext) {
       this.playerExp -= this.expToNext;
       this.playerLevel += 1;
       this.expToNext = Math.floor(this.expToNext * 1.25);
-      this.showLevelUpEntry();
+      this.showLevelUpChoices();
     }
   }
 
-  showLevelUpEntry() {
+  showLevelUpChoices() {
     this.awaitingUpgrade = true;
     this.spawnEvent.paused = true;
-    this.levelUpHint
-      .setText(`升级！Lv.${this.playerLevel}\n按 E 选择基础强化（+20 最大生命，+20 当前生命）`)
-      .setVisible(true);
+
+    const shuffled = Phaser.Utils.Array.Shuffle([...UPGRADE_POOL]);
+    this.currentUpgradeChoices = shuffled.slice(0, 3);
+
+    const lines = [
+      `升级！Lv.${this.playerLevel}`,
+      "按 1/2/3 选择一项强化：",
+      "",
+      ...this.currentUpgradeChoices.map((item, idx) => `${idx + 1}. ${item.label} — ${item.desc}`),
+    ];
+
+    this.upgradeBackdrop.setVisible(true);
+    this.upgradePanel.setText(lines.join("\n")).setVisible(true);
   }
 
-  applyBasicUpgrade() {
-    this.player.maxHp += 20;
-    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+  pickUpgradeByIndex(index) {
+    const item = this.currentUpgradeChoices[index];
+    if (!item) return;
+
+    item.apply(this);
+    this.currentUpgradeChoices = [];
     this.awaitingUpgrade = false;
     this.spawnEvent.paused = false;
-    this.levelUpHint.setVisible(false);
+    this.upgradeBackdrop.setVisible(false);
+    this.upgradePanel.setVisible(false);
   }
 
   onPlayerHit() {
-    if (this.player.isInvincible || this.isGameOver || this.awaitingUpgrade) {
-      return;
-    }
+    if (this.player.isInvincible || this.isGameOver || this.awaitingUpgrade) return;
 
     this.player.hp -= 10;
     this.player.isInvincible = true;
@@ -246,16 +313,12 @@ export class GameScene extends Phaser.Scene {
       },
     });
 
-    if (this.player.hp <= 0) {
-      this.gameOver();
-    }
+    if (this.player.hp <= 0) this.gameOver();
   }
 
   cleanupBullets() {
     for (const bullet of this.bullets.getChildren()) {
-      if (bullet.x < -100 || bullet.y < -100 || bullet.x > 2100 || bullet.y > 2100) {
-        bullet.destroy();
-      }
+      if (bullet.x < -100 || bullet.y < -100 || bullet.x > 2100 || bullet.y > 2100) bullet.destroy();
     }
   }
 

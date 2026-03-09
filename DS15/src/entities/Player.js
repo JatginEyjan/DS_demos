@@ -14,6 +14,9 @@ export class Player {
     this.dashDurationMs = 300;
     this.dashCooldownMs = 4000;
 
+    this.pickupRange = 90;
+    this.expGainMultiplier = 1;
+
     this.lastDashAt = -99999;
     this.isDashing = false;
     this.isInvincible = false;
