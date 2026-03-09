@@ -18,7 +18,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height / 2 - 88, "WASD 移动 · 空格冲刺 · 自动攻击", {
+      .text(width / 2, height / 2 - 88, "WASD 移动 · 空格冲刺 · 触屏摇杆+冲刺键", {
         fontSize: "21px",
         color: "#d8d2c7",
       })
@@ -34,7 +34,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     this.hintText = this.add
-      .text(width / 2, height / 2 + 182, "空格开始 · 1/2/3 升级工坊", {
+      .text(width / 2, height / 2 + 182, "空格开始 · 1/2/3 升级工坊（手机点屏幕按钮）", {
         fontSize: "24px",
         color: "#ffffff",
       })

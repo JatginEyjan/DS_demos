@@ -119,6 +119,18 @@ export class GameScene extends Phaser.Scene {
       three: Phaser.Input.Keyboard.KeyCodes.THREE,
     });
 
+    this.mobile = {
+      enabled: false,
+      movePointerId: null,
+      moveVector: new Phaser.Math.Vector2(0, 0),
+      dashQueued: false,
+      joyCenter: new Phaser.Math.Vector2(110, this.scale.height - 110),
+      joyRadius: 62,
+      joyKnobRadius: 26,
+      dashCenter: new Phaser.Math.Vector2(this.scale.width - 110, this.scale.height - 110),
+      dashRadius: 42,
+    };
+
     this.enemies = this.physics.add.group();
     this.bullets = this.physics.add.group();
     this.expOrbs = this.physics.add.group();
@@ -195,6 +207,8 @@ export class GameScene extends Phaser.Scene {
 
     this.lastUpgradeText = "";
     this.isGameOver = false;
+
+    this.setupMobileControls();
   }
 
   update(time) {
@@ -203,7 +217,6 @@ export class GameScene extends Phaser.Scene {
     if (this.awaitingUpgrade) {
       this.player.sprite.setVelocity(0, 0);
       for (const enemySprite of this.enemies.getChildren()) enemySprite.setVelocity(0, 0);
-    for (const p of this.bossProjectiles.getChildren()) p.destroy();
 
       if (Phaser.Input.Keyboard.JustDown(this.keys.one)) this.pickUpgradeByIndex(0);
       if (Phaser.Input.Keyboard.JustDown(this.keys.two)) this.pickUpgradeByIndex(1);
@@ -213,10 +226,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.player.update(this.keys, time);
+    const moveKeys = this.buildMoveInputKeys();
+    this.player.update(moveKeys, time);
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.dash)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.dash) || this.mobile.dashQueued) {
       this.player.tryDash(time);
+      this.mobile.dashQueued = false;
     }
 
     this.weapon.update(time, this.player.sprite, this.enemies);
@@ -591,6 +606,98 @@ export class GameScene extends Phaser.Scene {
     this.progress.brassGears = Number(this.progress.brassGears || 0) + gained;
     saveProgress(this.progress);
     return gained;
+  }
+
+  setupMobileControls() {
+    const isTouch = this.sys.game.device.input.touch;
+    if (!isTouch) return;
+
+    this.mobile.enabled = true;
+    this.input.addPointer(2);
+
+    this.mobile.joyBase = this.add
+      .circle(this.mobile.joyCenter.x, this.mobile.joyCenter.y, this.mobile.joyRadius, 0xffffff, 0.12)
+      .setScrollFactor(0)
+      .setDepth(1400);
+    this.mobile.joyKnob = this.add
+      .circle(this.mobile.joyCenter.x, this.mobile.joyCenter.y, this.mobile.joyKnobRadius, 0xffffff, 0.35)
+      .setScrollFactor(0)
+      .setDepth(1401);
+
+    this.mobile.dashButton = this.add
+      .circle(this.mobile.dashCenter.x, this.mobile.dashCenter.y, this.mobile.dashRadius, 0x69c8ff, 0.28)
+      .setScrollFactor(0)
+      .setDepth(1400);
+    this.mobile.dashLabel = this.add
+      .text(this.mobile.dashCenter.x, this.mobile.dashCenter.y, "冲", { fontSize: "26px", color: "#ffffff" })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(1401);
+
+    const handleDown = (pointer) => {
+      const joyDist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.mobile.joyCenter.x, this.mobile.joyCenter.y);
+      if (joyDist <= this.mobile.joyRadius + 28 && this.mobile.movePointerId == null) {
+        this.mobile.movePointerId = pointer.id;
+        this.updateMobileJoystick(pointer);
+        return;
+      }
+
+      const dashDist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.mobile.dashCenter.x, this.mobile.dashCenter.y);
+      if (dashDist <= this.mobile.dashRadius + 16) {
+        this.mobile.dashQueued = true;
+        this.mobile.dashButton.setFillStyle(0x9bd8ff, 0.5);
+      }
+    };
+
+    const handleMove = (pointer) => {
+      if (pointer.id !== this.mobile.movePointerId) return;
+      this.updateMobileJoystick(pointer);
+    };
+
+    const handleUp = (pointer) => {
+      if (pointer.id === this.mobile.movePointerId) this.resetMobileJoystick();
+      this.mobile.dashButton.setFillStyle(0x69c8ff, 0.28);
+    };
+
+    this.input.on("pointerdown", handleDown);
+    this.input.on("pointermove", handleMove);
+    this.input.on("pointerup", handleUp);
+    this.input.on("pointerupoutside", handleUp);
+  }
+
+  updateMobileJoystick(pointer) {
+    const dx = pointer.x - this.mobile.joyCenter.x;
+    const dy = pointer.y - this.mobile.joyCenter.y;
+    const vec = new Phaser.Math.Vector2(dx, dy);
+    const len = Math.min(this.mobile.joyRadius, vec.length());
+    const dir = len > 0 ? vec.normalize() : new Phaser.Math.Vector2(0, 0);
+
+    this.mobile.moveVector.set(dir.x * (len / this.mobile.joyRadius), dir.y * (len / this.mobile.joyRadius));
+    this.mobile.joyKnob.setPosition(
+      this.mobile.joyCenter.x + dir.x * len,
+      this.mobile.joyCenter.y + dir.y * len
+    );
+  }
+
+  resetMobileJoystick() {
+    this.mobile.movePointerId = null;
+    this.mobile.moveVector.set(0, 0);
+    this.mobile.joyKnob.setPosition(this.mobile.joyCenter.x, this.mobile.joyCenter.y);
+  }
+
+  buildMoveInputKeys() {
+    if (!this.mobile.enabled) return this.keys;
+
+    const threshold = 0.2;
+    const vx = this.mobile.moveVector.x;
+    const vy = this.mobile.moveVector.y;
+
+    return {
+      left: { isDown: this.keys.left.isDown || vx < -threshold },
+      right: { isDown: this.keys.right.isDown || vx > threshold },
+      up: { isDown: this.keys.up.isDown || vy < -threshold },
+      down: { isDown: this.keys.down.isDown || vy > threshold },
+    };
   }
 
   stopCombatLoops() {
