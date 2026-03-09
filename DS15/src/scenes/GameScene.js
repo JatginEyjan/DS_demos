@@ -3,55 +3,74 @@ import { Player } from "../entities/Player.js";
 import { Enemy } from "../entities/Enemy.js";
 import { Weapon } from "../entities/Weapon.js";
 
+const RARITY_TABLE = [
+  { id: "common", name: "普通", color: "#ffffff", roll: 60, hp: 1, speed: 1, dash: 1, pickup: 1, exp: 1 },
+  { id: "rare", name: "稀有", color: "#69c8ff", roll: 26, hp: 1.4, speed: 1.4, dash: 1.4, pickup: 1.4, exp: 1.4 },
+  { id: "epic", name: "史诗", color: "#ca84ff", roll: 11, hp: 1.9, speed: 1.9, dash: 1.9, pickup: 1.9, exp: 1.9 },
+  { id: "legendary", name: "传说", color: "#ffcf6b", roll: 3, hp: 2.8, speed: 2.8, dash: 2.8, pickup: 2.8, exp: 2.8 },
+];
+
 const UPGRADE_POOL = [
   {
     id: "hp",
     label: "生命强化",
     desc: "+30 最大生命，+30 当前生命",
-    apply: (scene) => {
-      scene.player.maxHp += 30;
-      scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + 30);
+    apply: (scene, rarity) => {
+      const v = Math.floor(30 * rarity.hp);
+      scene.player.maxHp += v;
+      scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + v);
+      return `+${v} 生命`;
     },
   },
   {
     id: "speed",
     label: "蒸汽增压",
     desc: "+12% 移速",
-    apply: (scene) => {
-      scene.player.speed = Math.floor(scene.player.speed * 1.12);
+    apply: (scene, rarity) => {
+      const mul = 1 + 0.12 * rarity.speed;
+      scene.player.speed = Math.floor(scene.player.speed * mul);
+      return `移速 x${mul.toFixed(2)}`;
     },
   },
   {
     id: "dash",
     label: "冲刺冷却",
     desc: "冲刺CD -15%",
-    apply: (scene) => {
-      scene.player.dashCooldownMs = Math.max(1200, Math.floor(scene.player.dashCooldownMs * 0.85));
+    apply: (scene, rarity) => {
+      const pct = 0.15 * rarity.dash;
+      scene.player.dashCooldownMs = Math.max(800, Math.floor(scene.player.dashCooldownMs * (1 - pct)));
+      return `冲刺CD -${Math.round(pct * 100)}%`;
     },
   },
   {
     id: "pickup",
     label: "齿轮磁场",
     desc: "+25 拾取范围",
-    apply: (scene) => {
-      scene.player.pickupRange += 25;
+    apply: (scene, rarity) => {
+      const v = Math.floor(25 * rarity.pickup);
+      scene.player.pickupRange += v;
+      return `+${v} 拾取范围`;
     },
   },
   {
     id: "exp",
     label: "精密拆解",
     desc: "+20% 经验获取",
-    apply: (scene) => {
-      scene.player.expGainMultiplier = Number((scene.player.expGainMultiplier * 1.2).toFixed(2));
+    apply: (scene, rarity) => {
+      const mul = 1 + 0.2 * rarity.exp;
+      scene.player.expGainMultiplier = Number((scene.player.expGainMultiplier * mul).toFixed(2));
+      return `经验倍率 x${mul.toFixed(2)}`;
     },
   },
   {
     id: "weapon",
     label: "军械改装",
     desc: "解锁或强化武器槽位",
-    apply: (scene) => {
-      const out = scene.weapon.applyUpgrade();
+    apply: (scene, rarity) => {
+      const out = scene.weapon.applyUpgrade({ rarity: rarity.id });
       scene.lastUpgradeResult = out;
+      if (out.action === "evolve") return `${out.weaponName} 进化完成`;
+      return `${out.weaponName} Lv${out.level}`;
     },
   },
 ];
@@ -61,6 +80,15 @@ function formatCountdown(totalSeconds) {
   const mm = String(Math.floor(safe / 60)).padStart(2, "0");
   const ss = String(safe % 60).padStart(2, "0");
   return `${mm}:${ss}`;
+}
+
+function rollRarity() {
+  let roll = Phaser.Math.Between(1, 100);
+  for (const r of RARITY_TABLE) {
+    if (roll <= r.roll) return r;
+    roll -= r.roll;
+  }
+  return RARITY_TABLE[0];
 }
 
 export class GameScene extends Phaser.Scene {
@@ -156,6 +184,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setVisible(false);
 
+    this.lastUpgradeText = "";
     this.isGameOver = false;
   }
 
@@ -206,6 +235,7 @@ export class GameScene extends Phaser.Scene {
       `无死亡标记: ${this.hasDiedThisRun ? "否" : "是"}`,
       `阶段: ${this.getStageLabel()}`,
       `武器槽: ${this.weapon.getSummary()}`,
+      this.lastUpgradeText ? `最近升级: ${this.lastUpgradeText}` : "",
     ]);
 
     const expRatio = Phaser.Math.Clamp(this.playerExp / this.expToNext, 0, 1);
@@ -298,9 +328,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (kind !== "orbit") {
-      bullet.destroy();
-    }
+    if (kind !== "orbit") bullet.destroy();
   }
 
   applyAoeDamage(cx, cy, radius, damage) {
@@ -357,16 +385,19 @@ export class GameScene extends Phaser.Scene {
     this.spawnEvent.paused = true;
 
     const shuffled = Phaser.Utils.Array.Shuffle([...UPGRADE_POOL]);
-    this.currentUpgradeChoices = shuffled.slice(0, 3);
+    this.currentUpgradeChoices = shuffled.slice(0, 3).map((item) => ({ item, rarity: rollRarity() }));
 
     const lines = [
       `升级！Lv.${this.playerLevel}`,
       "按 1/2/3 选择一项强化：",
       "",
-      ...this.currentUpgradeChoices.map((item, idx) => {
+      ...this.currentUpgradeChoices.map(({ item, rarity }, idx) => {
+        const rarityText = `[${rarity.name}]`;
         const desc = item.id === "weapon" ? `${item.desc}（${this.weapon.getUpgradePreview()}）` : item.desc;
-        return `${idx + 1}. ${item.label} — ${desc}`;
+        return `${idx + 1}. ${rarityText} ${item.label} — ${desc}`;
       }),
+      "",
+      "稀有度概率：普通60% / 稀有26% / 史诗11% / 传说3%",
     ];
 
     this.upgradeBackdrop.setVisible(true);
@@ -374,10 +405,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   pickUpgradeByIndex(index) {
-    const item = this.currentUpgradeChoices[index];
-    if (!item) return;
+    const choice = this.currentUpgradeChoices[index];
+    if (!choice) return;
 
-    item.apply(this);
+    const { item, rarity } = choice;
+    const result = item.apply(this, rarity);
+
+    this.lastUpgradeText = `${rarity.name} ${item.label} (${result})`;
     this.currentUpgradeChoices = [];
     this.awaitingUpgrade = false;
     this.spawnEvent.paused = false;

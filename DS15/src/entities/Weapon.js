@@ -1,5 +1,12 @@
 import * as Phaser from "../../vendor/phaser.esm.js";
 
+const RARITY_BONUS = {
+  common: { levelBonus: 0, damageBonus: 0 },
+  rare: { levelBonus: 1, damageBonus: 2 },
+  epic: { levelBonus: 1, damageBonus: 5 },
+  legendary: { levelBonus: 2, damageBonus: 9 },
+};
+
 const WEAPON_DEFS = [
   { id: "tracker", name: "追踪齿轮", kind: "tracking", baseDamage: 12, interval: 360 },
   { id: "shotgun", name: "蒸汽散射", kind: "spread", baseDamage: 8, interval: 560 },
@@ -19,6 +26,8 @@ export class Weapon {
       level: index === 0 ? 1 : 0,
       unlocked: index === 0,
       lastShotAt: -99999,
+      bonusDamage: 0,
+      evolved: false,
     }));
 
     this.orbitBlades = [];
@@ -30,39 +39,86 @@ export class Weapon {
   }
 
   getSummary() {
-    return this.slots.map((slot, idx) => `${idx + 1}.${slot.name} ${slot.unlocked ? `Lv${slot.level}` : "-"}`).join(" | ");
+    return this.slots
+      .map((slot, idx) => {
+        const evo = slot.evolved ? "★" : "";
+        return `${idx + 1}.${slot.name}${evo} ${slot.unlocked ? `Lv${slot.level}` : "-"}`;
+      })
+      .join(" | ");
   }
 
   getUpgradePreview() {
     const nextLocked = this.slots.find((s) => !s.unlocked);
     if (nextLocked) return `解锁新武器：${nextLocked.name}`;
+
     const candidates = this.getUnlockedSlots().sort((a, b) => a.level - b.level);
-    return `强化武器：${candidates[0]?.name || "追踪齿轮"}`;
+    const target = candidates[0];
+    if (target && !target.evolved && ["tracker", "shotgun"].includes(target.id) && target.level >= 4) {
+      return `${target.name} 可进化`;
+    }
+    return `强化武器：${target?.name || "追踪齿轮"}`;
   }
 
-  applyUpgrade() {
+  applyUpgrade({ rarity = "common" } = {}) {
+    const bonus = RARITY_BONUS[rarity] || RARITY_BONUS.common;
     const nextLocked = this.slots.find((s) => !s.unlocked);
+
     if (nextLocked) {
       nextLocked.unlocked = true;
-      nextLocked.level = 1;
+      nextLocked.level = 1 + bonus.levelBonus;
+      nextLocked.bonusDamage += bonus.damageBonus;
       if (nextLocked.kind === "orbit") this.ensureOrbitBlades(nextLocked);
-      return { action: "unlock", weaponName: nextLocked.name, level: nextLocked.level };
+      this.tryEvolution(nextLocked, rarity);
+      return { action: "unlock", weaponName: nextLocked.name, level: nextLocked.level, rarity };
     }
 
     const candidates = this.getUnlockedSlots().sort((a, b) => a.level - b.level || a.lastShotAt - b.lastShotAt);
     const target = candidates[0];
-    target.level += 1;
+    target.level += 1 + bonus.levelBonus;
+    target.bonusDamage += bonus.damageBonus;
+
+    const evolution = this.tryEvolution(target, rarity);
     if (target.kind === "orbit") this.ensureOrbitBlades(target);
-    return { action: "upgrade", weaponName: target.name, level: target.level };
+
+    return {
+      action: evolution ? "evolve" : "upgrade",
+      weaponName: target.name,
+      level: target.level,
+      rarity,
+      evolution,
+    };
+  }
+
+  tryEvolution(slot, rarity) {
+    const canEvolveByRarity = rarity === "epic" || rarity === "legendary";
+    if (!canEvolveByRarity || slot.evolved || slot.level < 4) return null;
+
+    if (slot.id === "tracker") {
+      slot.evolved = true;
+      slot.name = "猎首蜂群";
+      slot.bonusDamage += 8;
+      slot.interval = Math.floor(slot.interval * 0.8);
+      slot.evolutionMode = "trackingBurst";
+      return "tracker->swarm";
+    }
+
+    if (slot.id === "shotgun") {
+      slot.evolved = true;
+      slot.name = "裂片风暴";
+      slot.bonusDamage += 6;
+      slot.interval = Math.floor(slot.interval * 0.85);
+      slot.evolutionMode = "spreadStorm";
+      return "shotgun->storm";
+    }
+
+    return null;
   }
 
   update(time, owner, enemies) {
     const activeEnemies = enemies.getChildren().filter((enemy) => enemy.active);
 
     for (const slot of this.getUnlockedSlots()) {
-      if (slot.kind === "orbit") {
-        this.ensureOrbitBlades(slot);
-      }
+      if (slot.kind === "orbit") this.ensureOrbitBlades(slot);
       if (time - slot.lastShotAt < this.getInterval(slot)) continue;
       if (activeEnemies.length === 0) continue;
 
@@ -78,21 +134,36 @@ export class Weapon {
     if (slot.kind === "tracking") {
       const nearest = this.findNearest(owner, activeEnemies);
       if (!nearest) return;
-      const bullet = this.bullets.create(owner.x, owner.y, "bullet");
-      bullet.setTint(slot.id === "drone" ? 0x9ad4ff : 0x5ea9df);
-      bullet.setScale(slot.id === "drone" ? 1.2 : 1);
-      bullet.setData("damage", this.getDamage(slot));
-      bullet.setData("weaponKind", slot.kind);
-      bullet.setCircle(5);
-      this.scene.physics.moveToObject(bullet, nearest, slot.id === "drone" ? 280 : 360);
+
+      const burst = slot.evolutionMode === "trackingBurst" ? 2 : 1;
+      for (let i = 0; i < burst; i += 1) {
+        const bullet = this.bullets.create(owner.x, owner.y, "bullet");
+        bullet.setTint(slot.id === "drone" ? 0x9ad4ff : 0x5ea9df);
+        bullet.setScale(slot.id === "drone" ? 1.2 : 1);
+        bullet.setData("damage", this.getDamage(slot));
+        bullet.setData("weaponKind", slot.kind);
+        bullet.setCircle(5);
+
+        const speed = slot.id === "drone" ? 280 : 360;
+        if (burst === 1) {
+          this.scene.physics.moveToObject(bullet, nearest, speed);
+        } else {
+          const angle = Phaser.Math.Angle.Between(owner.x, owner.y, nearest.x, nearest.y) + (i === 0 ? -0.08 : 0.08);
+          bullet.body.velocity.x = Math.cos(angle) * speed;
+          bullet.body.velocity.y = Math.sin(angle) * speed;
+        }
+      }
       return;
     }
 
     if (slot.kind === "spread") {
       const nearest = this.findNearest(owner, activeEnemies);
       if (!nearest) return;
+
       const baseAngle = Phaser.Math.Angle.Between(owner.x, owner.y, nearest.x, nearest.y);
-      const pelletCount = 3 + Math.min(4, slot.level);
+      const baseCount = 3 + Math.min(4, slot.level);
+      const pelletCount = slot.evolutionMode === "spreadStorm" ? baseCount + 2 : baseCount;
+
       for (let i = 0; i < pelletCount; i += 1) {
         const offset = Phaser.Math.DegToRad((i - (pelletCount - 1) / 2) * 8);
         const angle = baseAngle + offset;
@@ -112,6 +183,7 @@ export class Weapon {
     if (slot.kind === "aoe") {
       const nearest = this.findNearest(owner, activeEnemies);
       if (!nearest) return;
+
       const bullet = this.bullets.create(owner.x, owner.y, "bullet");
       bullet.setTint(0xf0aa6a);
       bullet.setScale(1.3);
@@ -127,6 +199,7 @@ export class Weapon {
     if (slot.kind === "pierce") {
       const nearest = this.findNearest(owner, activeEnemies);
       if (!nearest) return;
+
       const bullet = this.bullets.create(owner.x, owner.y, "bullet");
       bullet.setTint(0xd8d8d8);
       bullet.setScale(0.95, 0.65);
@@ -207,7 +280,7 @@ export class Weapon {
   }
 
   getDamage(slot) {
-    return Math.floor(slot.baseDamage * (1 + 0.22 * (slot.level - 1)));
+    return Math.floor(slot.baseDamage * (1 + 0.22 * (slot.level - 1)) + slot.bonusDamage);
   }
 
   getInterval(slot) {
