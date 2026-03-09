@@ -2,6 +2,7 @@ import * as Phaser from "../../vendor/phaser.esm.js";
 import { Player } from "../entities/Player.js";
 import { Enemy } from "../entities/Enemy.js";
 import { Weapon } from "../entities/Weapon.js";
+import { loadProgress, saveProgress } from "../data/progress.js";
 
 const RARITY_TABLE = [
   { id: "common", name: "普通", color: "#ffffff", roll: 60, hp: 1, speed: 1, dash: 1, pickup: 1, exp: 1 },
@@ -96,10 +97,13 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
-  create() {
+  create(data = {}) {
     this.physics.world.setBounds(0, 0, 2000, 2000);
 
     this.player = new Player(this, 1000, 1000);
+
+    this.progress = data.workshop || loadProgress();
+    this.applyWorkshopBonuses();
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
     this.cameras.main.setBounds(0, 0, 2000, 2000);
@@ -243,6 +247,7 @@ export class GameScene extends Phaser.Scene {
       `阶段: ${this.getStageLabel()}`,
       `武器槽: ${this.weapon.getSummary()}`,
       `Boss: ${this.enemies.getChildren().some((s) => s.getData("isBoss")) ? "在场" : "无"}`,
+      `黄铜齿轮: ${this.progress.brassGears}`,
       this.lastUpgradeText ? `最近升级: ${this.lastUpgradeText}` : "",
     ]);
 
@@ -565,6 +570,29 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  applyWorkshopBonuses() {
+    const upgrades = this.progress?.upgrades || {};
+    const hpLv = Number(upgrades.maxHp || 0);
+    const speedLv = Number(upgrades.speed || 0);
+    const expLv = Number(upgrades.expGain || 0);
+
+    this.player.maxHp += hpLv * 10;
+    this.player.hp = this.player.maxHp;
+    this.player.speed = Math.floor(this.player.speed * (1 + speedLv * 0.04));
+    this.player.expGainMultiplier = Number((this.player.expGainMultiplier * (1 + expLv * 0.06)).toFixed(2));
+  }
+
+  grantBrassGears(result) {
+    const base = Math.max(8, Math.floor(this.surviveSeconds / 12) + this.playerLevel * 2);
+    const bonus = result === "win" ? 60 : 0;
+    const noDeathBonus = !this.hasDiedThisRun ? 20 : 0;
+    const gained = base + bonus + noDeathBonus;
+
+    this.progress.brassGears = Number(this.progress.brassGears || 0) + gained;
+    saveProgress(this.progress);
+    return gained;
+  }
+
   stopCombatLoops() {
     this.spawnEvent.remove(false);
     this.countdownEvent.remove(false);
@@ -579,15 +607,17 @@ export class GameScene extends Phaser.Scene {
     this.stopCombatLoops();
 
     const noDeath = !this.hasDiedThisRun;
+    const gained = this.grantBrassGears("win");
     this.registry.set("ds15.lastRun", {
       result: "win",
       noDeath,
       surviveSeconds: this.surviveSeconds,
+      brassGearsGained: gained,
       finishedAt: Date.now(),
     });
 
     this.add
-      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, `生存成功！\n无死亡标记: ${noDeath ? "达成" : "未达成"}\n按 R 重开`, {
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, `生存成功！\n无死亡标记: ${noDeath ? "达成" : "未达成"}\n获得黄铜齿轮: +${gained}\n按 R 重开`, {
         fontSize: "42px",
         color: "#9df0a8",
         backgroundColor: "rgba(0,0,0,0.6)",
@@ -607,15 +637,17 @@ export class GameScene extends Phaser.Scene {
     this.isGameOver = true;
     this.stopCombatLoops();
 
+    const gained = this.grantBrassGears("lose");
     this.registry.set("ds15.lastRun", {
       result: "lose",
       noDeath: false,
       surviveSeconds: this.surviveSeconds,
+      brassGearsGained: gained,
       finishedAt: Date.now(),
     });
 
     this.add
-      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, "蒸汽熄火（失败）\n按 R 重开", {
+      .text(this.cameras.main.midPoint.x, this.cameras.main.midPoint.y, `蒸汽熄火（失败）\n获得黄铜齿轮: +${gained}\n按 R 重开`, {
         fontSize: "44px",
         color: "#ffbf86",
         backgroundColor: "rgba(0,0,0,0.55)",
