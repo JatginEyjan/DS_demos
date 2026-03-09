@@ -151,6 +151,15 @@ export class GameScene extends Phaser.Scene {
     this.bossMilestones = new Set([300, 600, 900]);
     this.bossSpawned = new Set();
 
+    this.performance = {
+      lastFrameAt: this.time.now,
+      avgFps: 60,
+      degradeLevel: 0,
+      lowFpsStreakMs: 0,
+      recoverStreakMs: 0,
+    };
+    this.maxEnemyCount = 120;
+
     this.countdownEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -243,6 +252,7 @@ export class GameScene extends Phaser.Scene {
 
     this.collectNearbyOrbs();
     this.updateBossSkills(time);
+    this.updatePerformance(time);
     this.updateHud(time);
   }
 
@@ -263,6 +273,8 @@ export class GameScene extends Phaser.Scene {
       `武器槽: ${this.weapon.getSummary()}`,
       `Boss: ${this.enemies.getChildren().some((s) => s.getData("isBoss")) ? "在场" : "无"}`,
       `黄铜齿轮: ${this.progress.brassGears}`,
+      `FPS: ${this.performance.avgFps.toFixed(1)} · 负载档位: L${this.performance.degradeLevel}`,
+      `敌人数上限: ${this.maxEnemyCount}`,
       this.lastUpgradeText ? `最近升级: ${this.lastUpgradeText}` : "",
     ]);
 
@@ -293,14 +305,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   getSpawnBatchSize() {
-    if (this.surviveSeconds < 180) return 1;
-    if (this.surviveSeconds < 420) return 2;
-    if (this.surviveSeconds < 780) return 3;
-    return 4;
+    let base = 1;
+    if (this.surviveSeconds < 180) base = 1;
+    else if (this.surviveSeconds < 420) base = 2;
+    else if (this.surviveSeconds < 780) base = 3;
+    else base = 4;
+
+    const adjusted = base - this.performance.degradeLevel;
+    return Math.max(1, adjusted);
   }
 
   spawnEnemyWave() {
     if (this.isGameOver || this.awaitingUpgrade) return;
+    if (this.enemies.countActive(true) >= this.maxEnemyCount) return;
 
     const batch = this.getSpawnBatchSize();
     for (let i = 0; i < batch; i += 1) {
@@ -317,8 +334,9 @@ export class GameScene extends Phaser.Scene {
       this.enemies.add(enemy.sprite);
     }
 
-    const nextDelay = this.surviveSeconds < 180 ? 1100 : this.surviveSeconds < 420 ? 900 : this.surviveSeconds < 780 ? 760 : 640;
-    this.spawnEvent.delay = nextDelay;
+    const baseDelay = this.surviveSeconds < 180 ? 1100 : this.surviveSeconds < 420 ? 900 : this.surviveSeconds < 780 ? 760 : 640;
+    const delayOffset = this.performance.degradeLevel === 0 ? 0 : this.performance.degradeLevel === 1 ? 120 : 220;
+    this.spawnEvent.delay = baseDelay + delayOffset;
   }
 
   onBulletHit(bullet, enemySprite) {
@@ -583,6 +601,39 @@ export class GameScene extends Phaser.Scene {
       const exp = p.getData("expiresAt") || 0;
       if (time >= exp || p.x < -50 || p.y < -50 || p.x > 2050 || p.y > 2050) p.destroy();
     }
+  }
+
+  updatePerformance(time) {
+    const dt = Math.max(1, time - this.performance.lastFrameAt);
+    this.performance.lastFrameAt = time;
+    const fps = 1000 / dt;
+    this.performance.avgFps = this.performance.avgFps * 0.92 + fps * 0.08;
+
+    const avg = this.performance.avgFps;
+    if (avg < 42) {
+      this.performance.lowFpsStreakMs += dt;
+      this.performance.recoverStreakMs = 0;
+    } else if (avg > 55) {
+      this.performance.recoverStreakMs += dt;
+      this.performance.lowFpsStreakMs = 0;
+    } else {
+      this.performance.lowFpsStreakMs = Math.max(0, this.performance.lowFpsStreakMs - dt * 0.5);
+      this.performance.recoverStreakMs = Math.max(0, this.performance.recoverStreakMs - dt * 0.5);
+    }
+
+    if (this.performance.lowFpsStreakMs > 2500 && this.performance.degradeLevel < 2) {
+      this.performance.degradeLevel += 1;
+      this.performance.lowFpsStreakMs = 0;
+      this.showBossWarning(`性能降级保护触发：L${this.performance.degradeLevel}`);
+    }
+
+    if (this.performance.recoverStreakMs > 5000 && this.performance.degradeLevel > 0) {
+      this.performance.degradeLevel -= 1;
+      this.performance.recoverStreakMs = 0;
+      this.showBossWarning(`性能恢复：切回 L${this.performance.degradeLevel}`);
+    }
+
+    this.maxEnemyCount = this.performance.degradeLevel === 0 ? 120 : this.performance.degradeLevel === 1 ? 90 : 70;
   }
 
   applyWorkshopBonuses() {
