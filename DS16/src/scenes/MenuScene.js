@@ -1,4 +1,4 @@
-import * as Phaser from '../../../vendor/phaser.esm.js';
+import * as Phaser from '../../vendor/phaser.esm.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {

@@ -1,7 +1,9 @@
 export class Customer {
-  constructor(scene, x, y, type) {
+  constructor(scene, x, y, type, isSpy = false) {
     this.scene = scene;
     this.type = type;
+    this.isSpy = isSpy; // 是否是告密者
+    this.suspiciousLevel = isSpy ? 80 : 0; // 可疑度
     
     const stats = {
       civilian: { pressureRate: 8, patience: 60, income: 20, color: 0x8B7355, gasAmount: 15 },
@@ -16,11 +18,18 @@ export class Customer {
     this.inRoom = false;
     this.released = false;
     this.dead = false;
+    this.suffocated = false; // 是否窒息死亡
 
     this.sprite = scene.add.container(x, y);
     
     const body = scene.add.image(0, 0, `customer-${type}`).setOrigin(0);
     this.sprite.add(body);
+    
+    // Spy indicator (subtle)
+    if (isSpy) {
+      const spyMark = scene.add.circle(14, 2, 3, 0xE53E3E, 0.3);
+      this.sprite.add(spyMark);
+    }
 
     this.barBg = scene.add.image(0, -10, 'bar-bg').setOrigin(0).setScale(0.6);
     this.barFill = scene.add.image(0, -10, 'bar-fill').setOrigin(0).setScale(0.6, 0.6);
@@ -33,15 +42,27 @@ export class Customer {
     });
     this.sprite.add(label);
 
+    // Suspicious behavior hint
+    this.behaviorHint = scene.add.text(20, 40, '', {
+      fontFamily: 'VT323',
+      fontSize: '10px',
+      color: '#E53E3E'
+    });
+    this.sprite.add(this.behaviorHint);
+
     this.updateBar();
   }
 
-  update(delta) {
+  update(delta, heat) {
     if (!this.inRoom && !this.dead) {
       this.pressure += (this.stats.pressureRate / 60) * delta;
       this.patience -= delta;
+      
+      // Spy behavior: looks around suspiciously
+      if (this.isSpy && Math.random() < 0.02) {
+        this.showSuspiciousBehavior();
+      }
     } else if (this.inRoom && !this.released) {
-      // In room but not released yet - pressure slowly decreases (relief)
       this.pressure = Math.max(0, this.pressure - (5 / 60) * delta);
     }
 
@@ -52,10 +73,17 @@ export class Customer {
       this.sprite.setAlpha(0.8 + Math.sin(this.scene.time.now / 100) * 0.2);
     }
 
-    // Patience ran out - customer leaves angry
-    if (this.patience <= 0 && !this.inRoom) {
-      this.pressure = 100; // Force explosion
+    if (this.patience <= 0 && !this.inRoom && !this.dead) {
+      this.pressure = 100;
     }
+  }
+
+  showSuspiciousBehavior() {
+    const behaviors = ['东张西望', '摸口袋', '看窗户'];
+    this.behaviorHint.setText(behaviors[Math.floor(Math.random() * behaviors.length)]);
+    this.scene.time.delayedCall(2000, () => {
+      this.behaviorHint.setText('');
+    });
   }
 
   updateBar() {
@@ -75,6 +103,11 @@ export class Customer {
 
   setReleased(value) {
     this.released = value;
+  }
+
+  setDead(cause) {
+    this.dead = true;
+    this.deathCause = cause; // 'explosion', 'suffocation'
   }
 
   isReleased() {

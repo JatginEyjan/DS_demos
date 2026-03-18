@@ -1,4 +1,4 @@
-import * as Phaser from '../../vendor/phaser.esm.js';
+import * as Phaser from '../vendor/phaser.esm.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { DayScene } from './scenes/DayScene.js';
