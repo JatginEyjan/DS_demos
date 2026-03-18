@@ -32,7 +32,7 @@ export class DayScene extends Phaser.Scene {
     this.waitingCustomers = [];
     this.activeCustomers = [];
     this.deadBodies = [];
-    this.selectedRoom = null;
+    this.selectedCustomer = null; // For spy interaction
     
     this.disposalMode = 'direct';
     this.filterCapacity = 100;
@@ -49,6 +49,8 @@ export class DayScene extends Phaser.Scene {
     this.createDisposalPanel();
     this.createRoomShop();
     this.createAcquisitionPanel();
+    this.createBodyDisposalPanel(); // Create but hide initially
+    this.createSpyNetworkPanel(); // Anti-report defense panel
     
     this.scheduleSystem = new ScheduleSystem(this);
     this.reputationSystem = new ReputationSystem(this);
@@ -92,7 +94,9 @@ export class DayScene extends Phaser.Scene {
       fontFamily: 'VT323', fontSize: '20px', color: '#718096'
     });
 
-    this.add.text(20, 150, '等待区', { fontFamily: 'VT323', fontSize: '18px', color: '#A0AEC0' });
+    this.add.text(20, 150, '等待区 (点击可疑客户处理)', { 
+      fontFamily: 'VT323', fontSize: '18px', color: '#A0AEC0' 
+    });
 
     this.createActionButtons();
   }
@@ -119,8 +123,9 @@ export class DayScene extends Phaser.Scene {
       fontFamily: 'VT323', fontSize: '24px', color: '#FFFFFF'
     });
 
+    // Body count indicator
     if (this.deadBodies.length > 0) {
-      this.add.text(650, y, `尸体: ${this.deadBodies.length}`, {
+      this.bodyCountText = this.add.text(650, y, `尸体: ${this.deadBodies.length}`, {
         fontFamily: 'VT323', fontSize: '18px', color: '#E53E3E'
       });
     }
@@ -259,6 +264,159 @@ export class DayScene extends Phaser.Scene {
     });
   }
 
+  // NEW: Body disposal panel that shows when there are dead bodies
+  createBodyDisposalPanel() {
+    this.bodyPanelContainer = this.add.container(1060, 320);
+    this.updateBodyDisposalPanel();
+  }
+
+  updateBodyDisposalPanel() {
+    this.bodyPanelContainer.removeAll(true);
+    
+    if (this.deadBodies.length === 0) return;
+
+    this.bodyPanelContainer.add(
+      this.add.text(0, 0, '■ 尸体处理', { fontFamily: 'VT323', fontSize: '18px', color: '#E53E3E' })
+    );
+
+    this.bodyPanelContainer.add(
+      this.add.text(0, 25, `待处理: ${this.deadBodies.length}`, { fontFamily: 'VT323', fontSize: '14px', color: '#A0AEC0' })
+    );
+
+    const methods = [
+      { label: '秘密埋葬 (-500$)', y: 55, cost: -500, rep: 0, risk: 0.1 },
+      { label: '卖给黑市 (+200$)', y: 95, cost: 200, rep: -30, risk: 0 },
+      { label: '伪装死亡 (-800$)', y: 135, cost: -800, rep: 0, risk: 0 }
+    ];
+
+    methods.forEach(method => {
+      const btn = this.add.rectangle(70, method.y, 130, 32, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+      const text = this.add.text(70, method.y, method.label, { fontFamily: 'VT323', fontSize: '12px', color: '#A0AEC0' }).setOrigin(0.5);
+      
+      btn.setInteractive({ useHandCursor: true });
+      btn.on('pointerover', () => { btn.setStrokeStyle(2, 0xE53E3E); text.setColor('#E53E3E'); });
+      btn.on('pointerout', () => { btn.setStrokeStyle(2, 0x4A5568); text.setColor('#A0AEC0'); });
+      btn.on('pointerdown', () => this.disposeBody(method));
+      
+      this.bodyPanelContainer.add([btn, text]);
+    });
+  }
+
+  disposeBody(method) {
+    if (this.deadBodies.length === 0) return;
+    if (this.gameData.money + method.cost < 0) {
+      this.showMessage('资金不足！', 0xE53E3E); return;
+    }
+
+    this.gameData.money += method.cost;
+    this.gameData.reputation += method.rep;
+    this.deadBodies.shift();
+
+    if (method.risk > 0 && Math.random() < method.risk) {
+      this.showMessage('埋葬被发现！游戏结束', 0xE53E3E);
+      this.gameOver('被捕');
+      return;
+    }
+
+    this.showMessage(`尸体已处理`, 0x718096);
+    this.updateStatus();
+    this.updateBodyDisposalPanel();
+  }
+
+  // NEW: Spy network / anti-report defense panel
+  createSpyNetworkPanel() {
+    this.spyPanelContainer = this.add.container(1060, 500);
+    this.updateSpyNetworkPanel();
+  }
+
+  updateSpyNetworkPanel() {
+    this.spyPanelContainer.removeAll(true);
+    
+    this.spyPanelContainer.add(
+      this.add.text(0, 0, '■ 反举报防御', { fontFamily: 'VT323', fontSize: '18px', color: '#48BB78' })
+    );
+
+    // Hush money button
+    const hushY = 35;
+    const hushBtn = this.add.rectangle(70, hushY, 130, 32, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+    const hushText = this.add.text(70, hushY, '预付封口费 (100$)', { fontFamily: 'VT323', fontSize: '11px', color: '#A0AEC0' }).setOrigin(0.5);
+    hushBtn.setInteractive({ useHandCursor: true });
+    hushBtn.on('pointerover', () => { hushBtn.setStrokeStyle(2, 0x48BB78); hushText.setColor('#48BB78'); });
+    hushBtn.on('pointerout', () => { hushBtn.setStrokeStyle(2, 0x4A5568); hushText.setColor('#A0AEC0'); });
+    hushBtn.on('pointerdown', () => this.payHushMoney());
+    this.spyPanelContainer.add([hushBtn, hushText]);
+
+    // Spy network button
+    const netY = 75;
+    const netBtn = this.add.rectangle(70, netY, 130, 32, this.gameData.spyNetwork ? 0x22543D : 0x1A202C)
+      .setStrokeStyle(2, this.gameData.spyNetwork ? 0x48BB78 : 0x4A5568);
+    const netText = this.add.text(70, netY, this.gameData.spyNetwork ? '眼线网运行中' : '建立眼线网 (200$/天)', {
+      fontFamily: 'VT323', fontSize: '11px', color: this.gameData.spyNetwork ? '#48BB78' : '#A0AEC0'
+    }).setOrigin(0.5);
+    netBtn.setInteractive({ useHandCursor: true });
+    netBtn.on('pointerdown', () => this.toggleSpyNetwork());
+    this.spyPanelContainer.add([netBtn, netText]);
+
+    // Faulty room button (for spies in rooms)
+    const faultY = 115;
+    const faultBtn = this.add.rectangle(70, faultY, 130, 32, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+    const faultText = this.add.text(70, faultY, '标记故障房 (灭口)', { fontFamily: 'VT323', fontSize: '11px', color: '#E53E3E' }).setOrigin(0.5);
+    faultBtn.setInteractive({ useHandCursor: true });
+    faultBtn.on('pointerover', () => { faultBtn.setStrokeStyle(2, 0xE53E3E); });
+    faultBtn.on('pointerout', () => { faultBtn.setStrokeStyle(2, 0x4A5568); });
+    faultBtn.on('pointerdown', () => this.triggerFaultyRoom());
+    this.spyPanelContainer.add([faultBtn, faultText]);
+  }
+
+  payHushMoney() {
+    if (this.gameData.money < 100) {
+      this.showMessage('资金不足', 0xE53E3E); return;
+    }
+    this.gameData.money -= 100;
+    this.gameData.heat = Math.max(0, this.gameData.heat - 10);
+    this.showMessage('封口费已支付，风险降低', 0x48BB78);
+    this.updateStatus();
+  }
+
+  toggleSpyNetwork() {
+    if (!this.gameData.spyNetwork) {
+      if (this.gameData.money >= 200) {
+        this.gameData.spyNetwork = true;
+        this.showMessage('眼线网建立！声望+10', 0x48BB78);
+        this.gameData.reputation += 10;
+      } else {
+        this.showMessage('资金不足', 0xE53E3E);
+      }
+    } else {
+      this.gameData.spyNetwork = false;
+      this.showMessage('眼线网解散', 0xED8936);
+    }
+    this.updateSpyNetworkPanel();
+  }
+
+  triggerFaultyRoom() {
+    // Find a room with a spy customer
+    const spyRoom = this.rooms.find(r => r.customer && r.customer.isSpy);
+    if (!spyRoom) {
+      this.showMessage('没有可疑客户在使用房间', 0xED8936); return;
+    }
+    
+    // Kill the spy
+    spyRoom.customer.dead = true;
+    spyRoom.customer.deathCause = 'faulty_room';
+    this.deadBodies.push({ type: spyRoom.customer.type, cause: 'faulty_room', time: Date.now() });
+    this.gameData.customersKilled++;
+    this.gameData.reputation -= 20;
+    this.gameData.heat = Math.max(0, this.gameData.heat - 15);
+    
+    spyRoom.clearCustomer();
+    spyRoom.isBroken = true; // Room needs repair
+    
+    this.showMessage('卧底已"意外"死亡，声望-20', 0xE53E3E);
+    this.updateStatus();
+    this.updateBodyDisposalPanel();
+  }
+
   buyRoom(roomConfig) {
     if (this.gameData.money < roomConfig.cost) { this.showMessage('资金不足', 0xE53E3E); return; }
     const positions = [{ x: 800, y: 200 }, { x: 800, y: 400 }, { x: 400, y: 600 }, { x: 600, y: 600 }, { x: 200, y: 200 }, { x: 200, y: 400 }, { x: 200, y: 600 }, { x: 800, y: 600 }];
@@ -282,7 +440,7 @@ export class DayScene extends Phaser.Scene {
 
   spawnCustomers() {
     let count = Phaser.Math.Between(3, 5);
-    if (this.gameData.marketingActive) { count = Math.floor(count * 1.2); this.gameData.money -= 100; }
+    if (this.gameData.marketingActive) { count = Math.floor(count * 1.2); }
 
     const types = ['civilian', 'middle', 'elite'];
     if (this.gameData.reputation > 20) types.push('vip');
@@ -293,6 +451,13 @@ export class DayScene extends Phaser.Scene {
       const type = types[Phaser.Math.Between(0, types.length - 1)];
       const isSpy = Math.random() < spyChance;
       const customer = new Customer(this, 0, i * 60, type, isSpy);
+      
+      // Make spy customers clickable for interaction
+      if (isSpy) {
+        customer.getSprite().setInteractive({ useHandCursor: true });
+        customer.getSprite().on('pointerdown', () => this.triggerSpyDecision(customer));
+      }
+      
       if (this.gameData.foodSupplyActive) {
         customer.pressure = Phaser.Math.Between(40, 70);
         customer.stats.gasAmount *= 3;
@@ -300,6 +465,76 @@ export class DayScene extends Phaser.Scene {
       this.waitingCustomers.push(customer);
       this.queueContainer.add(customer.getSprite());
     }
+    this.updateQueueDisplay();
+  }
+
+  // NEW: Spy decision event when clicking on a spy
+  triggerSpyDecision(customer) {
+    if (!customer.isSpy || customer.inRoom) return;
+    
+    this.scene.pause();
+    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
+    
+    this.add.text(640, 180, '⚠️ 可疑客户', { fontFamily: 'VT323', fontSize: '36px', color: '#E53E3E' }).setOrigin(0.5);
+    this.add.text(640, 240, '此客户行为异常：东张西望、不问价、直接要最好房间...', {
+      fontFamily: 'VT323', fontSize: '18px', color: '#D69E2E', align: 'center'
+    }).setOrigin(0.5);
+
+    const options = [
+      { y: 320, label: 'A. 正常接待 - 可能是卧底，风险极高', color: '#E53E3E', action: () => {
+        if (Math.random() < 0.7) {
+          this.closeEvent(overlay);
+          this.gameOver('被捕');
+          return;
+        }
+        this.showMessage('侥幸无事...', 0x48BB78);
+        this.closeEvent(overlay);
+        this.assignSpecificCustomer(customer);
+      }},
+      { y: 380, label: 'B. 拒绝服务 - 如果不是卧底，声望-10', color: '#ED8936', action: () => {
+        const idx = this.waitingCustomers.indexOf(customer);
+        if (idx > -1) {
+          this.waitingCustomers.splice(idx, 1);
+          customer.destroy();
+        }
+        this.gameData.reputation -= 10;
+        this.showMessage('已拒绝', 0xED8936);
+        this.closeEvent(overlay);
+      }},
+      { y: 440, label: 'C. "意外"处理 - 安排进故障房灭口，道德-20', color: '#718096', action: () => {
+        const idx = this.waitingCustomers.indexOf(customer);
+        if (idx > -1) {
+          this.waitingCustomers.splice(idx, 1);
+          this.deadBodies.push({ type: customer.type, cause: 'faulty_room', time: Date.now() });
+          this.gameData.customersKilled++;
+          this.gameData.reputation -= 20;
+          this.gameData.heat = Math.max(0, this.gameData.heat - 15);
+          customer.destroy();
+        }
+        this.showMessage('卧底已"意外"死亡', 0x718096);
+        this.closeEvent(overlay);
+      }}
+    ];
+
+    options.forEach(opt => {
+      const bg = this.add.rectangle(640, opt.y, 450, 40, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+      const text = this.add.text(640, opt.y, opt.label, { fontFamily: 'VT323', fontSize: '16px', color: opt.color }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => { bg.setStrokeStyle(2, 0x48BB78); text.setColor('#48BB78'); });
+      bg.on('pointerout', () => { bg.setStrokeStyle(2, 0x4A5568); text.setColor(opt.color); });
+      bg.on('pointerdown', opt.action);
+    });
+  }
+
+  assignSpecificCustomer(customer) {
+    const emptyRoom = this.rooms.find(r => !r.isOccupied() && !r.isBroken);
+    if (!emptyRoom) return;
+    
+    const idx = this.waitingCustomers.indexOf(customer);
+    if (idx > -1) this.waitingCustomers.splice(idx, 1);
+    
+    emptyRoom.assignCustomer(customer);
+    this.activeCustomers.push(customer);
     this.updateQueueDisplay();
   }
 
@@ -313,6 +548,8 @@ export class DayScene extends Phaser.Scene {
     if (!emptyRoom) { this.showMessage('没有空房间！', 0xE53E3E); return; }
 
     const customer = this.waitingCustomers.shift();
+    
+    // Spy check with network bonus
     if (customer.isSpy && !this.gameData.spyNetwork && Math.random() < 0.5) {
       this.showMessage('⚠️ 发现卧底！已拒绝', 0xED8936);
       this.gameData.reputation += 5;
@@ -344,137 +581,6 @@ export class DayScene extends Phaser.Scene {
     if (this.timeSlot === 1 && this.gameData.reputation > 10 && Math.random() < 0.3) {
       this.triggerVIPCutEvent();
     }
-  }
-
-  triggerVIPCutEvent() {
-    this.scene.pause();
-    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.9);
-    this.add.text(640, 200, '⚠️ 紧急来电', { fontFamily: 'VT323', fontSize: '36px', color: '#E53E3E' }).setOrigin(0.5);
-    this.add.text(640, 280, '市政官秘书长要求插队。\n但前面还有3个憋压90+的平民...', {
-      fontFamily: 'VT323', fontSize: '20px', color: '#D69E2E', align: 'center'
-    }).setOrigin(0.5);
-
-    const options = [
-      { y: 400, label: '拒绝插队 (声望+10)', action: () => { this.gameData.reputation += 10; this.showMessage('维护了秩序', 0x48BB78); this.closeEvent(overlay); }},
-      { y: 460, label: '接受插队 (+500$, 声望-15, 风险+20)', action: () => {
-        this.gameData.money += 500; this.gameData.reputation -= 15; this.gameData.heat += 20;
-        const civilian = this.waitingCustomers.find(c => c.type === 'civilian');
-        if (civilian) civilian.pressure = 100;
-        this.showMessage('秘书长满意离开', 0xD69E2E); this.closeEvent(overlay);
-      }}
-    ];
-
-    options.forEach(opt => {
-      const bg = this.add.rectangle(640, opt.y, 400, 40, 0x1A202C).setStrokeStyle(2, 0x4A5568);
-      const text = this.add.text(640, opt.y, opt.label, { fontFamily: 'VT323', fontSize: '18px', color: '#A0AEC0' }).setOrigin(0.5);
-      bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => { bg.setStrokeStyle(2, 0x48BB78); text.setColor('#48BB78'); });
-      bg.on('pointerout', () => { bg.setStrokeStyle(2, 0x4A5568); text.setColor('#A0AEC0'); });
-      bg.on('pointerdown', opt.action);
-    });
-  }
-
-  closeEvent(overlay) { overlay.destroy(); this.scene.resume(); this.updateStatus(); }
-
-  nextTimeSlot() {
-    this.timeSlot++;
-    if (this.timeSlot >= 6) { this.endDay(); return; }
-
-    this.timeRemaining = 120;
-    this.timeText.setText(this.timeSlotNames[this.timeSlot]);
-
-    if (this.gameData.foodSupplyActive) this.gameData.money -= 150;
-    if (this.filterUsed > 0) this.filterUsed = Math.max(0, this.filterUsed - 20);
-
-    if (this.tankLevel >= this.tankCapacity) {
-      this.showMessage('💥 储存罐爆炸！', 0xE53E3E);
-      this.gameOver('大爆炸');
-      return;
-    }
-
-    if (this.gameData.heat > 70 && Phaser.Math.Between(0, 100) < this.gameData.heat) {
-      this.triggerInspection();
-    }
-
-    this.spawnCustomers();
-    this.checkRandomEvents();
-  }
-
-  onSecondTick() {
-    this.timeRemaining--;
-    this.timerText.setText(`剩余: ${this.timeRemaining}s`);
-    this.waitingCustomers.forEach(c => c.update(1, this.gameData.heat));
-    this.rooms.forEach(room => { if (room.isOccupied()) room.update(1, this.disposalMode, this); });
-    this.checkExplosions();
-    if (this.timeRemaining <= 0) this.nextTimeSlot();
-  }
-
-  checkExplosions() {
-    [...this.waitingCustomers, ...this.activeCustomers].forEach(customer => {
-      if (customer.getPressure() >= 100 && !customer.dead) this.triggerExplosion(customer);
-    });
-  }
-
-  triggerExplosion(customer) {
-    customer.setDead('explosion');
-    this.gameData.customersExploded++;
-    this.gameData.heat += 20;
-
-    const inWaiting = this.waitingCustomers.indexOf(customer);
-    if (inWaiting > -1) this.waitingCustomers.splice(inWaiting, 1);
-    else {
-      const inActive = this.activeCustomers.indexOf(customer);
-      if (inActive > -1) {
-        this.activeCustomers.splice(inActive, 1);
-        this.rooms.forEach(r => { if (r.getCustomer() === customer) r.clearCustomer(); });
-      }
-    }
-
-    customer.destroy();
-    this.updateQueueDisplay(); this.updateStatus();
-    this.cameras.main.flash(500, 0xE53E3E);
-    this.showMessage('💥 客户憋炸了！热量+20', 0xE53E3E);
-
-    if (this.gameData.customersExploded >= 5) this.gameOver('大爆炸');
-  }
-
-  triggerInspection() {
-    this.showMessage('⚠️ 监听者巡查...', 0xED8936);
-    const compromised = this.rooms.filter(r => r.isCompromised());
-    if (compromised.length > 0) this.gameOver('被捕');
-  }
-
-  endDay() {
-    const served = this.activeCustomers.filter(c => c.isReleased());
-    const income = served.reduce((sum, c) => sum + c.getIncome(), 0);
-    this.gameData.money += income;
-    this.gameData.customersServed += served.length;
-    this.gameData.day++;
-    this.gameData.heat = Math.max(0, this.gameData.heat - 10);
-
-    this.activeCustomers.forEach(c => c.destroy());
-    this.activeCustomers = [];
-    this.rooms.forEach(r => r.clearCustomer());
-
-    const ending = this.reputationSystem.checkEndingConditions(this.gameData);
-    if (ending) { this.gameOver(ending); return; }
-
-    localStorage.setItem('ds16-save', JSON.stringify(this.gameData));
-    this.scene.restart(this.gameData);
-  }
-
-  gameOver(ending) { this.scene.start('EndingScene', { ending, ...this.gameData }); }
-
-  updateStatus() {
-    this.moneyText.setText(`${this.gameData.money}`);
-    this.repText.setText(`${this.gameData.reputation}`);
-    this.heatText.setText(`${this.gameData.heat}`);
-  }
-
-  showMessage(text, color) {
-    const msg = this.add.text(640, 360, text, {
-      fontFamily: 'VT323', fontSize: '32px', color: `#${color.toString(16).padStart(6, '0')}`
-    }).setOrigin(0.5);
-    this.tweens.add({ targets: msg, y: 300, alpha: 0, duration: 1500, onComplete: () => msg.destroy() });
-  }
-}
+    
+    // Resource shortage event at end of day if low money
+    if (this.timeSlot === 5 && this.gameData.money < 200) {
