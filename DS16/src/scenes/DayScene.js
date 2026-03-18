@@ -16,16 +16,26 @@ export class DayScene extends Phaser.Scene {
       reputation: data.reputation || 0,
       heat: data.heat || 0,
       customersServed: 0,
-      customersExploded: 0
+      customersExploded: 0,
+      gasTanks: 0,
+      spyNetwork: false
     };
 
-    this.timeSlot = 0; // 0-5: morning, noon, afternoon, evening, night, midnight
+    this.timeSlot = 0;
     this.timeSlotNames = ['晨间(06-10)', '正午(10-14)', '午后(14-18)', '黄昏(18-22)', '深夜(22-02)', '凌晨(02-06)'];
-    this.timeRemaining = 120; // seconds per slot
+    this.timeRemaining = 120;
     
     this.rooms = [];
     this.waitingCustomers = [];
-    this.activeCustomers = []; // In rooms
+    this.activeCustomers = [];
+    this.selectedRoom = null;
+    
+    // Gas disposal mode: 'direct', 'filter', 'tank'
+    this.disposalMode = 'direct';
+    this.filterCapacity = 100;
+    this.filterUsed = 0;
+    this.tankCapacity = 100;
+    this.tankLevel = 0;
   }
 
   create() {
@@ -33,12 +43,12 @@ export class DayScene extends Phaser.Scene {
     this.createUI();
     this.createRooms();
     this.createCustomerQueue();
+    this.createDisposalPanel();
+    this.createRoomShop();
     
-    // Systems
     this.scheduleSystem = new ScheduleSystem(this);
     this.reputationSystem = new ReputationSystem(this);
 
-    // Timer
     this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -46,17 +56,14 @@ export class DayScene extends Phaser.Scene {
       callbackScope: this
     });
 
-    // Initial customers
     this.spawnCustomers();
   }
 
   createBackground() {
-    // Dark grid background
     const g = this.add.graphics();
     g.fillStyle(0x0a0a0f, 1);
     g.fillRect(0, 0, 1280, 720);
     
-    // Grid lines
     g.lineStyle(1, 0x1A202C, 0.5);
     for (let x = 0; x < 1280; x += 40) {
       g.moveTo(x, 0);
@@ -70,41 +77,32 @@ export class DayScene extends Phaser.Scene {
   }
 
   createUI() {
-    const { width } = this.scale;
-
-    // Top status bar
     this.createStatusBar();
 
-    // Time slot indicator
     this.timeText = this.add.text(20, 80, this.timeSlotNames[this.timeSlot], {
       fontFamily: 'VT323',
       fontSize: '24px',
       color: '#48BB78'
     });
 
-    // Timer countdown
     this.timerText = this.add.text(20, 110, `剩余: ${this.timeRemaining}s`, {
       fontFamily: 'VT323',
       fontSize: '20px',
       color: '#718096'
     });
 
-    // Waiting queue label
     this.add.text(20, 150, '等待区', {
       fontFamily: 'VT323',
       fontSize: '18px',
       color: '#A0AEC0'
     });
 
-    // Action buttons
     this.createActionButtons();
   }
 
   createStatusBar() {
     const y = 20;
-    const spacing = 140;
 
-    // Money
     this.add.image(30, y + 8, 'icon-money').setScale(1);
     this.moneyText = this.add.text(50, y, `${this.gameData.money}`, {
       fontFamily: 'VT323',
@@ -112,7 +110,6 @@ export class DayScene extends Phaser.Scene {
       color: '#D69E2E'
     });
 
-    // Reputation
     this.add.text(180, y, '声望:', { fontFamily: 'VT323', fontSize: '18px', color: '#A0AEC0' });
     this.repText = this.add.text(240, y, `${this.gameData.reputation}`, {
       fontFamily: 'VT323',
@@ -120,7 +117,6 @@ export class DayScene extends Phaser.Scene {
       color: this.gameData.reputation >= 0 ? '#48BB78' : '#E53E3E'
     });
 
-    // Heat
     this.add.image(340, y + 8, 'icon-heat').setScale(1);
     this.heatText = this.add.text(360, y, `${this.gameData.heat}`, {
       fontFamily: 'VT323',
@@ -128,21 +124,26 @@ export class DayScene extends Phaser.Scene {
       color: this.gameData.heat > 50 ? '#E53E3E' : '#ED8936'
     });
 
-    // Day
     this.add.text(500, y, `第${this.gameData.day}天`, {
       fontFamily: 'VT323',
       fontSize: '24px',
       color: '#FFFFFF'
+    });
+
+    // Tank indicator
+    this.add.text(650, y, `储存罐: ${this.tankLevel}/${this.tankCapacity}`, {
+      fontFamily: 'VT323',
+      fontSize: '18px',
+      color: this.tankLevel > 80 ? '#E53E3E' : '#A0AEC0'
     });
   }
 
   createActionButtons() {
     const btnY = 680;
     const btns = [
-      { label: '接待', x: 200, action: () => this.assignCustomer() },
-      { label: '拒绝', x: 350, action: () => this.rejectCustomer() },
-      { label: '处理', x: 500, action: () => this.disposeGas() },
-      { label: '下时段', x: 650, action: () => this.nextTimeSlot() }
+      { label: '接待', x: 150, action: () => this.assignCustomer() },
+      { label: '驱赶', x: 280, action: () => this.rejectCustomer() },
+      { label: '下时段', x: 410, action: () => this.nextTimeSlot() }
     ];
 
     btns.forEach(({ label, x, action }) => {
@@ -151,7 +152,7 @@ export class DayScene extends Phaser.Scene {
   }
 
   createActionButton(x, y, label, callback) {
-    const bg = this.add.rectangle(x, y, 120, 40, 0x1A202C)
+    const bg = this.add.rectangle(x, y, 100, 40, 0x1A202C)
       .setStrokeStyle(2, 0x4A5568);
 
     const text = this.add.text(x, y, label, {
@@ -175,19 +176,196 @@ export class DayScene extends Phaser.Scene {
     bg.on('pointerdown', callback);
   }
 
-  createRooms() {
-    // Create 4 rooms in a grid
-    const roomConfigs = [
-      { x: 400, y: 200, type: 'basic', id: 0 },
-      { x: 600, y: 200, type: 'basic', id: 1 },
-      { x: 400, y: 400, type: 'basic', id: 2 },
-      { x: 600, y: 400, type: 'basic', id: 3 }
+  createDisposalPanel() {
+    const panelX = 900;
+    const panelY = 80;
+
+    this.add.text(panelX, panelY, '■ 气体处理系统', {
+      fontFamily: 'VT323',
+      fontSize: '20px',
+      color: '#48BB78'
+    });
+
+    const modes = [
+      { id: 'direct', label: '直排 (免费/+热量)', cost: 0, color: '#E53E3E' },
+      { id: 'filter', label: '活性炭 (50$/次)', cost: 50, color: '#48BB78' },
+      { id: 'tank', label: '储存罐 (200$/罐)', cost: 200, color: '#D69E2E' }
     ];
 
-    roomConfigs.forEach(config => {
-      const room = new Room(this, config.x, config.y, config.type, config.id);
-      this.rooms.push(room);
+    modes.forEach((mode, i) => {
+      const y = panelY + 40 + i * 50;
+      
+      const bg = this.add.rectangle(panelX + 100, y, 180, 36, 0x1A202C)
+        .setStrokeStyle(2, this.disposalMode === mode.id ? mode.color : 0x4A5568);
+
+      const text = this.add.text(panelX + 100, y, mode.label, {
+        fontFamily: 'VT323',
+        fontSize: '16px',
+        color: this.disposalMode === mode.id ? mode.color : '#A0AEC0'
+      }).setOrigin(0.5);
+
+      bg.setInteractive({ useHandCursor: true });
+      
+      bg.on('pointerdown', () => {
+        if (mode.id === 'tank' && this.tankLevel >= this.tankCapacity) {
+          this.showMessage('储存罐已满！危险！', 0xE53E3E);
+          return;
+        }
+        this.disposalMode = mode.id;
+        this.createDisposalPanel(); // Refresh
+      });
     });
+
+    // Filter capacity bar
+    if (this.disposalMode === 'filter') {
+      this.add.text(panelX, panelY + 200, `滤网饱和: ${this.filterUsed}/${this.filterCapacity}`, {
+        fontFamily: 'VT323',
+        fontSize: '16px',
+        color: this.filterUsed > 80 ? '#E53E3E' : '#A0AEC0'
+      });
+    }
+
+    // Sell tank button
+    if (this.tankLevel > 0) {
+      const sellBtn = this.add.rectangle(panelX + 100, panelY + 230, 140, 30, 0x744210)
+        .setStrokeStyle(2, 0xD69E2E);
+      
+      this.add.text(panelX + 100, panelY + 230, '黑市出售 (+300$)', {
+        fontFamily: 'VT323',
+        fontSize: '14px',
+        color: '#D69E2E'
+      }).setOrigin(0.5);
+
+      sellBtn.setInteractive({ useHandCursor: true });
+      sellBtn.on('pointerdown', () => {
+        this.gameData.money += 300;
+        this.tankLevel = 0;
+        this.updateStatus();
+        this.showMessage('储存罐已出售', 0xD69E2E);
+        this.createDisposalPanel();
+      });
+    }
+  }
+
+  createRoomShop() {
+    const shopX = 900;
+    const shopY = 350;
+
+    this.add.text(shopX, shopY, '■ 房间管理', {
+      fontFamily: 'VT323',
+      fontSize: '20px',
+      color: '#48BB78'
+    });
+
+    const roomTypes = [
+      { type: 'soundproof', name: '吸音密室', cost: 500, desc: '风险-50%' },
+      { type: 'vacuum', name: '真空舱', cost: 1500, desc: '风险-80%,限时' },
+      { type: 'vip', name: 'VIP套房', cost: 4000, desc: '高收入,高风险' }
+    ];
+
+    roomTypes.forEach((room, i) => {
+      const y = shopY + 50 + i * 60;
+      const hasRoom = this.rooms.some(r => r.type === room.type);
+
+      const bg = this.add.rectangle(shopX + 100, y, 180, 50, hasRoom ? 0x22543D : 0x1A202C)
+        .setStrokeStyle(2, hasRoom ? 0x48BB78 : 0x4A5568);
+
+      this.add.text(shopX + 100, y - 10, room.name, {
+        fontFamily: 'VT323',
+        fontSize: '16px',
+        color: hasRoom ? '#48BB78' : '#A0AEC0'
+      }).setOrigin(0.5);
+
+      this.add.text(shopX + 100, y + 12, hasRoom ? '已拥有' : `${room.cost}$ ${room.desc}`, {
+        fontFamily: 'VT323',
+        fontSize: '12px',
+        color: hasRoom ? '#68D391' : '#718096'
+      }).setOrigin(0.5);
+
+      if (!hasRoom) {
+        bg.setInteractive({ useHandCursor: true });
+        bg.on('pointerdown', () => this.buyRoom(room));
+      }
+    });
+
+    // Expand capacity
+    this.add.text(shopX, shopY + 240, `空间容量: ${this.rooms.length}/8`, {
+      fontFamily: 'VT323',
+      fontSize: '16px',
+      color: '#A0AEC0'
+    });
+
+    if (this.rooms.length < 8) {
+      const expandBtn = this.add.rectangle(shopX + 100, shopY + 280, 140, 30, 0x2D3748)
+        .setStrokeStyle(2, 0xD69E2E);
+      
+      this.add.text(shopX + 100, shopY + 280, '扩建空间 (2000$)', {
+        fontFamily: 'VT323',
+        fontSize: '14px',
+        color: '#D69E2E'
+      }).setOrigin(0.5);
+
+      expandBtn.setInteractive({ useHandCursor: true });
+      expandBtn.on('pointerdown', () => {
+        if (this.gameData.money >= 2000) {
+          this.gameData.money -= 2000;
+          this.addBasicRoom();
+          this.updateStatus();
+          this.showMessage('空间扩建完成', 0x48BB78);
+        } else {
+          this.showMessage('资金不足', 0xE53E3E);
+        }
+      });
+    }
+  }
+
+  buyRoom(roomConfig) {
+    if (this.gameData.money < roomConfig.cost) {
+      this.showMessage('资金不足', 0xE53E3E);
+      return;
+    }
+
+    // Find empty slot for new room
+    const positions = [
+      { x: 800, y: 200 }, { x: 800, y: 400 },
+      { x: 400, y: 600 }, { x: 600, y: 600 },
+      { x: 200, y: 200 }, { x: 200, y: 400 },
+      { x: 200, y: 600 }, { x: 800, y: 600 }
+    ];
+
+    const pos = positions[this.rooms.length];
+    if (!pos) {
+      this.showMessage('无可用空间', 0xE53E3E);
+      return;
+    }
+
+    this.gameData.money -= roomConfig.cost;
+    
+    const room = new Room(this, pos.x, pos.y, roomConfig.type, this.rooms.length);
+    this.rooms.push(room);
+    
+    this.updateStatus();
+    this.showMessage(`购买${roomConfig.name}`, 0x48BB78);
+    this.createRoomShop(); // Refresh
+  }
+
+  addBasicRoom() {
+    const positions = [
+      { x: 400, y: 200 }, { x: 600, y: 200 },
+      { x: 400, y: 400 }, { x: 600, y: 400 },
+      { x: 800, y: 200 }, { x: 800, y: 400 },
+      { x: 200, y: 200 }, { x: 200, y: 400 }
+    ];
+
+    const pos = positions[this.rooms.length];
+    const room = new Room(this, pos.x, pos.y, 'basic', this.rooms.length);
+    this.rooms.push(room);
+  }
+
+  createRooms() {
+    // Start with 2 basic rooms
+    this.addBasicRoom();
+    this.addBasicRoom();
   }
 
   createCustomerQueue() {
@@ -195,12 +373,12 @@ export class DayScene extends Phaser.Scene {
   }
 
   spawnCustomers() {
-    // Spawn 3-5 random customers
     const count = Phaser.Math.Between(3, 5);
-    const types = ['civilian', 'middle', 'elite', 'vip'];
+    const types = ['civilian', 'middle', 'elite'];
+    if (this.gameData.reputation > 20) types.push('vip');
     
     for (let i = 0; i < count; i++) {
-      const type = types[Phaser.Math.Between(0, Math.min(3, Math.floor(this.gameData.day / 3)))];
+      const type = types[Phaser.Math.Between(0, types.length - 1)];
       const customer = new Customer(this, 0, i * 60, type);
       this.waitingCustomers.push(customer);
       this.queueContainer.add(customer.getSprite());
@@ -210,7 +388,6 @@ export class DayScene extends Phaser.Scene {
   }
 
   updateQueueDisplay() {
-    // Reposition queue
     this.waitingCustomers.forEach((customer, index) => {
       customer.setPosition(0, index * 60);
     });
@@ -219,8 +396,7 @@ export class DayScene extends Phaser.Scene {
   assignCustomer() {
     if (this.waitingCustomers.length === 0) return;
 
-    // Find empty room
-    const emptyRoom = this.rooms.find(r => !r.isOccupied());
+    const emptyRoom = this.rooms.find(r => !r.isOccupied() && !r.isBroken);
     if (!emptyRoom) {
       this.showMessage('没有空房间！', 0xE53E3E);
       return;
@@ -246,23 +422,6 @@ export class DayScene extends Phaser.Scene {
     this.showMessage('拒绝客户，声望-5', 0xED8936);
   }
 
-  disposeGas() {
-    // Handle gas disposal for occupied rooms
-    let disposed = 0;
-    this.rooms.forEach(room => {
-      if (room.isOccupied() && room.needsDisposal()) {
-        room.disposeGas();
-        disposed++;
-      }
-    });
-
-    if (disposed > 0) {
-      this.gameData.money -= disposed * 50; // Filter cost
-      this.showMessage(`处理${disposed}个房间，-${disposed * 50}信用点`, 0x48BB78);
-      this.updateStatus();
-    }
-  }
-
   nextTimeSlot() {
     this.timeSlot++;
     if (this.timeSlot >= 6) {
@@ -273,12 +432,22 @@ export class DayScene extends Phaser.Scene {
     this.timeRemaining = 120;
     this.timeText.setText(this.timeSlotNames[this.timeSlot]);
     
-    // Heat check
+    // Filter degradation
+    if (this.filterUsed > 0) {
+      this.filterUsed = Math.max(0, this.filterUsed - 20);
+    }
+    
+    // Tank risk
+    if (this.tankLevel >= this.tankCapacity) {
+      this.showMessage('💥 储存罐爆炸！', 0xE53E3E);
+      this.gameOver('大爆炸');
+      return;
+    }
+
     if (this.gameData.heat > 70 && Phaser.Math.Between(0, 100) < this.gameData.heat) {
       this.triggerInspection();
     }
 
-    // Spawn new customers
     this.spawnCustomers();
   }
 
@@ -286,11 +455,14 @@ export class DayScene extends Phaser.Scene {
     this.timeRemaining--;
     this.timerText.setText(`剩余: ${this.timeRemaining}s`);
 
-    // Update customers
     this.waitingCustomers.forEach(c => c.update(1));
-    this.activeCustomers.forEach(c => c.update(1));
+    
+    this.rooms.forEach(room => {
+      if (room.isOccupied()) {
+        room.update(1, this.disposalMode, this);
+      }
+    });
 
-    // Check explosions
     this.checkExplosions();
 
     if (this.timeRemaining <= 0) {
@@ -310,7 +482,6 @@ export class DayScene extends Phaser.Scene {
     this.gameData.customersExploded++;
     this.gameData.heat += 20;
     
-    // Remove customer
     const inWaiting = this.waitingCustomers.indexOf(customer);
     if (inWaiting > -1) {
       this.waitingCustomers.splice(inWaiting, 1);
@@ -318,7 +489,6 @@ export class DayScene extends Phaser.Scene {
       const inActive = this.activeCustomers.indexOf(customer);
       if (inActive > -1) {
         this.activeCustomers.splice(inActive, 1);
-        // Find and clear room
         this.rooms.forEach(r => {
           if (r.getCustomer() === customer) r.clearCustomer();
         });
@@ -329,7 +499,6 @@ export class DayScene extends Phaser.Scene {
     this.updateQueueDisplay();
     this.updateStatus();
 
-    // Flash effect
     this.cameras.main.flash(500, 0xE53E3E);
     this.showMessage('💥 客户憋炸了！热量+20', 0xE53E3E);
 
@@ -341,7 +510,6 @@ export class DayScene extends Phaser.Scene {
   triggerInspection() {
     this.showMessage('⚠️ 监听者正在巡查...', 0xED8936);
     
-    // Check if any room is compromised
     const compromised = this.rooms.filter(r => r.isCompromised());
     if (compromised.length > 0) {
       this.gameOver('被捕');
@@ -349,16 +517,23 @@ export class DayScene extends Phaser.Scene {
   }
 
   endDay() {
-    // Calculate daily income
-    const income = this.activeCustomers.length * 30;
+    // Calculate income from served customers
+    const served = this.activeCustomers.filter(c => c.isReleased());
+    const income = served.reduce((sum, c) => sum + c.getIncome(), 0);
+    
     this.gameData.money += income;
+    this.gameData.customersServed += served.length;
     this.gameData.day++;
-    this.gameData.heat = Math.max(0, this.gameData.heat - 10); // Heat cools down
+    this.gameData.heat = Math.max(0, this.gameData.heat - 10);
 
-    // Save
+    // Reset for new day
+    this.activeCustomers.forEach(c => c.destroy());
+    this.activeCustomers = [];
+    this.rooms.forEach(r => r.clearCustomer());
+
     localStorage.setItem('ds16-save', JSON.stringify(this.gameData));
 
-    this.scene.start('DayScene', this.gameData);
+    this.scene.restart(this.gameData);
   }
 
   gameOver(ending) {
@@ -369,6 +544,7 @@ export class DayScene extends Phaser.Scene {
     this.moneyText.setText(`${this.gameData.money}`);
     this.repText.setText(`${this.gameData.reputation}`);
     this.heatText.setText(`${this.gameData.heat}`);
+    this.createDisposalPanel(); // Refresh panel
   }
 
   showMessage(text, color) {
