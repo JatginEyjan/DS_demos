@@ -1,3 +1,5 @@
+import * as Phaser from '../../vendor/phaser.esm.js';
+
 export class Customer {
   constructor(scene, x, y, type, isSpy = false) {
     this.scene = scene;

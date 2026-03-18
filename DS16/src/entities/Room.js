@@ -1,3 +1,5 @@
+import * as Phaser from '../../vendor/phaser.esm.js';
+
 export class Room {
   constructor(scene, x, y, type, id) {
     this.scene = scene;
