@@ -20,9 +20,35 @@ export class MenuScene extends Phaser.Scene {
       color: '#718096'
     }).setOrigin(0.5);
 
+    // Check for NG+ unlocks
+    const unlocks = JSON.parse(localStorage.getItem('ds16-unlocks') || '{}');
+    const completedRuns = JSON.parse(localStorage.getItem('ds16-completed') || '[]');
+    const hasNGPlus = unlocks.hasReformerEnding || completedRuns.length > 0;
+    
+    // Calculate starting bonuses
+    let startMoney = 500;
+    let startReputation = 0;
+    let startHeat = 0;
+    let vipUnlocked = false;
+    
+    if (hasNGPlus) {
+      // NG+ bonuses based on completed runs
+      startMoney = 500 + (completedRuns.length * 200); // +200$ per completed run
+      startReputation = Math.min(20, completedRuns.length * 5); // +5 rep per run, max 20
+      vipUnlocked = unlocks.hasReformerEnding || completedRuns.length >= 2;
+    }
+
     // Menu buttons
-    this.createPixelButton(width / 2, height * 0.7, '开始经营', () => {
-      this.scene.start('DayScene', { day: 1, money: 500, reputation: 0, heat: 0 });
+    const startLabel = hasNGPlus ? `开始经营 (NG+ ${completedRuns.length}x)` : '开始经营';
+    this.createPixelButton(width / 2, height * 0.7, startLabel, () => {
+      const startData = { 
+        day: 1, 
+        money: startMoney, 
+        reputation: startReputation, 
+        heat: startHeat,
+        vipUnlocked: vipUnlocked
+      };
+      this.scene.start('DayScene', startData);
     });
 
     this.createPixelButton(width / 2, height * 0.7 + 60, '继续', () => {
@@ -32,6 +58,24 @@ export class MenuScene extends Phaser.Scene {
         this.scene.start('DayScene', JSON.parse(save));
       }
     });
+    
+    // Show NG+ info if unlocked
+    if (hasNGPlus) {
+      const bonusText = `NG+ 奖励: +${completedRuns.length * 200}$ 启动资金`;
+      this.add.text(width / 2, height * 0.7 - 50, bonusText, {
+        fontFamily: 'VT323',
+        fontSize: '14px',
+        color: '#D69E2E'
+      }).setOrigin(0.5);
+      
+      if (unlocks.hasReformerEnding) {
+        this.add.text(width / 2, height * 0.7 - 35, '✓ 真结局通关 - VIP永久解锁', {
+          fontFamily: 'VT323',
+          fontSize: '12px',
+          color: '#48BB78'
+        }).setOrigin(0.5);
+      }
+    }
 
     // Version
     this.add.text(width - 20, height - 20, 'v0.1', {

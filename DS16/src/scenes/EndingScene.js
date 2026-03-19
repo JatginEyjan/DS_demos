@@ -80,6 +80,14 @@ export class EndingScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
+    // Show unlocks info
+    const unlocks = JSON.parse(localStorage.getItem('ds16-unlocks') || '{}');
+    if (unlocks.hasReformerEnding) {
+      this.add.text(width / 2, 520, '✓ 已解锁: 真结局通关奖励', {
+        fontFamily: 'VT323', fontSize: '16px', color: '#48BB78'
+      }).setOrigin(0.5);
+    }
+    
     // Restart button
     this.createRestartButton(width / 2, 580);
   }

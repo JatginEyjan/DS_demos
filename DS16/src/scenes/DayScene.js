@@ -3,6 +3,7 @@ import { Customer } from '../entities/Customer.js';
 import { Room } from '../entities/Room.js';
 import { ScheduleSystem } from '../systems/ScheduleSystem.js';
 import { ReputationSystem } from '../systems/ReputationSystem.js';
+import { AudioSystem } from '../systems/AudioSystem.js';
 
 export class DayScene extends Phaser.Scene {
   constructor() {
@@ -24,8 +25,12 @@ export class DayScene extends Phaser.Scene {
       foodSupplyActive: data.foodSupplyActive || false,
       debt: data.debt || 0,
       vipUnlocked: data.vipUnlocked || false,
-      satisfiedCustomers: data.satisfiedCustomers || 0
+      satisfiedCustomers: data.satisfiedCustomers || 0,
+      evidenceCount: data.evidenceCount || 0,
+      hasReformerEnding: data.hasReformerEnding || false
     };
+
+    this.audioSystem = new AudioSystem(this);
 
     this.timeSlot = 0;
     this.timeSlotNames = ['晨间(06-10)', '正午(10-14)', '午后(14-18)', '黄昏(18-22)', '深夜(22-02)', '凌晨(02-06)'];
@@ -632,6 +637,85 @@ export class DayScene extends Phaser.Scene {
     if (this.gameData.day > 3 && Math.random() < 0.15) {
       this.triggerEquipmentFailureEvent();
     }
+    
+    // Evidence collection for reformer ending
+    if (this.gameData.day > 10 && this.gameData.reputation > 30 && Math.random() < 0.1) {
+      this.triggerEvidenceEvent();
+    }
+  }
+
+  triggerEvidenceEvent() {
+    this.scene.pause();
+    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
+    
+    this.add.text(640, 180, '📁 意外发现', { fontFamily: 'VT323', fontSize: '36px', color: '#48BB78' }).setOrigin(0.5);
+    this.add.text(640, 240, '一位匿名客户偷偷塞给你一份文件...
+是《静音法案》的内部执行记录！', {
+      fontFamily: 'VT323', fontSize: '18px', color: '#D69E2E', align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(640, 300, `当前证据: ${this.gameData.evidenceCount}/5`, {
+      fontFamily: 'VT323', fontSize: '20px', color: '#48BB78'
+    }).setOrigin(0.5);
+
+    const options = [
+      { y: 380, label: 'A. 接受并隐藏 (证据+1, 风险+10)', action: () => {
+        this.gameData.evidenceCount++;
+        this.gameData.heat += 10;
+        this.showMessage('证据已收集！', 0x48BB78);
+        if (this.gameData.evidenceCount >= 5) {
+          this.closeEvent(overlay);
+          this.triggerReformerEnding();
+        } else {
+          this.closeEvent(overlay);
+        }
+      }},
+      { y: 440, label: 'B. 拒绝 (安全但无进展)', action: () => {
+        this.showMessage('谨慎行事', 0xA0AEC0);
+        this.closeEvent(overlay);
+      }}
+    ];
+
+    options.forEach(opt => {
+      const bg = this.add.rectangle(640, opt.y, 400, 40, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+      const text = this.add.text(640, opt.y, opt.label, { fontFamily: 'VT323', fontSize: '16px', color: '#A0AEC0' }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => { bg.setStrokeStyle(2, 0x48BB78); text.setColor('#48BB78'); });
+      bg.on('pointerout', () => { bg.setStrokeStyle(2, 0x4A5568); text.setColor('#A0AEC0'); });
+      bg.on('pointerdown', opt.action);
+    });
+  }
+
+  triggerReformerEnding() {
+    this.scene.pause();
+    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
+    
+    this.add.text(640, 200, '📢 真相大白', { fontFamily: 'VT323', fontSize: '48px', color: '#48BB78' }).setOrigin(0.5);
+    this.add.text(640, 300, '你收集了足够的证据，匿名提交给媒体。
+《静音法案》的残酷真相曝光，
+引发全社会大讨论。', {
+      fontFamily: 'VT323', fontSize: '20px', color: '#D69E2E', align: 'center'
+    }).setOrigin(0.5);
+    
+    this.time.delayedCall(4000, () => {
+      this.gameData.hasReformerEnding = true;
+      this.saveToLocalStorage();
+      this.gameOver('改革者');
+    });
+  }
+
+  saveToLocalStorage() {
+    // Save completed run data for new game+
+    const completedRuns = JSON.parse(localStorage.getItem('ds16-completed') || '[]');
+    completedRuns.push({
+      day: this.gameData.day,
+      ending: this.gameData.hasReformerEnding ? '改革者' : (this.gameData.reputation > 50 ? '地下传奇' : '其他'),
+      date: Date.now()
+    });
+    localStorage.setItem('ds16-completed', JSON.stringify(completedRuns));
+    localStorage.setItem('ds16-unlocks', JSON.stringify({
+      hasReformerEnding: this.gameData.hasReformerEnding,
+      totalRuns: completedRuns.length
+    }));
   }
 
   triggerEquipmentFailureEvent() {
