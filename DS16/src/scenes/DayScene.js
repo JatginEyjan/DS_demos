@@ -432,10 +432,25 @@ export class DayScene extends Phaser.Scene {
   }
 
   addBasicRoom() {
+    // Expansion risk: 30% chance of hitting listening device
+    if (Math.random() < 0.3) {
+      this.showMessage('⚠️ 扩建时发现监听设备！', 0xE53E3E);
+      this.triggerExpansionRiskEvent();
+    }
+    
     const positions = [{ x: 400, y: 200 }, { x: 600, y: 200 }, { x: 400, y: 400 }, { x: 600, y: 400 }, { x: 800, y: 200 }, { x: 800, y: 400 }, { x: 200, y: 200 }, { x: 200, y: 400 }];
     const pos = positions[this.rooms.length];
     const room = new Room(this, pos.x, pos.y, 'basic', this.rooms.length);
     this.rooms.push(room);
+  }
+
+  triggerExpansionRiskEvent() {
+    this.gameData.heat += 15;
+    this.gameData.reputation -= 5;
+    // Could trigger game over if heat too high
+    if (this.gameData.heat >= 100) {
+      this.gameOver('被捕');
+    }
   }
 
   createRooms() { this.addBasicRoom(); this.addBasicRoom(); }
@@ -444,6 +459,13 @@ export class DayScene extends Phaser.Scene {
   spawnCustomers() {
     let count = Phaser.Math.Between(3, 5);
     if (this.gameData.marketingActive) { count = Math.floor(count * 1.2); }
+
+    // Special customer types with different traits
+    const specialTypes = [
+      { type: 'civilian', subtype: 'rushed', name: '急性子商人', pressureRate: 12, patience: 30, incomeBonus: 2.0, duration: 20 },
+      { type: 'middle', subtype: 'constipated', name: '便秘患者', pressureRate: 3, patience: 180, incomeBonus: 1.0, duration: 300, needsMedicine: true },
+      { type: 'civilian', subtype: 'nervous', name: '紧张新手', pressureRate: 10, patience: 45, incomeBonus: 0.8, duration: Phaser.Math.Between(60, 300) }
+    ];
 
     const types = ['civilian', 'middle', 'elite'];
     // VIP unlock via word of mouth: serve 10+ customers with good reputation
@@ -460,9 +482,16 @@ export class DayScene extends Phaser.Scene {
     const spyChance = Math.max(0.05, 0.2 - (this.gameData.reputation / 200));
 
     for (let i = 0; i < count; i++) {
-      const type = types[Phaser.Math.Between(0, types.length - 1)];
-      const isSpy = Math.random() < spyChance;
-      const customer = new Customer(this, 0, i * 60, type, isSpy);
+      // 30% chance for special customer type
+      let customer;
+      if (Math.random() < 0.3) {
+        const special = specialTypes[Phaser.Math.Between(0, specialTypes.length - 1)];
+        customer = new Customer(this, 0, i * 60, special.type, false, special);
+      } else {
+        const type = types[Phaser.Math.Between(0, types.length - 1)];
+        const isSpy = Math.random() < spyChance;
+        customer = new Customer(this, 0, i * 60, type, isSpy);
+      }
       
       // Make spy customers clickable for interaction
       if (isSpy) {
@@ -598,6 +627,63 @@ export class DayScene extends Phaser.Scene {
     if (this.timeSlot === 4 && this.gameData.money < 100) {
       this.triggerResourceShortageEvent();
     }
+    
+    // Equipment failure: soundproof layer aging
+    if (this.gameData.day > 3 && Math.random() < 0.15) {
+      this.triggerEquipmentFailureEvent();
+    }
+  }
+
+  triggerEquipmentFailureEvent() {
+    const soundproofRooms = this.rooms.filter(r => r.type === 'soundproof' && !r.isBroken);
+    if (soundproofRooms.length === 0) return;
+    
+    const targetRoom = soundproofRooms[Phaser.Math.Between(0, soundproofRooms.length - 1)];
+    targetRoom.isBroken = true;
+    targetRoom.gasLevel = targetRoom.config.maxGas; // Compromised
+    
+    this.showMessage(`⚠️ ${targetRoom.getTypeName()}隔音层老化！`, 0xE53E3E);
+    
+    // Offer repair option
+    this.time.delayedCall(2000, () => {
+      this.triggerRepairDecision(targetRoom);
+    });
+  }
+
+  triggerRepairDecision(room) {
+    this.scene.pause();
+    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.9);
+    
+    this.add.text(640, 200, '⚠️ 设备故障', { fontFamily: 'VT323', fontSize: '36px', color: '#E53E3E' }).setOrigin(0.5);
+    this.add.text(640, 270, `${room.getTypeName()}的隔音层老化暴露，急需维修！`, { fontFamily: 'VT323', fontSize: '18px', color: '#D69E2E' }).setOrigin(0.5);
+
+    const options = [
+      { y: 350, label: 'A. 立即维修 (-300$)', action: () => {
+        if (this.gameData.money >= 300) {
+          this.gameData.money -= 300;
+          room.isBroken = false;
+          room.gasLevel = 0;
+          this.showMessage('房间已修复', 0x48BB78);
+        } else {
+          this.showMessage('资金不足！', 0xE53E3E);
+        }
+        this.closeEvent(overlay);
+      }},
+      { y: 410, label: 'B. 暂时不管 - 房间暴露风险极高', action: () => {
+        this.gameData.heat += 20;
+        this.showMessage('风险飙升！', 0xED8936);
+        this.closeEvent(overlay);
+      }}
+    ];
+
+    options.forEach(opt => {
+      const bg = this.add.rectangle(640, opt.y, 400, 40, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+      const text = this.add.text(640, opt.y, opt.label, { fontFamily: 'VT323', fontSize: '16px', color: '#A0AEC0' }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => { bg.setStrokeStyle(2, 0x48BB78); text.setColor('#48BB78'); });
+      bg.on('pointerout', () => { bg.setStrokeStyle(2, 0x4A5568); text.setColor('#A0AEC0'); });
+      bg.on('pointerdown', opt.action);
+    });
   }
 
   triggerResourceShortageEvent() {
