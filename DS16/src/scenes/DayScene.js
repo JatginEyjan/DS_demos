@@ -689,9 +689,7 @@ export class DayScene extends Phaser.Scene {
     const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
     
     this.add.text(640, 200, '📢 真相大白', { fontFamily: 'VT323', fontSize: '48px', color: '#48BB78' }).setOrigin(0.5);
-    this.add.text(640, 300, '你收集了足够的证据，匿名提交给媒体。
-《静音法案》的残酷真相曝光，
-引发全社会大讨论。', {
+    this.add.text(640, 300, '你收集了足够的证据，匿名提交给媒体。\n《静音法案》的残酷真相曝光，\n引发全社会大讨论。', {
       fontFamily: 'VT323', fontSize: '20px', color: '#D69E2E', align: 'center'
     }).setOrigin(0.5);
     
