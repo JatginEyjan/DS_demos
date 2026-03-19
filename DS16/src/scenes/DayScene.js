@@ -649,8 +649,7 @@ export class DayScene extends Phaser.Scene {
     const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
     
     this.add.text(640, 180, '📁 意外发现', { fontFamily: 'VT323', fontSize: '36px', color: '#48BB78' }).setOrigin(0.5);
-    this.add.text(640, 240, '一位匿名客户偷偷塞给你一份文件...
-是《静音法案》的内部执行记录！', {
+    this.add.text(640, 240, '一位匿名客户偷偷塞给你一份文件...\n是《静音法案》的内部执行记录！', {
       fontFamily: 'VT323', fontSize: '18px', color: '#D69E2E', align: 'center'
     }).setOrigin(0.5);
     this.add.text(640, 300, `当前证据: ${this.gameData.evidenceCount}/5`, {
