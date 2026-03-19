@@ -808,3 +808,203 @@ export class DayScene extends Phaser.Scene {
   }
 
   checkRandomEvents() {
+    if (this.timeSlot === 1 && this.gameData.reputation > 10 && Math.random() < 0.3) {
+      this.triggerVIPCutEvent();
+    }
+    
+    if (this.timeSlot === 4 && this.gameData.money < 100) {
+      this.triggerResourceShortageEvent();
+    }
+    
+    if (this.gameData.day > 3 && Math.random() < 0.15) {
+      this.triggerEquipmentFailureEvent();
+    }
+    
+    if (this.gameData.day > 10 && this.gameData.reputation > 30 && Math.random() < 0.1) {
+      this.triggerEvidenceEvent();
+    }
+  }
+
+  closeEvent(overlay) { overlay.destroy(); this.scene.resume(); this.updateStatus(); }
+
+  assignSpecificCustomer(customer) {
+    const emptyRoom = this.rooms.find(r => !r.isOccupied() && !r.isBroken);
+    if (!emptyRoom) return;
+    const idx = this.waitingCustomers.indexOf(customer);
+    if (idx > -1) this.waitingCustomers.splice(idx, 1);
+    emptyRoom.assignCustomer(customer);
+    this.activeCustomers.push(customer);
+    this.updateQueueDisplay();
+  }
+
+  updateQueueDisplay() {
+    this.waitingCustomers.forEach((customer, index) => customer.setPosition(0, index * 60));
+  }
+
+  assignCustomer() {
+    if (this.waitingCustomers.length === 0) return;
+    const emptyRoom = this.rooms.find(r => !r.isOccupied() && !r.isBroken);
+    if (!emptyRoom) { this.showMessage('没有空房间！', 0xE53E3E); return; }
+    const customer = this.waitingCustomers.shift();
+    if (customer.isSpy && !this.gameData.spyNetwork && Math.random() < 0.5) {
+      this.showMessage('⚠️ 发现卧底！已拒绝', 0xED8936);
+      this.gameData.reputation += 5;
+      customer.destroy();
+      this.updateQueueDisplay();
+      return;
+    }
+    emptyRoom.assignCustomer(customer);
+    this.activeCustomers.push(customer);
+    this.updateQueueDisplay();
+    this.showMessage('客户已接待', 0x48BB78);
+  }
+
+  rejectCustomer() {
+    if (this.waitingCustomers.length === 0) return;
+    const customer = this.waitingCustomers.shift();
+    if (customer.isSpy) {
+      this.showMessage('成功拒绝卧底！', 0x48BB78);
+      this.gameData.reputation += 5;
+    } else {
+      this.gameData.reputation -= 5;
+    }
+    customer.destroy();
+    this.updateStatus(); this.updateQueueDisplay();
+  }
+
+  nextTimeSlot() {
+    this.timeSlot++;
+    if (this.timeSlot >= 6) { this.endDay(); return; }
+    this.timeRemaining = 120;
+    this.timeText.setText(this.timeSlotNames[this.timeSlot]);
+    if (this.gameData.foodSupplyActive) this.gameData.money -= 150;
+    if (this.filterUsed > 0) this.filterUsed = Math.max(0, this.filterUsed - 20);
+    if (this.tankLevel >= this.tankCapacity) {
+      this.showMessage('💥 储存罐爆炸！', 0xE53E3E);
+      this.gameOver('大爆炸');
+      return;
+    }
+    if (this.gameData.heat > 70 && Phaser.Math.Between(0, 100) < this.gameData.heat) {
+      this.triggerInspection();
+    }
+    this.spawnCustomers();
+    this.checkRandomEvents();
+  }
+
+  onSecondTick() {
+    this.timeRemaining--;
+    this.timerText.setText(`剩余: ${this.timeRemaining}s`);
+    this.waitingCustomers.forEach(c => c.update(1, this.gameData.heat));
+    const criticalCustomers = [...this.waitingCustomers, ...this.activeCustomers].filter(c => c.getPressure() > 80 && !c.dead);
+    if (criticalCustomers.length > 0) {
+      this.audioSystem.playPressureRumble(criticalCustomers[0].getPressure() / 100);
+    }
+    this.rooms.forEach(room => {
+      if (room.isOccupied()) {
+        room.update(1, this.disposalMode, this);
+        if (room.customerReleased && !room.soundPlayed) {
+          this.audioSystem.playGasRelease();
+          room.soundPlayed = true;
+        }
+      }
+    });
+    this.checkExplosions();
+    this.checkSuffocation();
+    if (this.timeRemaining <= 0) this.nextTimeSlot();
+  }
+
+  checkExplosions() {
+    [...this.waitingCustomers, ...this.activeCustomers].forEach(customer => {
+      if (customer.getPressure() >= 100 && !customer.dead) this.triggerExplosion(customer);
+    });
+  }
+
+  checkSuffocation() {
+    this.rooms.forEach(room => {
+      if (room.type === 'vacuum' && room.customer && room.config.timeLimit) {
+        if (room.releaseTimer > room.config.timeLimit && !room.customer.dead) {
+          room.customer.dead = true;
+          room.customer.suffocated = true;
+          this.deadBodies.push({ type: room.customer.type, cause: 'suffocation' });
+          this.showMessage('客户窒息死亡！', 0xE53E3E);
+          room.clearCustomer();
+          this.updateBodyDisposalPanel();
+        }
+      }
+    });
+  }
+
+  triggerExplosion(customer) {
+    this.audioSystem.playExplosion();
+    customer.setDead('explosion');
+    this.gameData.customersExploded++;
+    this.gameData.heat += 20;
+    const inWaiting = this.waitingCustomers.indexOf(customer);
+    if (inWaiting > -1) this.waitingCustomers.splice(inWaiting, 1);
+    else {
+      const inActive = this.activeCustomers.indexOf(customer);
+      if (inActive > -1) {
+        this.activeCustomers.splice(inActive, 1);
+        this.rooms.forEach(r => { if (r.getCustomer() === customer) r.clearCustomer(); });
+      }
+    }
+    customer.destroy();
+    this.updateQueueDisplay(); this.updateStatus();
+    this.cameras.main.flash(500, 0xE53E3E);
+    this.showMessage('💥 客户憋炸了！热量+20', 0xE53E3E);
+    if (this.gameData.customersExploded >= 5) this.gameOver('大爆炸');
+  }
+
+  triggerInspection() {
+    this.audioSystem.playAlert();
+    this.showMessage('⚠️ 监听者巡查...', 0xED8936);
+    const compromised = this.rooms.filter(r => r.isCompromised());
+    if (compromised.length > 0 || this.deadBodies.length > 0) this.gameOver('被捕');
+  }
+
+  endDay() {
+    if (this.gameData.debt > 0) {
+      if (this.gameData.money >= this.gameData.debt) {
+        this.gameData.money -= this.gameData.debt;
+        this.showMessage(`高利贷已还清: -${this.gameData.debt}$`, 0x48BB78);
+        this.gameData.debt = 0;
+      } else {
+        this.showMessage('无力偿还高利贷！游戏结束', 0xE53E3E);
+        this.gameOver('被捕');
+        return;
+      }
+    }
+    const served = this.activeCustomers.filter(c => c.isReleased());
+    const income = served.reduce((sum, c) => sum + c.getIncome(), 0);
+    const maintenanceCosts = { basic: 10, soundproof: 30, vacuum: 50, vip: 100 };
+    const totalMaintenance = this.rooms.reduce((sum, r) => sum + (maintenanceCosts[r.type] || 10), 0);
+    this.gameData.money += income - totalMaintenance;
+    this.gameData.customersServed += served.length;
+    this.gameData.satisfiedCustomers += served.filter(c => c.pressure < 50).length;
+    this.gameData.day++;
+    this.gameData.heat = Math.max(0, this.gameData.heat - 10);
+    if (totalMaintenance > 0) this.showMessage(`房间维护费: -${totalMaintenance}$`, 0xED8936);
+    this.activeCustomers.forEach(c => c.destroy());
+    this.activeCustomers = [];
+    this.rooms.forEach(r => r.clearCustomer());
+    const ending = this.reputationSystem.checkEndingConditions(this.gameData);
+    if (ending) { this.gameOver(ending); return; }
+    localStorage.setItem('ds16-save', JSON.stringify(this.gameData));
+    this.scene.restart(this.gameData);
+  }
+
+  gameOver(ending) { this.scene.start('EndingScene', { ending, ...this.gameData }); }
+
+  updateStatus() {
+    this.moneyText.setText(`${this.gameData.money}`);
+    this.repText.setText(`${this.gameData.reputation}`);
+    this.heatText.setText(`${this.gameData.heat}`);
+  }
+
+  showMessage(text, color) {
+    const msg = this.add.text(640, 360, text, {
+      fontFamily: 'VT323', fontSize: '32px', color: `#${color.toString(16).padStart(6, '0')}`
+    }).setOrigin(0.5);
+    this.tweens.add({ targets: msg, y: 300, alpha: 0, duration: 1500, onComplete: () => msg.destroy() });
+  }
+}
