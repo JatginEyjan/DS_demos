@@ -489,12 +489,13 @@ export class DayScene extends Phaser.Scene {
     for (let i = 0; i < count; i++) {
       // 30% chance for special customer type
       let customer;
+      let isSpy = false;
       if (Math.random() < 0.3) {
         const special = specialTypes[Phaser.Math.Between(0, specialTypes.length - 1)];
         customer = new Customer(this, 0, i * 60, special.type, false, special);
       } else {
         const type = types[Phaser.Math.Between(0, types.length - 1)];
-        const isSpy = Math.random() < spyChance;
+        isSpy = Math.random() < spyChance;
         customer = new Customer(this, 0, i * 60, type, isSpy);
       }
       
