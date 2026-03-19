@@ -21,7 +21,10 @@ export class DayScene extends Phaser.Scene {
       gasTanks: data.gasTanks || 0,
       spyNetwork: data.spyNetwork || false,
       marketingActive: data.marketingActive || false,
-      foodSupplyActive: data.foodSupplyActive || false
+      foodSupplyActive: data.foodSupplyActive || false,
+      debt: data.debt || 0,
+      vipUnlocked: data.vipUnlocked || false,
+      satisfiedCustomers: data.satisfiedCustomers || 0
     };
 
     this.timeSlot = 0;
@@ -443,7 +446,16 @@ export class DayScene extends Phaser.Scene {
     if (this.gameData.marketingActive) { count = Math.floor(count * 1.2); }
 
     const types = ['civilian', 'middle', 'elite'];
-    if (this.gameData.reputation > 20) types.push('vip');
+    // VIP unlock via word of mouth: serve 10+ customers with good reputation
+    if (this.gameData.satisfiedCustomers >= 10 && this.gameData.reputation > 10) {
+      if (!this.gameData.vipUnlocked) {
+        this.gameData.vipUnlocked = true;
+        this.showMessage('口碑传播！VIP客户已解锁', 0xD69E2E);
+      }
+      types.push('vip');
+    } else if (this.gameData.reputation > 20) {
+      types.push('vip'); // Original condition as fallback
+    }
 
     const spyChance = Math.max(0.05, 0.2 - (this.gameData.reputation / 200));
 
@@ -582,5 +594,50 @@ export class DayScene extends Phaser.Scene {
       this.triggerVIPCutEvent();
     }
     
-    // Resource shortage event at end of day if low money
-    if (this.timeSlot === 5 && this.gameData.money < 200) {
+    // Resource shortage event at start of last timeslot if low money
+    if (this.timeSlot === 4 && this.gameData.money < 100) {
+      this.triggerResourceShortageEvent();
+    }
+  }
+
+  triggerResourceShortageEvent() {
+    this.scene.pause();
+    const overlay = this.add.rectangle(640, 360, 1280, 720, 0x0a0a0f, 0.95);
+    
+    this.add.text(640, 180, '⚠️ 资金短缺危机', { fontFamily: 'VT323', fontSize: '36px', color: '#E53E3E' }).setOrigin(0.5);
+    this.add.text(640, 240, '月底钱不够维护所有房间，必须做出选择...', { fontFamily: 'VT323', fontSize: '18px', color: '#D69E2E', align: 'center' }).setOrigin(0.5);
+    this.add.text(640, 280, `当前资金: ${this.gameData.money}$`, { fontFamily: 'VT323', fontSize: '16px', color: '#A0AEC0' }).setOrigin(0.5);
+
+    const options = [
+      { y: 350, label: 'A. 关闭平民区 - 平民无处可去，街头爆炸+1', action: () => {
+        this.gameData.reputation -= 20;
+        this.gameData.heat += 5;
+        this.showMessage('平民区已关闭，街头传来爆炸声...', 0xE53E3E);
+        this.closeEvent(overlay);
+      }},
+      { y: 410, label: 'B. 拖欠VIP房维护 - VIP暴露风险大增，热量+30', action: () => {
+        this.gameData.heat += 30;
+        const vipRooms = this.rooms.filter(r => r.type === 'vip');
+        vipRooms.forEach(r => r.gasLevel = Math.min(r.config.maxGas, r.gasLevel + 50));
+        this.showMessage('VIP房维护拖欠，风险飙升！', 0xED8936);
+        this.closeEvent(overlay);
+      }},
+      { y: 470, label: 'C. 借高利贷 - 获得500$，但下月需还700$', action: () => {
+        this.gameData.money += 500;
+        this.gameData.debt = 700; // Track debt for next month
+        this.showMessage('高利贷到手，压力倍增...', 0xD69E2E);
+        this.closeEvent(overlay);
+      }}
+    ];
+
+    options.forEach(opt => {
+      const bg = this.add.rectangle(640, opt.y, 480, 40, 0x1A202C).setStrokeStyle(2, 0x4A5568);
+      const text = this.add.text(640, opt.y, opt.label, { fontFamily: 'VT323', fontSize: '14px', color: '#A0AEC0' }).setOrigin(0.5);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => { bg.setStrokeStyle(2, 0x48BB78); text.setColor('#48BB78'); });
+      bg.on('pointerout', () => { bg.setStrokeStyle(2, 0x4A5568); text.setColor('#A0AEC0'); });
+      bg.on('pointerdown', opt.action);
+    });
+  }
+
+  checkRandomEvents() {
