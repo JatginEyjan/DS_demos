@@ -98,7 +98,7 @@ export class Room {
     this.releaseBarFill.setSize(60 * releaseProgress, 4);
 
     // Check if customer finished releasing
-    if (this.releaseTimer >= this.releaseDuration) {
+    if (this.releaseTimer >= this.releaseDuration && !this.customerReleased) {
       this.customerReleased = true;
       this.customer.setReleased(true);
       this.releaseBarBg.setVisible(false);
@@ -118,6 +118,15 @@ export class Room {
         gameScene.gameData.money += 50;
         gameScene.showMessage('VIP小费 +50$', 0xD69E2E);
       }
+      
+      // Schedule customer to leave after a delay (3 seconds to pay and leave)
+      gameScene.time.delayedCall(3000, () => {
+        if (this.customer && this.customerReleased) {
+          // Customer leaves
+          gameScene.showMessage(`${this.customer.type.toUpperCase()} 客户已离开`, 0x48BB78);
+          this.clearCustomer();
+        }
+      });
     }
 
     // Handle gas disposal

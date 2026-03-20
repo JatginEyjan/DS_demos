@@ -66,7 +66,9 @@ export class Customer {
     if (this.needsMedicine) {
       this.medicineBtn = scene.add.text(20, 52, '[给药 100$]', {
         fontFamily: 'VT323', fontSize: '9px', color: '#48BB78'
-      }).setInteractive({ useHandCursor: true });
+      });
+      // Set explicit hit area to avoid hitAreaCallback error
+      this.medicineBtn.setInteractive(new Phaser.Geom.Rectangle(0, 0, 60, 12), Phaser.Geom.Rectangle.Contains);
       this.medicineBtn.on('pointerdown', () => this.giveMedicine());
       this.sprite.add(this.medicineBtn);
     }
