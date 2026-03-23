@@ -1,67 +1,106 @@
 // ============================================
-// DS17 - 办年货 Card Master (P0 Complete)
-// M1: Card Stacking | M2: Order Validation | M3: Sequential Delivery
+// DS17 - 办年货 Card Master (P0 + P1 Complete)
+// M1-M3: Core Mechanics | M4: Level System | M5: Power Cards
 // ============================================
 
+// ===== Progress Manager (M4) =====
+class ProgressManager {
+  static getKey() { return 'ds17-progress-v1'; }
+  
+  static getProgress() {
+    const data = localStorage.getItem(this.getKey());
+    if (data) return JSON.parse(data);
+    return {
+      unlocked: 1,
+      current: 1,
+      stars: {}, // level -> stars
+      stamina: 20,
+      lastStaminaUpdate: Date.now()
+    };
+  }
+  
+  static saveProgress(progress) {
+    localStorage.setItem(this.getKey(), JSON.stringify(progress));
+  }
+  
+  static getStamina() {
+    const prog = this.getProgress();
+    const now = Date.now();
+    const minutesPassed = (now - prog.lastStaminaUpdate) / 60000;
+    const recovered = Math.floor(minutesPassed / 6); // 1 stamina per 6 min
+    return Math.min(20, prog.stamina + recovered);
+  }
+  
+  static useStamina() {
+    const prog = this.getProgress();
+    const current = this.getStamina();
+    if (current < 1) return false;
+    prog.stamina = current - 1;
+    prog.lastStaminaUpdate = Date.now();
+    this.saveProgress(prog);
+    return true;
+  }
+  
+  static completeLevel(level, stars) {
+    const prog = this.getProgress();
+    prog.stars[level] = Math.max(prog.stars[level] || 0, stars);
+    prog.unlocked = Math.max(prog.unlocked, level + 1);
+    prog.current = level + 1;
+    this.saveProgress(prog);
+  }
+}
+
+// ===== Undo Manager (M5) =====
+class UndoManager {
+  constructor() { this.actions = []; }
+  push(action) { this.actions.push(action); if (this.actions.length > 10) this.actions.shift(); }
+  canUndo() { return this.actions.length > 0; }
+  undo(scene) {
+    if (!this.canUndo()) return false;
+    const action = this.actions.pop();
+    action.undo(scene);
+    return true;
+  }
+  clear() { this.actions = []; }
+}
+
+// ===== CardStack Class (M1) =====
 class CardStack {
   constructor(scene, type, x, y) {
-    this.scene = scene;
-    this.type = type;
-    this.cards = [];
-    this.x = x;
-    this.y = y;
-    this.maxStack = 10;
-    this.isSelected = false;
-    
+    this.scene = scene; this.type = type; this.cards = []; this.x = x; this.y = y;
+    this.maxStack = 10; this.isSelected = false;
     this.container = scene.add.container(x, y);
     this.hitArea = scene.add.rectangle(0, 0, 55, 75, 0x000000, 0).setInteractive({ useHandCursor: true });
     this.container.add(this.hitArea);
-    
-    this.countLabel = scene.add.text(25, -45, '0', {
-      fontSize: '14px', color: '#FFF', backgroundColor: '#8B0000', padding: { x: 4, y: 2 }
-    }).setOrigin(0.5).setVisible(false);
+    this.countLabel = scene.add.text(25, -45, '0', { fontSize: '14px', color: '#FFF', backgroundColor: '#8B0000', padding: { x: 4, y: 2 } }).setOrigin(0.5).setVisible(false);
     this.container.add(this.countLabel);
-    
     this.highlightRect = scene.add.rectangle(0, 0, 60, 80, 0x00FF00, 0.3).setVisible(false);
     this.container.add(this.highlightRect);
-    
     this.hitArea.on('pointerdown', () => this.onClick());
     this.hitArea.on('pointerover', () => this.onHover(true));
     this.hitArea.on('pointerout', () => this.onHover(false));
   }
   
   onClick() {
-    if (this.isSelected) {
-      this.deselect();
-      this.scene.selectedStack = null;
-    } else {
+    if (this.isSelected) { this.deselect(); this.scene.selectedStack = null; }
+    else {
       if (this.scene.selectedStack) this.scene.selectedStack.deselect();
-      this.select();
-      this.scene.selectedStack = this;
-      this.scene.highlightValidOrders(this.type);
+      this.select(); this.scene.selectedStack = this; this.scene.highlightValidOrders(this.type);
     }
     this.scene.playClickSound();
   }
   
   onHover(hovering) { if (!this.isSelected) this.container.setScale(hovering ? 1.05 : 1); }
-  
   addCard(card) {
     if (this.cards.length >= this.maxStack) return false;
-    this.cards.push(card);
-    card.stack = this;
-    this.updateVisuals();
-    return true;
+    this.cards.push(card); card.stack = this; this.updateVisuals(); return true;
   }
-  
   removeCards(count) {
     const removed = [];
     for (let i = 0; i < count && this.cards.length > 0; i++) removed.push(this.cards.pop());
-    this.updateVisuals();
-    return removed;
+    this.updateVisuals(); return removed;
   }
-  
   getCount() { return this.cards.length; }
-  
   updateVisuals() {
     const count = this.cards.length;
     this.countLabel.setText(count.toString()).setVisible(count > 0);
@@ -75,40 +114,51 @@ class CardStack {
     });
     this.countLabel.setBackgroundColor(count > 10 ? '#FF6600' : '#8B0000');
   }
-  
   select() { this.isSelected = true; this.highlightRect.setVisible(true); this.container.setDepth(100); }
   deselect() { this.isSelected = false; this.highlightRect.setVisible(false); this.container.setDepth(1); }
   destroy() { this.cards.forEach(c => c.destroy()); this.container.destroy(); }
 }
 
+// ===== Card Class (M5: supports power cards) =====
 class Card {
-  constructor(scene, type, id) {
-    this.scene = scene; this.type = type; this.id = id; this.stack = null;
-    this.sprite = scene.add.sprite(0, 0, type + '_full').setDisplaySize(50, 70);
+  constructor(scene, type, id, isPowerCard = false, powerType = null) {
+    this.scene = scene; this.type = type; this.id = id;
+    this.isPowerCard = isPowerCard;
+    this.powerType = powerType; // 'wild', 'refresh', 'undo'
+    
+    if (isPowerCard) {
+      const colors = { wild: 0xFFD700, refresh: 0x00CED1, undo: 0x9370DB };
+      const icons = { wild: '★', refresh: '↻', undo: '↶' };
+      this.sprite = scene.add.sprite(0, 0, 'cardback').setDisplaySize(50, 70);
+      this.iconText = scene.add.text(0, 0, icons[powerType], { fontSize: '24px', color: '#FFF' }).setOrigin(0.5);
+      this.labelText = scene.add.text(0, 20, powerType === 'wild' ? '万能' : powerType === 'refresh' ? '刷新' : '撤销', { fontSize: '10px', color: '#FFF' }).setOrigin(0.5);
+    } else {
+      this.sprite = scene.add.sprite(0, 0, type + '_full').setDisplaySize(50, 70);
+    }
   }
-  destroy() { this.sprite.destroy(); }
+  destroy() {
+    this.sprite.destroy();
+    if (this.iconText) this.iconText.destroy();
+    if (this.labelText) this.labelText.destroy();
+  }
 }
 
+// ===== Order Class (M2 + M3) =====
 class Order {
   constructor(scene, x, y, config) {
     this.scene = scene; this.id = config.id; this.type = config.type;
     this.requirements = config.requirements; this.baseReward = config.reward; this.completed = false;
     this.deliveredCounts = {};
     this.requirements.forEach(req => this.deliveredCounts[req.type] = 0);
-    
     this.container = scene.add.container(x, y);
     this.bg = scene.add.rectangle(0, 0, 200, 130, 0xFFF8DC).setStrokeStyle(2, 0x8B4513);
     this.container.add(this.bg);
-    
     const typeNames = { simple: '简单订单', composite: '复合订单', urgent: '紧急订单' };
     this.container.add(scene.add.text(0, -52, typeNames[this.type], { fontSize: '14px', color: '#8B0000', fontStyle: 'bold' }).setOrigin(0.5));
-    
     this.reqTexts = [];
     this.updateRequirementsDisplay();
-    
     this.rewardText = scene.add.text(0, 48, `💰 ${this.baseReward}`, { fontSize: '14px', color: '#FFD700' }).setOrigin(0.5);
     this.container.add(this.rewardText);
-    
     this.bg.setInteractive({ useHandCursor: true });
     this.bg.on('pointerover', () => { if (!this.completed) this.bg.setFillStyle(0xFFFFE0); });
     this.bg.on('pointerout', () => { if (!this.completed) this.bg.setFillStyle(0xFFF8DC); });
@@ -131,7 +181,7 @@ class Order {
   }
   
   getTypeLabel(type) {
-    const labels = { candy: '糖果', dumpling: '饺子', lantern: '灯笼', redpacket: '红包', firecracker: '鞭炮', couplet: '春联', fu: '福字', cake: '年糕' };
+    const labels = { candy: '糖果', dumpling: '饺子', lantern: '灯笼', redpacket: '红包', firecracker: '鞭炮', couplet: '春联', fu: '福字', cake: '年糕', wild: '任意' };
     return labels[type] || type;
   }
   
@@ -144,6 +194,13 @@ class Order {
     if (this.completed) return { canAccept: false, reason: '订单已完成' };
     if (!stack || stack.getCount() === 0) return { canAccept: false, reason: '没有卡牌' };
     const cardType = stack.type;
+    // M5: Wild card can match any type
+    if (cardType === 'wild') {
+      const nextType = this.getNextRequiredType();
+      if (!nextType) return { canAccept: false, reason: '订单已完成' };
+      const req = this.requirements.find(r => r.type === nextType);
+      return { canAccept: true, req, remaining: req.count - (this.deliveredCounts[nextType] || 0), isWild: true };
+    }
     const req = this.requirements.find(r => r.type === cardType);
     if (!req) return { canAccept: false, reason: `订单不需要${this.getTypeLabel(cardType)}` };
     const delivered = this.deliveredCounts[cardType] || 0;
@@ -152,7 +209,7 @@ class Order {
       const nextType = this.getNextRequiredType();
       if (cardType !== nextType) return { canAccept: false, reason: `需先完成${this.getTypeLabel(nextType)}` };
     }
-    return { canAccept: true, req, remaining: req.count - delivered };
+    return { canAccept: true, req, remaining: req.count - delivered, isWild: false };
   }
   
   onClick() {
@@ -162,7 +219,16 @@ class Order {
     
     const consumeCount = Math.min(stack.getCount(), result.remaining);
     const removedCards = stack.removeCards(consumeCount);
-    this.deliveredCounts[stack.type] += consumeCount;
+    
+    // M5: Track wild card usage
+    if (result.isWild) {
+      const nextType = this.getNextRequiredType();
+      this.deliveredCounts[nextType] += consumeCount;
+      this.scene.showMessage(`万能卡交付 ${this.getTypeLabel(nextType)} x${consumeCount}!`, 0xFFD700);
+    } else {
+      this.deliveredCounts[stack.type] += consumeCount;
+    }
+    
     removedCards.forEach(card => card.destroy());
     
     if (stack.getCount() === 0) { delete this.scene.stacks[stack.type]; stack.destroy(); this.scene.selectedStack = null; }
@@ -170,7 +236,7 @@ class Order {
     this.scene.clearOrderHighlights();
     
     if (this.isComplete()) this.completeOrder(stack.getCount() + consumeCount);
-    else { this.scene.showMessage(`${this.getTypeLabel(stack.type)} +${consumeCount}`, 0x87CEEB); this.scene.playSuccessSound(); }
+    else if (!result.isWild) { this.scene.showMessage(`${this.getTypeLabel(result.isWild ? this.getNextRequiredType() : stack.type)} +${consumeCount}`, 0x87CEEB); this.scene.playSuccessSound(); }
   }
   
   isComplete() { return this.requirements.every(req => (this.deliveredCounts[req.type] || 0) >= req.count); }
@@ -193,6 +259,7 @@ class Order {
   clearHighlight() { if (!this.completed) this.bg.setStrokeStyle(2, 0x8B4513); }
 }
 
+// ===== BootScene =====
 const BootScene = class extends Phaser.Scene {
   constructor() { super('BootScene'); }
   create() {
@@ -211,23 +278,56 @@ const BootScene = class extends Phaser.Scene {
       const rt = this.add.renderTexture(0, 0, 60, 80);
       rt.draw(key, 0, 0); rt.draw(text, 30, 40); rt.saveTexture(key + '_full'); text.destroy();
     });
+    // Power card back
+    const pg = this.add.graphics();
+    pg.fillStyle(0x4B0082, 1); pg.fillRoundedRect(0, 0, 60, 80, 8);
+    pg.lineStyle(3, 0xFFD700, 1); pg.strokeRoundedRect(0, 0, 60, 80, 8);
+    pg.generateTexture('cardback', 60, 80);
     this.scene.start('MenuScene');
   }
 };
 
+// ===== MenuScene (P1 Updated with stamina display) =====
 const MenuScene = class extends Phaser.Scene {
   constructor() { super('MenuScene'); }
   create() {
     const { width, height } = this.scale;
     const g = this.add.graphics();
     g.fillGradientStyle(0x8B0000, 0x8B0000, 0x4A0000, 0x4A0000, 1); g.fillRect(0, 0, width, height);
-    const title = this.add.text(width/2, height/3, '办年货', { fontFamily: 'Arial', fontSize: '72px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
+    
+    const title = this.add.text(width/2, height/3 - 30, '办年货', { fontFamily: 'Arial', fontSize: '72px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
     this.tweens.add({ targets: title, scale: { from: 1, to: 1.05 }, duration: 1000, yoyo: true, repeat: -1 });
-    this.add.text(width/2, height/3 + 80, 'Card Master', { fontSize: '32px', color: '#FFA500' }).setOrigin(0.5);
-    this.add.text(width/2, height/2, '🧧 P0版本 - 堆叠+验证+顺序交付', { fontSize: '16px', color: '#FFFFFF' }).setOrigin(0.5);
-    this.createButton(width/2, height * 0.65, '开始游戏', () => this.scene.start('GameScene', { level: 1, stamina: 20 }));
-    this.createButton(width/2, height * 0.78, '游戏规则', () => this.showRules());
+    this.add.text(width/2, height/3 + 50, 'Card Master', { fontSize: '32px', color: '#FFA500' }).setOrigin(0.5);
+    this.add.text(width/2, height/3 + 100, '🧧 P1版本 - 关卡系统+功能卡', { fontSize: '16px', color: '#FFFFFF' }).setOrigin(0.5);
+    
+    // M4: Show stamina
+    const stamina = ProgressManager.getStamina();
+    const staminaText = this.add.text(width/2, height/3 + 140, `⚡ 体力: ${stamina}/20`, { fontSize: '18px', color: stamina > 0 ? '#00FF00' : '#FF0000' }).setOrigin(0.5);
+    
+    // M5: Show power card hints
+    this.add.text(width/2, height - 80, '功能卡: ★万能 ↻刷新 ↶撤销', { fontSize: '14px', color: '#CCCCCC' }).setOrigin(0.5);
+    
+    this.createButton(width/2, height * 0.55, '开始游戏', () => {
+      if (!ProgressManager.useStamina()) {
+        this.showMessage('体力不足! (每6分钟恢复1点)', 0xFF0000);
+        return;
+      }
+      this.scene.start('GameScene', { level: 1, fromMenu: true });
+    });
+    
+    this.createButton(width/2, height * 0.68, '选择关卡', () => {
+      this.scene.start('LevelSelectScene');
+    });
+    
+    this.createButton(width/2, height * 0.81, '游戏规则', () => this.showRules());
+    
+    // Update stamina display every 10 seconds
+    this.time.addEvent({ delay: 10000, callback: () => {
+      const newStamina = ProgressManager.getStamina();
+      staminaText.setText(`⚡ 体力: ${newStamina}/20`).setColor(newStamina > 0 ? '#00FF00' : '#FF0000');
+    }, loop: true });
   }
+  
   createButton(x, y, text, callback) {
     const btn = this.add.rectangle(x, y, 220, 55, 0x228B22).setInteractive({ useHandCursor: true });
     this.add.text(x, y, text, { fontSize: '24px', color: '#FFFFFF', fontStyle: 'bold' }).setOrigin(0.5);
@@ -235,74 +335,345 @@ const MenuScene = class extends Phaser.Scene {
     btn.on('pointerout', () => { btn.setFillStyle(0x228B22); btn.setScale(1); });
     btn.on('pointerdown', callback);
   }
+  
   showRules() {
-    const overlay = this.add.rectangle(400, 300, 720, 520, 0x000000, 0.95);
-    this.add.text(400, 80, '📜 游戏规则 (P0完整版)', { fontSize: '24px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
-    const rules = ['【M1 卡牌堆叠】', '• 点击牌堆拿牌，同类型自动堆叠', '• 堆叠上限10张，超出有警告色', '• 点击堆叠选中，绿色高亮', '', '【M2 订单验证】', '• 选中堆叠后点击订单交付', '• 必须交付订单要求的类型和数量', '• 交付后卡牌被消耗', '', '【M3 顺序交付】', '• 复合订单（A+B）必须先完成A再完成B', '• 订单上 ▶ 标记表示当前需要的类型', '• ✓ 标记表示已完成的类型'];
-    rules.forEach((rule, i) => { const color = rule.startsWith('【') ? '#FFD700' : '#FFFFFF'; this.add.text(400, 130 + i * 26, rule, { fontSize: '14px', color: color }).setOrigin(0.5); });
+    const overlay = this.add.rectangle(400, 300, 740, 540, 0x000000, 0.95);
+    this.add.text(400, 60, '📜 游戏规则 (P1完整版)', { fontSize: '24px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
+    
+    const rules = [
+      '【核心玩法】',
+      '• 点击牌堆拿牌，同类型自动堆叠',
+      '• 选中堆叠后点击订单交付',
+      '• 复合订单必须先完成A再完成B',
+      '',
+      '【M4 关卡系统】',
+      '• 共12关，完成解锁下一关',
+      '• 每关根据完成速度评1-3星',
+      '• 每关消耗1点体力',
+      '',
+      '【M5 功能卡】',
+      '• ★万能卡: 可当任意卡牌使用',
+      '• ↻刷新卡: 点击重新洗牌',
+      '• ↶撤销卡: 撤销上一步操作'
+    ];
+    
+    rules.forEach((rule, i) => {
+      const color = rule.startsWith('【') ? '#FFD700' : '#FFFFFF';
+      this.add.text(400, 100 + i * 24, rule, { fontSize: '13px', color: color }).setOrigin(0.5);
+    });
+    
     const closeBtn = this.add.rectangle(400, 480, 120, 40, 0xDC143C).setInteractive({ useHandCursor: true });
     this.add.text(400, 480, '关闭', { fontSize: '18px', color: '#FFF' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => overlay.destroy());
   }
+  
+  showMessage(text, color) {
+    const msg = this.add.text(400, 400, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 15, y: 8 } }).setOrigin(0.5);
+    this.time.delayedCall(2000, () => msg.destroy());
+  }
 };
 
+// ===== LevelSelectScene (M4) =====
+const LevelSelectScene = class extends Phaser.Scene {
+  constructor() { super('LevelSelectScene'); }
+  create() {
+    const { width, height } = this.scale;
+    this.add.rectangle(width/2, height/2, width, height, 0x8B0000);
+    
+    this.add.text(width/2, 50, '选择关卡', { fontSize: '40px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
+    
+    // Show stamina
+    const stamina = ProgressManager.getStamina();
+    const staminaText = this.add.text(width/2, 100, `⚡ 体力: ${stamina}/20`, { fontSize: '18px', color: stamina > 0 ? '#00FF00' : '#FF6600' }).setOrigin(0.5);
+    
+    const progress = ProgressManager.getProgress();
+    
+    // Create 12 level buttons (3x4 grid)
+    for (let i = 1; i <= 12; i++) {
+      const col = (i - 1) % 4;
+      const row = Math.floor((i - 1) / 4);
+      const x = 140 + col * 170;
+      const y = 160 + row * 120;
+      
+      const isUnlocked = i <= progress.unlocked;
+      const isCurrent = i === progress.current;
+      const stars = progress.stars[i] || 0;
+      
+      this.createLevelButton(x, y, i, isUnlocked, isCurrent, stars);
+    }
+    
+    // Back button
+    const backBtn = this.add.rectangle(100, 550, 100, 40, 0x4169E1).setInteractive({ useHandCursor: true });
+    this.add.text(100, 550, '← 返回', { fontSize: '16px', color: '#FFF' }).setOrigin(0.5);
+    backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    
+    // Refresh stamina periodically
+    this.time.addEvent({ delay: 10000, callback: () => {
+      staminaText.setText(`⚡ 体力: ${ProgressManager.getStamina()}/20`);
+    }, loop: true });
+  }
+  
+  createLevelButton(x, y, level, unlocked, current, stars) {
+    const bgColor = unlocked ? (current ? 0xFFD700 : 0x228B22) : 0x666666;
+    const btn = this.add.rectangle(x, y, 140, 100, bgColor).setInteractive(unlocked ? { useHandCursor: true } : false);
+    
+    this.add.text(x, y - 30, `第${level}关`, { fontSize: '20px', color: unlocked ? '#FFF' : '#999', fontStyle: 'bold' }).setOrigin(0.5);
+    
+    if (unlocked && stars > 0) {
+      const starStr = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+      this.add.text(x, y + 5, starStr, { fontSize: '14px' }).setOrigin(0.5);
+    }
+    
+    if (!unlocked) {
+      this.add.text(x, y + 10, '🔒', { fontSize: '24px' }).setOrigin(0.5);
+    }
+    
+    if (unlocked) {
+      btn.on('pointerover', () => btn.setFillStyle(0x2E8B57));
+      btn.on('pointerout', () => btn.setFillStyle(bgColor));
+      btn.on('pointerdown', () => {
+        if (!ProgressManager.useStamina()) {
+          this.showMessage('体力不足!', 0xFF0000);
+          return;
+        }
+        this.scene.start('GameScene', { level, fromMenu: true });
+      });
+    }
+  }
+  
+  showMessage(text, color) {
+    const msg = this.add.text(400, 520, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 10, y: 5 } }).setOrigin(0.5);
+    this.time.delayedCall(2000, () => msg.destroy());
+  }
+};
+
+// ===== GameScene (P0 + M4 + M5) =====
 const GameScene = class extends Phaser.Scene {
   constructor() { super('GameScene'); }
+  
   init(data) {
-    this.level = data.level || 1; this.coins = 0; this.stamina = data.stamina || 20;
-    this.boardCards = []; this.handCards = []; this.stacks = {}; this.orders = [];
-    this.selectedStack = null; this.targetOrders = 3; this.completedOrders = 0;
+    this.level = data.level || 1;
+    this.fromMenu = data.fromMenu || false;
+    this.coins = 0;
+    this.stamina = data.stamina || 20;
+    this.boardCards = [];
+    this.stacks = {};
+    this.orders = [];
+    this.selectedStack = null;
+    this.targetOrders = 3 + Math.floor(this.level / 3);
+    this.completedOrders = 0;
+    this.startTime = Date.now();
+    this.undoManager = new UndoManager();
   }
+  
   create() {
+    this.createBackground();
+    this.createUI();
+    this.generateCards(); // M5: includes power cards
+    this.createOrders();
+  }
+  
+  createBackground() {
     const g = this.add.graphics();
     g.fillStyle(0xDEB887, 1); g.fillRect(0, 0, 800, 600);
     g.fillStyle(0xCD853F, 0.3); for (let x = 0; x < 800; x += 40) g.fillRect(x, 0, 20, 600);
+  }
+  
+  createUI() {
     this.add.rectangle(400, 75, 780, 140, 0x8B4513, 0.9);
-    this.add.text(20, 15, '📋 订单区 (选中堆叠后点击订单交付)', { fontSize: '14px', color: '#FFD700', fontStyle: 'bold' });
+    this.add.text(20, 15, '📋 订单区', { fontSize: '14px', color: '#FFD700', fontStyle: 'bold' });
     this.add.rectangle(400, 520, 780, 140, 0x2F4F4F, 0.9);
-    this.add.text(20, 455, '🎴 堆叠区 - 点击牌堆拿牌，同类型自动堆叠', { fontSize: '12px', color: '#FFFFFF' });
+    this.add.text(20, 455, '🎴 堆叠区', { fontSize: '12px', color: '#FFFFFF' });
+    
     this.add.text(20, 15, `第${this.level}关`, { fontSize: '18px', color: '#FFD700', fontStyle: 'bold' });
     this.coinText = this.add.text(180, 15, `福来币: ${this.coins}`, { fontSize: '16px', color: '#FFD700' });
     this.progressText = this.add.text(350, 15, `进度: 0/${this.targetOrders}`, { fontSize: '14px', color: '#FFFFFF' });
     
-    this.drawPileArea = this.add.rectangle(720, 320, 90, 120, 0x654321).setInteractive({ useHandCursor: true });
-    this.add.text(720, 300, '📦', { fontSize: '36px' }).setOrigin(0.5);
-    this.add.text(720, 340, '牌堆', { fontSize: '14px', color: '#FFFFFF' }).setOrigin(0.5);
-    this.cardCountText = this.add.text(720, 370, '0张', { fontSize: '12px', color: '#FFD700' }).setOrigin(0.5);
+    // Timer display
+    this.timerText = this.add.text(520, 15, '⏱️ 00:00', { fontSize: '14px', color: '#FFFFFF' });
+    this.time.addEvent({ delay: 1000, callback: () => this.updateTimer(), loop: true });
+    
+    // Draw pile
+    this.drawPileArea = this.add.rectangle(720, 300, 90, 120, 0x654321).setInteractive({ useHandCursor: true });
+    this.add.text(720, 280, '📦', { fontSize: '36px' }).setOrigin(0.5);
+    this.add.text(720, 320, '牌堆', { fontSize: '14px', color: '#FFFFFF' }).setOrigin(0.5);
+    this.cardCountText = this.add.text(720, 350, '0张', { fontSize: '12px', color: '#FFD700' }).setOrigin(0.5);
     this.drawPileArea.on('pointerdown', () => this.drawCard());
     
-    const deselectBtn = this.add.rectangle(720, 430, 85, 35, 0xDC143C).setInteractive({ useHandCursor: true });
-    this.add.text(720, 430, '取消选择', { fontSize: '11px', color: '#FFF' }).setOrigin(0.5);
+    // M5: Power card buttons
+    this.createPowerButtons();
+    
+    // Deselect button
+    const deselectBtn = this.add.rectangle(720, 480, 85, 30, 0xDC143C).setInteractive({ useHandCursor: true });
+    this.add.text(720, 480, '取消', { fontSize: '11px', color: '#FFF' }).setOrigin(0.5);
     deselectBtn.on('pointerdown', () => this.deselectAll());
     
-    const menuBtn = this.add.rectangle(720, 500, 80, 35, 0x666666).setInteractive({ useHandCursor: true });
-    this.add.text(720, 500, '菜单', { fontSize: '12px', color: '#FFF' }).setOrigin(0.5);
+    // Menu button
+    const menuBtn = this.add.rectangle(720, 530, 80, 30, 0x666666).setInteractive({ useHandCursor: true });
+    this.add.text(720, 530, '菜单', { fontSize: '12px', color: '#FFF' }).setOrigin(0.5);
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+  }
+  
+  createPowerButtons() {
+    // M5: Refresh button (uses stamina)
+    const refreshBtn = this.add.rectangle(620, 480, 80, 30, 0x00CED1).setInteractive({ useHandCursor: true });
+    this.add.text(620, 480, '↻ 刷新', { fontSize: '11px', color: '#000' }).setOrigin(0.5);
+    refreshBtn.on('pointerdown', () => this.refreshBoard());
     
+    // M5: Undo button
+    const undoBtn = this.add.rectangle(530, 480, 80, 30, 0x9370DB).setInteractive({ useHandCursor: true });
+    this.undoBtnText = this.add.text(530, 480, '↶ 撤销', { fontSize: '11px', color: '#FFF' }).setOrigin(0.5);
+    undoBtn.on('pointerdown', () => this.undoAction());
+  }
+  
+  updateTimer() {
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const secs = (elapsed % 60).toString().padStart(2, '0');
+    this.timerText.setText(`⏱️ ${mins}:${secs}`);
+  }
+  
+  // M5: Generate cards with power cards
+  generateCards() {
     const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
-    for (let i = 0; i < 40; i++) this.boardCards.push(types[Math.floor(Math.random() * types.length)]);
-    this.updateCardCount();
+    const count = 40 + this.level * 5;
     
-    // Orders
-    this.orders.push(new Order(this, 130, 85, { id: 1, type: 'simple', requirements: [{ type: 'candy', count: 5 }], reward: 100 }));
-    this.orders.push(new Order(this, 350, 85, { id: 2, type: 'composite', requirements: [{ type: 'dumpling', count: 3 }, { type: 'lantern', count: 3 }], reward: 150 }));
-    this.orders.push(new Order(this, 570, 85, { id: 3, type: 'simple', requirements: [{ type: 'redpacket', count: 5 }], reward: 100 }));
+    for (let i = 0; i < count; i++) {
+      const rand = Math.random();
+      if (rand < 0.05) {
+        // 5% chance for power cards
+        const powerTypes = ['wild', 'refresh', 'undo'];
+        const powerType = powerTypes[Math.floor(Math.random() * powerTypes.length)];
+        this.boardCards.push({ type: powerType, isPower: true, powerType });
+      } else {
+        this.boardCards.push({ type: types[Math.floor(Math.random() * types.length)], isPower: false });
+      }
+    }
+    this.updateCardCount();
+  }
+  
+  createOrders() {
+    // Generate orders based on level
+    const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    for (let i = 0; i < 3; i++) {
+      const x = 130 + i * 230;
+      let orderType = 'simple';
+      let requirements = [];
+      
+      if (this.level > 2 && i === 1) {
+        // Composite order for level 3+
+        orderType = 'composite';
+        const t1 = types[i % types.length];
+        const t2 = types[(i + 1) % types.length];
+        requirements = [{ type: t1, count: 3 }, { type: t2, count: 3 }];
+      } else {
+        // Simple order
+        const t = types[i % types.length];
+        const count = 3 + Math.floor(this.level / 2);
+        requirements = [{ type: t, count }];
+      }
+      
+      this.orders.push(new Order(this, x, 85, { id: i, type: orderType, requirements, reward: 100 + this.level * 10 }));
+    }
   }
   
   drawCard() {
-    if (Object.keys(this.stacks).length >= 10) { this.showMessage('堆叠区已满!', 0xFF0000); this.playErrorSound(); return; }
+    if (Object.keys(this.stacks).length >= 10) {
+      this.showMessage('堆叠区已满!', 0xFF0000); this.playErrorSound(); return;
+    }
     if (this.boardCards.length === 0) { this.showMessage('牌堆已空!', 0xFF0000); return; }
-    const type = this.boardCards.pop();
-    const card = new Card(this, type, Date.now());
-    if (this.stacks[type]) { if (!this.stacks[type].addCard(card)) this.createNewStack(card); }
-    else this.createNewStack(card);
-    this.updateCardCount(); this.playDrawSound();
+    
+    const cardData = this.boardCards.pop();
+    let card;
+    
+    if (cardData.isPower) {
+      // M5: Power card
+      card = new Card(this, cardData.type, Date.now(), true, cardData.powerType);
+      // Power cards are special stacks
+      if (cardData.powerType === 'refresh') {
+        this.useRefreshCard(card);
+        return;
+      } else if (cardData.powerType === 'undo') {
+        this.useUndoCard(card);
+        return;
+      }
+    } else {
+      card = new Card(this, cardData.type, Date.now());
+    }
+    
+    // Record action for undo
+    this.undoManager.push({
+      type: 'draw',
+      cardType: cardData.type,
+      isPower: cardData.isPower,
+      undo: (scene) => {
+        scene.boardCards.push(cardData);
+        scene.updateCardCount();
+        // Remove the drawn card/stack
+        if (scene.stacks[cardData.type]) {
+          const stack = scene.stacks[cardData.type];
+          if (stack.getCount() <= 1) {
+            delete scene.stacks[cardData.type];
+            stack.destroy();
+          } else {
+            stack.removeCards(1);
+          }
+        }
+      }
+    });
+    
+    if (this.stacks[card.type]) {
+      if (!this.stacks[card.type].addCard(card)) this.createNewStack(card);
+    } else this.createNewStack(card);
+    
+    this.updateCardCount();
+    this.playDrawSound();
   }
   
   createNewStack(card) {
     const count = Object.keys(this.stacks).length;
     const stack = new CardStack(this, card.type, 120 + (count % 5) * 110, 480 + Math.floor(count / 5) * 70);
-    stack.addCard(card); this.stacks[card.type] = stack;
+    stack.addCard(card);
+    this.stacks[card.type] = stack;
+  }
+  
+  // M5: Refresh card effect
+  useRefreshCard(card) {
+    this.showMessage('↻ 刷新卡! 重新洗牌', 0x00CED1);
+    this.boardCards.sort(() => Math.random() - 0.5);
+    card.destroy();
+    this.playSuccessSound();
+  }
+  
+  // M5: Undo card effect
+  useUndoCard(card) {
+    if (this.undoManager.undo(this)) {
+      this.showMessage('↶ 撤销卡! 已撤销', 0x9370DB);
+    } else {
+      this.showMessage('没有可撤销的操作', 0xFF6600);
+    }
+    card.destroy();
+    this.playSuccessSound();
+  }
+  
+  // M5: Manual refresh (stamina cost)
+  refreshBoard() {
+    if (this.stamina < 1) { this.showMessage('体力不足!', 0xFF0000); return; }
+    this.stamina--;
+    this.boardCards.sort(() => Math.random() - 0.5);
+    this.showMessage('↻ 已刷新牌堆 (-1体力)', 0x00CED1);
+    this.playDrawSound();
+  }
+  
+  // M5: Manual undo
+  undoAction() {
+    if (this.undoManager.undo(this)) {
+      this.showMessage('↶ 已撤销', 0x9370DB);
+      this.playSuccessSound();
+    } else {
+      this.showMessage('没有可撤销的操作', 0xFF6600);
+      this.playErrorSound();
+    }
   }
   
   deselectAll() { if (this.selectedStack) { this.selectedStack.deselect(); this.selectedStack = null; } this.clearOrderHighlights(); }
@@ -312,27 +683,54 @@ const GameScene = class extends Phaser.Scene {
   onOrderCompleted(order, data) {
     this.completedOrders++;
     this.progressText.setText(`进度: ${this.completedOrders}/${this.targetOrders}`);
+    
     if (this.completedOrders >= this.targetOrders) {
-      this.time.delayedCall(1500, () => { this.showMessage(`🎉 第${this.level}关完成!`, 0xFFD700); this.time.delayedCall(2000, () => this.scene.start('GameScene', { level: this.level + 1, stamina: this.stamina })); });
+      this.completeLevel();
     } else {
       this.time.delayedCall(1000, () => {
         order.container.destroy();
         const idx = this.orders.indexOf(order);
         const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
         const type = types[Math.floor(Math.random() * types.length)];
-        this.orders[idx] = new Order(this, order.container.x, 85, { id: Date.now(), type: 'simple', requirements: [{ type, count: 5 }], reward: 100 });
+        this.orders[idx] = new Order(this, order.container.x, 85, { id: Date.now(), type: 'simple', requirements: [{ type, count: 3 + Math.floor(this.level / 2) }], reward: 100 + this.level * 10 });
       });
     }
+  }
+  
+  completeLevel() {
+    const elapsed = (Date.now() - this.startTime) / 1000;
+    let stars = 1;
+    const baseTime = 60 + this.level * 20;
+    if (elapsed < baseTime * 0.5) stars = 3;
+    else if (elapsed < baseTime * 0.8) stars = 2;
+    
+    ProgressManager.completeLevel(this.level, stars);
+    
+    const overlay = this.add.rectangle(400, 300, 500, 300, 0x000000, 0.9);
+    this.add.text(400, 180, '🎉 关卡完成!', { fontSize: '32px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
+    this.add.text(400, 230, '⭐'.repeat(stars), { fontSize: '36px' }).setOrigin(0.5);
+    this.add.text(400, 280, `用时: ${Math.floor(elapsed)}秒`, { fontSize: '18px', color: '#FFFFFF' }).setOrigin(0.5);
+    this.add.text(400, 310, `获得福来币: ${this.coins}`, { fontSize: '16px', color: '#FFD700' }).setOrigin(0.5);
+    
+    const nextBtn = this.add.rectangle(320, 380, 120, 40, 0x228B22).setInteractive({ useHandCursor: true });
+    this.add.text(320, 380, '下一关', { fontSize: '16px', color: '#FFF' }).setOrigin(0.5);
+    nextBtn.on('pointerdown', () => {
+      if (!ProgressManager.useStamina()) { this.showMessage('体力不足!', 0xFF0000); return; }
+      this.scene.start('GameScene', { level: this.level + 1, fromMenu: true });
+    });
+    
+    const menuBtn = this.add.rectangle(480, 380, 120, 40, 0x4169E1).setInteractive({ useHandCursor: true });
+    this.add.text(480, 380, '主菜单', { fontSize: '16px', color: '#FFF' }).setOrigin(0.5);
+    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
   
   addCoins(amount) { this.coins += amount; this.coinText.setText(`福来币: ${this.coins}`); }
   updateCardCount() { this.cardCountText.setText(`${this.boardCards.length}张`); }
   showMessage(text, color) {
-    const msg = this.add.text(400, 280, text, { fontSize: '20px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 10, y: 5 } }).setOrigin(0.5);
+    const msg = this.add.text(400, 280, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 10, y: 5 } }).setOrigin(0.5);
     this.tweens.add({ targets: msg, y: 230, alpha: 0, duration: 1500, onComplete: () => msg.destroy() });
   }
   
-  // Sound effects
   playClickSound() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); osc.frequency.setValueAtTime(800, ctx.currentTime); osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.05); } catch(e) {} }
   playErrorSound() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime); osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.15); } catch(e) {} }
   playSuccessSound() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); osc.frequency.setValueAtTime(600, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.1); osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); } catch(e) {} }
@@ -340,5 +738,5 @@ const GameScene = class extends Phaser.Scene {
   playDrawSound() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1); osc.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.1); } catch(e) {} }
 };
 
-const config = { type: Phaser.AUTO, parent: 'game-container', width: 800, height: 600, backgroundColor: '#8B4513', scene: [BootScene, MenuScene, GameScene], scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH } };
+const config = { type: Phaser.AUTO, parent: 'game-container', width: 800, height: 600, backgroundColor: '#8B4513', scene: [BootScene, MenuScene, LevelSelectScene, GameScene], scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH } };
 new Phaser.Game(config);
