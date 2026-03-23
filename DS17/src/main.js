@@ -1,6 +1,6 @@
 // ============================================
-// DS17 - 办年货 Card Master (P0 + P1 Complete)
-// M1-M3: Core Mechanics | M4: Level System | M5: Power Cards
+// DS17 - 办年货 Card Master (P0 + P1 + P2 Complete)
+// M1-M3: Core | M4: Levels | M5: Power Cards | M6-M8: Combo+Rewards | M9: Stamina
 // ============================================
 
 // ===== Progress Manager (M4) =====
@@ -464,6 +464,11 @@ const GameScene = class extends Phaser.Scene {
     this.completedOrders = 0;
     this.startTime = Date.now();
     this.undoManager = new UndoManager();
+    
+    // M6: Combo system
+    this.comboCount = 0;
+    this.lastOrderTime = 0;
+    this.comboText = null;
   }
   
   create() {
@@ -490,7 +495,10 @@ const GameScene = class extends Phaser.Scene {
     this.progressText = this.add.text(350, 15, `进度: 0/${this.targetOrders}`, { fontSize: '14px', color: '#FFFFFF' });
     
     // Timer display
-    this.timerText = this.add.text(520, 15, '⏱️ 00:00', { fontSize: '14px', color: '#FFFFFF' });
+    this.timerText = this.add.text(520, 15, "⏱️ 00:00", { fontSize: "14px", color: "#FFFFFF" });
+    
+    // M6: Combo display
+    this.comboText = this.add.text(400, 200, "", { fontSize: "36px", color: "#FFD700", fontStyle: "bold", stroke: "#FF6600", strokeThickness: 4 }).setOrigin(0.5).setVisible(false).setDepth(1000);
     this.time.addEvent({ delay: 1000, callback: () => this.updateTimer(), loop: true });
     
     // Draw pile
@@ -684,15 +692,36 @@ const GameScene = class extends Phaser.Scene {
     this.completedOrders++;
     this.progressText.setText(`进度: ${this.completedOrders}/${this.targetOrders}`);
     
+    // M6: Combo system - check if within 5 seconds
+    const now = Date.now();
+    if (now - this.lastOrderTime < 5000) {
+      this.comboCount++;
+    } else {
+      this.comboCount = 1;
+    }
+    this.lastOrderTime = now;
+    
+    // Calculate combo bonus
+    let comboBonus = 0;
+    if (this.comboCount > 1) {
+      comboBonus = Math.floor(data.totalReward * 0.1 * (this.comboCount - 1));
+      this.showComboAnimation();
+    }
+    
+    if (comboBonus > 0) {
+      this.addCoins(comboBonus);
+      this.showMessage(`${this.comboCount}连击! +${comboBonus}奖励`, 0xFFD700);
+    }
+    
     if (this.completedOrders >= this.targetOrders) {
       this.completeLevel();
     } else {
       this.time.delayedCall(1000, () => {
         order.container.destroy();
         const idx = this.orders.indexOf(order);
-        const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+        const types = ["candy", "dumpling", "lantern", "redpacket"];
         const type = types[Math.floor(Math.random() * types.length)];
-        this.orders[idx] = new Order(this, order.container.x, 85, { id: Date.now(), type: 'simple', requirements: [{ type, count: 3 + Math.floor(this.level / 2) }], reward: 100 + this.level * 10 });
+        this.orders[idx] = new Order(this, order.container.x, 85, { id: Date.now(), type: "simple", requirements: [{ type, count: 3 + Math.floor(this.level / 2) }], reward: 100 + this.level * 10 });
       });
     }
   }
@@ -724,6 +753,29 @@ const GameScene = class extends Phaser.Scene {
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
   
+  // M6: Show combo animation
+  showComboAnimation() {
+    if (!this.comboText) return;
+    this.comboText.setText(`${this.comboCount}连击!`).setVisible(true).setAlpha(1).setScale(0.5);
+    this.tweens.add({
+      targets: this.comboText,
+      scale: 1.5,
+      duration: 200,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.comboText,
+          y: 150,
+          alpha: 0,
+          duration: 800,
+          onComplete: () => {
+            this.comboText.setVisible(false).setY(200);
+          }
+        });
+      }
+    });
+  }
+
   addCoins(amount) { this.coins += amount; this.coinText.setText(`福来币: ${this.coins}`); }
   updateCardCount() { this.cardCountText.setText(`${this.boardCards.length}张`); }
   showMessage(text, color) {
