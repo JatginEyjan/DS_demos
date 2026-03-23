@@ -1,24 +1,20 @@
-export class LevelSelectScene {
+export class LevelSelectScene extends Phaser.Scene {
   constructor() {
-    // Scene will be assigned by Phaser
+    super('LevelSelectScene');
   }
 
   create() {
     const { width, height } = this.scale;
     
-    // Background
     this.add.rectangle(width/2, height/2, width, height, 0x8B0000);
     
-    // Title
     this.add.text(width/2, 60, '选择关卡', {
       fontSize: '40px', color: '#FFD700', fontStyle: 'bold'
     }).setOrigin(0.5);
     
-    // Load unlocked levels
     const unlockedLevels = this.getUnlockedLevels();
     const currentLevel = this.getCurrentLevel();
     
-    // Create level buttons (3x4 grid)
     for (let i = 1; i <= 12; i++) {
       const col = (i - 1) % 4;
       const row = Math.floor((i - 1) / 4);
@@ -31,7 +27,6 @@ export class LevelSelectScene {
       this.createLevelButton(x, y, i, isUnlocked, isCurrent);
     }
     
-    // Back button
     const backBtn = this.add.rectangle(100, 550, 120, 40, 0x4169E1)
       .setInteractive({ useHandCursor: true });
     this.add.text(100, 550, '返回', { fontSize: '18px', color: '#FFF' }).setOrigin(0.5);

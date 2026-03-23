@@ -1,6 +1,6 @@
-export class BootScene {
+export class BootScene extends Phaser.Scene {
   constructor() {
-    // Scene will be assigned by Phaser
+    super('BootScene');
   }
 
   create() {
@@ -23,18 +23,15 @@ export class BootScene {
     cardTypes.forEach(({ key, color, icon }) => {
       const g = this.add.graphics();
       
-      // Card background
       g.fillStyle(color, 1);
       g.fillRoundedRect(0, 0, 60, 80, 8);
       
-      // Border
       g.lineStyle(2, 0xFFFFFF, 1);
       g.strokeRoundedRect(0, 0, 60, 80, 8);
       
       g.generateTexture(key, 60, 80);
       g.clear();
       
-      // Create icon texture
       const text = this.add.text(30, 40, icon, {
         fontSize: '32px',
         align: 'center'
@@ -48,14 +45,12 @@ export class BootScene {
       text.destroy();
     });
 
-    // Create card back
     const g = this.add.graphics();
     g.fillStyle(0x8B0000, 1);
     g.fillRoundedRect(0, 0, 60, 80, 8);
     g.lineStyle(3, 0xFFD700, 1);
     g.strokeRoundedRect(0, 0, 60, 80, 8);
     
-    // Gold pattern
     g.fillStyle(0xFFD700, 0.5);
     for (let i = 10; i < 60; i += 20) {
       for (let j = 10; j < 80; j += 20) {

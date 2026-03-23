@@ -1,6 +1,6 @@
-export class MenuScene {
+export class MenuScene extends Phaser.Scene {
   constructor() {
-    // Scene will be assigned by Phaser
+    super('MenuScene');
   }
 
   create() {
