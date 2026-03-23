@@ -1,63 +1,103 @@
 import * as Phaser from '../../vendor/phaser.esm.js';
 
 export class Card {
-  constructor(scene, x, y, type, stackId = 0) {
+  constructor(scene, x, y, type, id) {
     this.scene = scene;
     this.type = type;
-    this.stackId = stackId;
-    this.isFaceUp = false;
+    this.id = id;
+    this.isFaceUp = true;
+    this.isDragging = false;
+    this.originalX = x;
+    this.originalY = y;
 
-    this.sprite = scene.add.sprite(x, y, 'cardback');
-    this.sprite.setInteractive({ useHandCursor: true });
+    // Create container for card + text
+    this.container = scene.add.container(x, y);
     
-    // Set up click handler
-    this.sprite.on('pointerdown', () => this.onClick());
+    // Card sprite
+    this.sprite = scene.add.sprite(0, 0, type + '_full');
+    this.sprite.setDisplaySize(50, 70);
+    this.container.add(this.sprite);
     
-    // Type indicator (shown when face up)
-    this.typeText = scene.add.text(x, y, '', {
-      fontSize: '24px',
-      align: 'center'
-    }).setOrigin(0.5).setVisible(false);
+    // Type label
+    this.label = scene.add.text(0, 25, this.getTypeLabel(type), {
+      fontSize: '10px',
+      color: '#333333',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+    this.container.add(this.label);
+
+    // Make interactive
+    this.container.setSize(50, 70);
+    this.container.setInteractive({ draggable: true });
+    
+    // Drag events
+    this.container.on('dragstart', (pointer, dragX, dragY) => {
+      this.isDragging = true;
+      this.container.setDepth(1000);
+      this.scene.events.emit('cardDragStart', this);
+    });
+    
+    this.container.on('drag', (pointer, dragX, dragY) => {
+      this.container.setPosition(dragX, dragY);
+    });
+    
+    this.container.on('dragend', () => {
+      this.isDragging = false;
+      this.container.setDepth(1);
+      this.scene.events.emit('cardDragEnd', this);
+    });
+    
+    // Click to select
+    this.container.on('pointerdown', () => {
+      if (!this.isDragging) {
+        this.scene.events.emit('cardClicked', this);
+      }
+    });
   }
 
-  flip() {
-    this.isFaceUp = !this.isFaceUp;
-    if (this.isFaceUp) {
-      this.sprite.setTexture(this.type + '_full');
-      this.typeText.setVisible(false);
-    } else {
-      this.sprite.setTexture('cardback');
-    }
+  getTypeLabel(type) {
+    const labels = {
+      'candy': '糖果',
+      'dumpling': '饺子',
+      'lantern': '灯笼',
+      'redpacket': '红包',
+      'firecracker': '鞭炮',
+      'couplet': '春联',
+      'fu': '福字',
+      'cake': '年糕'
+    };
+    return labels[type] || type;
   }
 
-  reveal() {
-    if (!this.isFaceUp) {
-      this.flip();
-    }
-  }
-
-  onClick() {
-    if (!this.isFaceUp) return;
-    this.scene.events.emit('cardClicked', this);
+  setPosition(x, y) {
+    this.container.setPosition(x, y);
+    this.originalX = x;
+    this.originalY = y;
   }
 
   moveTo(x, y, duration = 200) {
     this.scene.tweens.add({
-      targets: [this.sprite, this.typeText],
+      targets: this.container,
       x: x,
       y: y,
       duration: duration,
-      ease: 'Power2'
+      ease: 'Power2',
+      onComplete: () => {
+        this.originalX = x;
+        this.originalY = y;
+      }
     });
   }
 
-  setPosition(x, y) {
-    this.sprite.setPosition(x, y);
-    this.typeText.setPosition(x, y);
+  highlight(enabled) {
+    if (enabled) {
+      this.sprite.setTint(0xFFFF00);
+    } else {
+      this.sprite.clearTint();
+    }
   }
 
   destroy() {
-    this.sprite.destroy();
-    this.typeText.destroy();
+    this.container.destroy();
   }
 }
