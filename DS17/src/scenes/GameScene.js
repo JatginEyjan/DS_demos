@@ -1,11 +1,10 @@
-import * as Phaser from '../vendor/phaser.esm.js';
 import { Card, CardStack } from '../entities/Card.js';
 import { Order } from '../entities/Order.js';
 import { AudioSystem } from '../systems/AudioSystem.js';
 
-export class GameScene extends Phaser.Scene {
+export class GameScene {
   constructor() {
-    super('GameScene');
+    // Scene will be assigned by Phaser
   }
 
   init(data) {
@@ -14,9 +13,9 @@ export class GameScene extends Phaser.Scene {
     this.coins = 0;
     this.stamina = data.stamina || 20;
     
-    this.boardCards = []; // Cards in draw pile
-    this.handCards = []; // Individual cards in hand
-    this.stacks = {}; // Type -> CardStack
+    this.boardCards = [];
+    this.handCards = [];
+    this.stacks = {};
     this.orders = [];
     this.selectedStack = null;
     
@@ -24,7 +23,6 @@ export class GameScene extends Phaser.Scene {
     this.orderCompletedCount = 0;
     this.targetOrders = 5 + this.level * 2;
     
-    // Combo tracking
     this.comboCount = 0;
     this.lastOrderTime = 0;
   }
@@ -39,7 +37,6 @@ export class GameScene extends Phaser.Scene {
     this.createOrders();
     this.setupEvents();
     
-    // Instructions
     this.showInstructions();
   }
 
@@ -86,24 +83,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   createUI() {
-    // Order area
     this.add.rectangle(400, 75, 780, 130, 0x8B4513, 0.9);
     this.add.text(20, 15, '📋 订单区 (点击订单提交选中堆叠)', { 
       fontSize: '14px', color: '#FFD700', fontStyle: 'bold' 
     });
     
-    // Hand area
     this.add.rectangle(400, 480, 780, 180, 0x2F4F4F, 0.9);
     this.add.text(20, 395, '🎴 手牌区 - 点击同类型卡牌堆叠', { 
       fontSize: '14px', color: '#FFFFFF' 
     });
     
-    // Stack area labels
     this.add.text(20, 420, '堆叠区 (选中堆叠后点击订单提交):', { 
       fontSize: '12px', color: '#CCCCCC' 
     });
     
-    // Stats
     this.levelText = this.add.text(20, 15, `第${this.level}关`, { 
       fontSize: '20px', color: '#FFD700', fontStyle: 'bold' 
     });
@@ -120,12 +113,10 @@ export class GameScene extends Phaser.Scene {
       fontSize: '16px', color: '#FFFFFF' 
     });
     
-    // Combo display
     this.comboText = this.add.text(400, 200, '', { 
       fontSize: '32px', color: '#FFD700', fontStyle: 'bold' 
     }).setOrigin(0.5).setVisible(false);
     
-    // Draw pile
     this.drawPileArea = this.add.rectangle(720, 320, 90, 120, 0x654321)
       .setInteractive({ useHandCursor: true });
     this.add.text(720, 300, '📦', { fontSize: '36px' }).setOrigin(0.5);
@@ -135,19 +126,16 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.drawPileArea.on('pointerdown', () => this.drawCard());
     
-    // Refresh button
     const refreshBtn = this.add.rectangle(720, 460, 85, 35, 0x4169E1)
       .setInteractive({ useHandCursor: true });
     this.add.text(720, 460, '🔄 刷新', { fontSize: '12px', color: '#FFF' }).setOrigin(0.5);
     refreshBtn.on('pointerdown', () => this.refreshBoard());
     
-    // Menu button
     const menuBtn = this.add.rectangle(720, 510, 85, 35, 0x666666)
       .setInteractive({ useHandCursor: true });
     this.add.text(720, 510, '菜单', { fontSize: '12px', color: '#FFF' }).setOrigin(0.5);
     menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
     
-    // Deselect button
     const deselectBtn = this.add.rectangle(720, 410, 85, 35, 0xDC143C)
       .setInteractive({ useHandCursor: true });
     this.add.text(720, 410, '取消选择', { fontSize: '11px', color: '#FFF' }).setOrigin(0.5);
@@ -155,7 +143,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   createPowerUpButtons() {
-    // Hint button
     const hintBtn = this.add.rectangle(80, 300, 70, 50, 0x87CEEB)
       .setInteractive({ useHandCursor: true });
     this.add.text(80, 300, '💡\n提示', { fontSize: '11px', color: '#000', align: 'center' }).setOrigin(0.5);
@@ -247,7 +234,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   arrangeHandCards() {
-    // Arrange individual cards in hand area
     const cols = 10;
     const startX = 90;
     const startY = 445;
@@ -263,15 +249,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   onCardClicked(card) {
-    // If card is already in a stack, select that stack
     if (this.stacks[card.type] && this.stacks[card.type].cards.includes(card)) {
       this.onStackClicked(this.stacks[card.type]);
       return;
     }
     
-    // Check if we have a stack of this type
     if (!this.stacks[card.type]) {
-      // Create new stack
       const stackIndex = Object.keys(this.stacks).length;
       const col = stackIndex % 5;
       const row = Math.floor(stackIndex / 5);
@@ -281,7 +264,6 @@ export class GameScene extends Phaser.Scene {
       this.stacks[card.type] = new CardStack(this, card.type, x, y);
     }
     
-    // Move card from hand to stack
     const stack = this.stacks[card.type];
     const handIndex = this.handCards.indexOf(card);
     if (handIndex > -1) {
@@ -290,26 +272,17 @@ export class GameScene extends Phaser.Scene {
     
     stack.addCard(card);
     this.audioSystem.playCardDrop();
-    
-    // Rearrange remaining hand cards
     this.arrangeHandCards();
-    
-    // Auto-select the stack
     this.onStackClicked(stack);
   }
 
   onStackClicked(stack) {
-    // Deselect previous
     if (this.selectedStack && this.selectedStack !== stack) {
       this.selectedStack.deselect();
     }
     
     this.selectedStack = stack;
     stack.select();
-    
-    // Check which orders can accept this
-    this.highlightValidOrders(stack.type);
-    
     this.audioSystem.playClick();
   }
 
@@ -317,25 +290,10 @@ export class GameScene extends Phaser.Scene {
     if (this.selectedStack) {
       this.selectedStack.deselect();
       this.selectedStack = null;
-      
-      // Clear order highlights
-      this.orders.forEach(order => {
-        if (!order.completed) order.bg.setStrokeStyle(2, 0x8B4513);
+      this.orders.forEach(o => {
+        if (!o.completed) o.bg.setStrokeStyle(2, 0x8B4513);
       });
     }
-  }
-
-  highlightValidOrders(type) {
-    this.orders.forEach(order => {
-      if (order.completed) return;
-      
-      const check = order.canAcceptStack({ type, getCount: () => 1 });
-      if (check.canAccept) {
-        order.bg.setStrokeStyle(4, 0x00FF00);
-      } else {
-        order.bg.setStrokeStyle(2, 0x8B4513);
-      }
-    });
   }
 
   onOrderSubmit(order) {
@@ -349,11 +307,9 @@ export class GameScene extends Phaser.Scene {
     if (result.success) {
       this.audioSystem.playOrderComplete();
       
-      // Update score
       this.score += result.reward;
       this.scoreText.setText(`分数: ${this.score}`);
       
-      // Show perfect message
       if (result.isPerfect) {
         this.showFloatingText('完美! +20%', order.container.x, order.container.y - 50, 0xFFD700);
       }
@@ -361,15 +317,12 @@ export class GameScene extends Phaser.Scene {
         this.showFloatingText(`超额 +${result.overflowBonus}`, order.container.x, order.container.y - 30, 0xFFA500);
       }
       
-      // Remove empty stack
       if (this.selectedStack.getCount() === 0) {
         delete this.stacks[this.selectedStack.type];
         this.selectedStack.destroy();
       }
       
       this.selectedStack = null;
-      
-      // Clear highlights
       this.orders.forEach(o => {
         if (!o.completed) o.bg.setStrokeStyle(2, 0x8B4513);
       });
@@ -404,7 +357,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   showHint() {
-    // Find a card in hand that can be used
     let hintShown = false;
     
     for (const card of this.handCards) {
@@ -412,7 +364,6 @@ export class GameScene extends Phaser.Scene {
         if (!order.completed) {
           const check = order.canAcceptStack({ type: card.type, getCount: () => 1 });
           if (check.canAccept) {
-            // Highlight this card
             card.highlight(true);
             this.time.delayedCall(2000, () => card.highlight(false));
             hintShown = true;
@@ -439,14 +390,12 @@ export class GameScene extends Phaser.Scene {
     this.staminaText.setText(`体力: ${this.stamina}`);
     this.audioSystem.playCardFlip();
     
-    // Return all cards to board
     [...this.handCards].forEach(card => {
       card.container.setVisible(false);
       this.boardCards.push(card);
     });
     this.handCards = [];
     
-    // Return stack cards
     Object.values(this.stacks).forEach(stack => {
       const cards = stack.removeCards(stack.getCount());
       cards.forEach(card => {
@@ -467,7 +416,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   onOrderCompleted(order, data) {
-    // Combo system
     const now = Date.now();
     if (now - this.lastOrderTime < 5000) {
       this.comboCount++;
