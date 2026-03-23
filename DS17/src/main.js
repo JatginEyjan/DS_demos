@@ -1,6 +1,6 @@
 // ============================================
-// DS17 - 办年货 Card Master (P0 + P1 + P2 Complete)
-// M1-M3: Core | M4: Levels | M5: Power Cards | M6-M8: Combo+Rewards | M9: Stamina
+// DS17 - 办年货 Card Master (P0 + P1 + P2 + P3 Complete)
+// M1-M3: Core | M4: Levels | M5: Power Cards | M6-M8: Combo+Rewards | M9: Stamina | M10-M12: Hint+Urgent+Complete
 // ============================================
 
 // ===== Progress Manager (M4) =====
@@ -150,19 +150,55 @@ class Order {
     this.requirements = config.requirements; this.baseReward = config.reward; this.completed = false;
     this.deliveredCounts = {};
     this.requirements.forEach(req => this.deliveredCounts[req.type] = 0);
+    
+    // M11: Urgent order timer
+    this.timeLimit = config.timeLimit || null;
+    this.timeRemaining = this.timeLimit;
+    this.timerText = null;
+    
     this.container = scene.add.container(x, y);
-    this.bg = scene.add.rectangle(0, 0, 200, 130, 0xFFF8DC).setStrokeStyle(2, 0x8B4513);
+    
+    // M11: Red background for urgent orders
+    const bgColor = this.type === "urgent" ? 0xFFE4E1 : 0xFFF8DC;
+    const borderColor = this.type === "urgent" ? 0xDC143C : 0x8B4513;
+    this.bg = scene.add.rectangle(0, 0, 200, this.type === "urgent" ? 150 : 130, bgColor).setStrokeStyle(this.type === "urgent" ? 4 : 2, borderColor);
     this.container.add(this.bg);
-    const typeNames = { simple: '简单订单', composite: '复合订单', urgent: '紧急订单' };
-    this.container.add(scene.add.text(0, -52, typeNames[this.type], { fontSize: '14px', color: '#8B0000', fontStyle: 'bold' }).setOrigin(0.5));
+    
+    const typeNames = { simple: "简单订单", composite: "复合订单", urgent: "紧急订单" };
+    this.container.add(scene.add.text(0, -52, typeNames[this.type], { fontSize: "14px", color: "#8B0000", fontStyle: "bold" }).setOrigin(0.5));
+    
+    // M11: Add warning icon for urgent orders
+    if (this.type === "urgent") {
+      this.container.add(scene.add.text(-70, -52, "⚠️", { fontSize: "16px" }).setOrigin(0.5));
+      this.container.add(scene.add.text(0, -35, "限时! 奖励x1.5", { fontSize: "10px", color: "#FF0000" }).setOrigin(0.5));
+    }
+    
     this.reqTexts = [];
     this.updateRequirementsDisplay();
-    this.rewardText = scene.add.text(0, 48, `💰 ${this.baseReward}`, { fontSize: '14px', color: '#FFD700' }).setOrigin(0.5);
+    
+    // M11: Adjust reward text position for urgent orders
+    const rewardY = this.type === "urgent" ? 55 : 48;
+    this.rewardText = scene.add.text(0, rewardY, `💰 ${this.baseReward}`, { fontSize: "14px", color: "#FFD700" }).setOrigin(0.5);
     this.container.add(this.rewardText);
+    
+    // M11: Create timer display for urgent orders
+    if (this.type === "urgent") {
+      this.timerText = scene.add.text(0, 35, `⏱️ ${this.timeLimit}s`, { fontSize: "14px", color: "#FF0000", fontStyle: "bold" }).setOrigin(0.5);
+      this.container.add(this.timerText);
+      
+      // Start timer update
+      this.timerEvent = scene.time.addEvent({
+        delay: 1000,
+        callback: () => this.updateTimer(),
+        callbackScope: this,
+        loop: true
+      });
+    }
+    
     this.bg.setInteractive({ useHandCursor: true });
-    this.bg.on('pointerover', () => { if (!this.completed) this.bg.setFillStyle(0xFFFFE0); });
-    this.bg.on('pointerout', () => { if (!this.completed) this.bg.setFillStyle(0xFFF8DC); });
-    this.bg.on('pointerdown', () => this.onClick());
+    this.bg.on("pointerover", () => { if (!this.completed) this.bg.setFillStyle(0xFFFFE0); });
+    this.bg.on("pointerout", () => { if (!this.completed) this.bg.setFillStyle(bgColor); });
+    this.bg.on("pointerdown", () => this.onClick());
   }
   
   updateRequirementsDisplay() {
@@ -242,19 +278,72 @@ class Order {
   isComplete() { return this.requirements.every(req => (this.deliveredCounts[req.type] || 0) >= req.count); }
   
   completeOrder(totalCards) {
-    this.completed = true; this.bg.setFillStyle(0x90EE90);
-    let reward = this.baseReward, isPerfect = false, overflowBonus = 0;
+    this.completed = true;
+    const bgColor = this.type === "urgent" ? 0xFFE4E1 : 0xFFF8DC;
+    this.bg.setFillStyle(0x90EE90);
+    if (this.timerEvent) this.timerEvent.remove();
+    
+    let reward = this.baseReward;
+    let isPerfect = false;
+    let overflowBonus = 0;
+    
+    // M7: Perfect bonus (exactly 10 cards)
     if (totalCards === 10) { isPerfect = true; reward = Math.floor(reward * 1.2); }
+    // M8: Overflow penalty
     else if (totalCards > 10) overflowBonus = (totalCards - 10) * 3;
+    
+    // M11: Urgent order 1.5x reward
+    if (this.type === "urgent") {
+      reward = Math.floor(reward * 1.5);
+    }
+    
     const totalReward = reward + overflowBonus;
     let msg = `订单完成! +${totalReward}福来币`;
-    if (isPerfect) msg += ' (完美!)'; if (overflowBonus > 0) msg += ` 超额+${overflowBonus}`;
+    if (isPerfect) msg += " (完美!)";
+    if (overflowBonus > 0) msg += ` 超额+${overflowBonus}`;
+    if (this.type === "urgent") msg += " (紧急!)";
     this.scene.showMessage(msg, 0x00FF00);
     this.scene.addCoins(totalReward);
     this.scene.playOrderCompleteSound();
     this.scene.onOrderCompleted(this, { isPerfect, totalReward });
   }
   
+  // M11: Update urgent order timer
+  updateTimer() {
+    if (!this.timeLimit || this.completed) return;
+    this.timeRemaining--;
+    if (this.timerText) {
+      this.timerText.setText(`⏱️ ${this.timeRemaining}s`);
+      // Flash red when low on time
+      if (this.timeRemaining <= 10) {
+        this.timerText.setColor(this.timeRemaining % 2 === 0 ? "#FF0000" : "#FFFFFF");
+      }
+    }
+    
+    if (this.timeRemaining <= 0) {
+      this.failOrder();
+    }
+  }
+  
+  // M11: Urgent order timeout
+  failOrder() {
+    this.completed = true;
+    this.bg.setFillStyle(0xCCCCCC);
+    if (this.timerEvent) this.timerEvent.remove();
+    this.scene.showMessage("⏱️ 订单超时!", 0xFF6666);
+    
+    // Replace with new order after delay
+    this.scene.time.delayedCall(2000, () => {
+      this.container.destroy();
+      const idx = this.scene.orders.indexOf(this);
+      const types = ["candy", "dumpling", "lantern", "redpacket"];
+      const type = types[Math.floor(Math.random() * types.length)];
+      this.scene.orders[idx] = new Order(this.scene, this.container.x, 85, {
+        id: Date.now(), type: "simple", requirements: [{ type, count: 3 + Math.floor(this.scene.level / 2) }], reward: 100 + this.scene.level * 10
+      });
+    });
+  }
+
   highlight() { this.bg.setStrokeStyle(4, 0x00FF00); }
   clearHighlight() { if (!this.completed) this.bg.setStrokeStyle(2, 0x8B4513); }
 }
@@ -367,6 +456,44 @@ const MenuScene = class extends Phaser.Scene {
     closeBtn.on('pointerdown', () => overlay.destroy());
   }
   
+  // M10: Show hint - highlight valid card stacks and orders
+  showHint() {
+    let hintFound = false;
+    
+    // Check each stack against each order
+    for (const [type, stack] of Object.entries(this.stacks)) {
+      for (const order of this.orders) {
+        if (!order.completed) {
+          const result = order.canAcceptStack(stack);
+          if (result.canAccept) {
+            // Highlight this stack
+            stack.select();
+            order.highlight();
+            hintFound = true;
+            
+            // Auto deselect after 2 seconds
+            this.time.delayedCall(2000, () => {
+              stack.deselect();
+              order.clearHighlight();
+              if (this.selectedStack === stack) this.selectedStack = null;
+            });
+            
+            this.showMessage(`💡 提示: 选中${order.getTypeLabel(type)}堆叠，点击上方订单交付`, 0xFFD700);
+            return;
+          }
+        }
+      }
+    }
+    
+    if (!hintFound) {
+      if (this.boardCards.length > 0) {
+        this.showMessage("💡 提示: 没有可交付的堆叠，尝试拿更多牌", 0xFFD700);
+      } else {
+        this.showMessage("💡 提示: 牌堆已空，尝试使用刷新卡或撤销", 0xFFD700);
+      }
+    }
+  }
+
   showMessage(text, color) {
     const msg = this.add.text(400, 400, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 15, y: 8 } }).setOrigin(0.5);
     this.time.delayedCall(2000, () => msg.destroy());
@@ -441,6 +568,44 @@ const LevelSelectScene = class extends Phaser.Scene {
     }
   }
   
+  // M10: Show hint - highlight valid card stacks and orders
+  showHint() {
+    let hintFound = false;
+    
+    // Check each stack against each order
+    for (const [type, stack] of Object.entries(this.stacks)) {
+      for (const order of this.orders) {
+        if (!order.completed) {
+          const result = order.canAcceptStack(stack);
+          if (result.canAccept) {
+            // Highlight this stack
+            stack.select();
+            order.highlight();
+            hintFound = true;
+            
+            // Auto deselect after 2 seconds
+            this.time.delayedCall(2000, () => {
+              stack.deselect();
+              order.clearHighlight();
+              if (this.selectedStack === stack) this.selectedStack = null;
+            });
+            
+            this.showMessage(`💡 提示: 选中${order.getTypeLabel(type)}堆叠，点击上方订单交付`, 0xFFD700);
+            return;
+          }
+        }
+      }
+    }
+    
+    if (!hintFound) {
+      if (this.boardCards.length > 0) {
+        this.showMessage("💡 提示: 没有可交付的堆叠，尝试拿更多牌", 0xFFD700);
+      } else {
+        this.showMessage("💡 提示: 牌堆已空，尝试使用刷新卡或撤销", 0xFFD700);
+      }
+    }
+  }
+
   showMessage(text, color) {
     const msg = this.add.text(400, 520, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 10, y: 5 } }).setOrigin(0.5);
     this.time.delayedCall(2000, () => msg.destroy());
@@ -523,15 +688,20 @@ const GameScene = class extends Phaser.Scene {
   }
   
   createPowerButtons() {
-    // M5: Refresh button (uses stamina)
+    // M5: Refresh button
     const refreshBtn = this.add.rectangle(620, 480, 80, 30, 0x00CED1).setInteractive({ useHandCursor: true });
-    this.add.text(620, 480, '↻ 刷新', { fontSize: '11px', color: '#000' }).setOrigin(0.5);
-    refreshBtn.on('pointerdown', () => this.refreshBoard());
+    this.add.text(620, 480, "↻ 刷新", { fontSize: "11px", color: "#000" }).setOrigin(0.5);
+    refreshBtn.on("pointerdown", () => this.refreshBoard());
     
     // M5: Undo button
     const undoBtn = this.add.rectangle(530, 480, 80, 30, 0x9370DB).setInteractive({ useHandCursor: true });
-    this.undoBtnText = this.add.text(530, 480, '↶ 撤销', { fontSize: '11px', color: '#FFF' }).setOrigin(0.5);
-    undoBtn.on('pointerdown', () => this.undoAction());
+    this.undoBtnText = this.add.text(530, 480, "↶ 撤销", { fontSize: "11px", color: "#FFF" }).setOrigin(0.5);
+    undoBtn.on("pointerdown", () => this.undoAction());
+    
+    // M10: Hint button
+    const hintBtn = this.add.rectangle(440, 480, 80, 30, 0xFFD700).setInteractive({ useHandCursor: true });
+    this.add.text(440, 480, "💡 提示", { fontSize: "11px", color: "#000" }).setOrigin(0.5);
+    hintBtn.on("pointerdown", () => this.showHint());
   }
   
   updateTimer() {
@@ -562,15 +732,24 @@ const GameScene = class extends Phaser.Scene {
   
   createOrders() {
     // Generate orders based on level
-    const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    const types = ["candy", "dumpling", "lantern", "redpacket"];
     for (let i = 0; i < 3; i++) {
       const x = 130 + i * 230;
-      let orderType = 'simple';
+      let orderType = "simple";
       let requirements = [];
+      let reward = 100 + this.level * 10;
+      let timeLimit = null;
       
-      if (this.level > 2 && i === 1) {
-        // Composite order for level 3+
-        orderType = 'composite';
+      // M11: Urgent orders appear at level 4+ with 20% chance
+      if (this.level >= 4 && i === 1 && Math.random() < 0.3) {
+        orderType = "urgent";
+        const t = types[i % types.length];
+        requirements = [{ type: t, count: 5 }];
+        timeLimit = 30;  // 30 seconds
+        reward = Math.floor(reward * 1.2);  // Higher base reward
+      } else if (this.level > 2 && i === 1) {
+        // Composite order
+        orderType = "composite";
         const t1 = types[i % types.length];
         const t2 = types[(i + 1) % types.length];
         requirements = [{ type: t1, count: 3 }, { type: t2, count: 3 }];
@@ -581,7 +760,7 @@ const GameScene = class extends Phaser.Scene {
         requirements = [{ type: t, count }];
       }
       
-      this.orders.push(new Order(this, x, 85, { id: i, type: orderType, requirements, reward: 100 + this.level * 10 }));
+      this.orders.push(new Order(this, x, 85, { id: i, type: orderType, requirements, reward, timeLimit }));
     }
   }
   
@@ -735,22 +914,74 @@ const GameScene = class extends Phaser.Scene {
     
     ProgressManager.completeLevel(this.level, stars);
     
-    const overlay = this.add.rectangle(400, 300, 500, 300, 0x000000, 0.9);
-    this.add.text(400, 180, '🎉 关卡完成!', { fontSize: '32px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
-    this.add.text(400, 230, '⭐'.repeat(stars), { fontSize: '36px' }).setOrigin(0.5);
-    this.add.text(400, 280, `用时: ${Math.floor(elapsed)}秒`, { fontSize: '18px', color: '#FFFFFF' }).setOrigin(0.5);
-    this.add.text(400, 310, `获得福来币: ${this.coins}`, { fontSize: '16px', color: '#FFD700' }).setOrigin(0.5);
+    // M12: Enhanced level completion screen
+    this.showCompletionScreen(elapsed, stars);
+  }
+  
+  // M12: Show fancy completion screen
+  showCompletionScreen(elapsed, stars) {
+    // Dark overlay
+    const overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.8).setDepth(2000);
     
-    const nextBtn = this.add.rectangle(320, 380, 120, 40, 0x228B22).setInteractive({ useHandCursor: true });
-    this.add.text(320, 380, '下一关', { fontSize: '16px', color: '#FFF' }).setOrigin(0.5);
-    nextBtn.on('pointerdown', () => {
-      if (!ProgressManager.useStamina()) { this.showMessage('体力不足!', 0xFF0000); return; }
-      this.scene.start('GameScene', { level: this.level + 1, fromMenu: true });
+    // Success panel
+    const panel = this.add.rectangle(400, 300, 450, 350, 0x8B4513).setStrokeStyle(4, 0xFFD700).setDepth(2001);
+    
+    // Title with animation
+    const title = this.add.text(400, 160, "🎉 关卡完成!", { fontSize: "36px", color: "#FFD700", fontStyle: "bold" }).setOrigin(0.5).setDepth(2002);
+    
+    // Star animation
+    const starContainer = this.add.container(400, 220).setDepth(2002);
+    for (let i = 0; i < 3; i++) {
+      const star = this.add.text(400 + (i - 1) * 50, 220, "⭐", { fontSize: "40px" }).setOrigin(0.5).setAlpha(i < stars ? 1 : 0.3).setScale(0).setDepth(2002);
+      this.tweens.add({
+        targets: star,
+        scale: i < stars ? 1.2 : 0.8,
+        duration: 500,
+        delay: i * 200,
+        ease: "Back.easeOut"
+      });
+    }
+    
+    // Stats
+    this.add.text(400, 270, `用时: ${Math.floor(elapsed)}秒`, { fontSize: "18px", color: "#FFFFFF" }).setOrigin(0.5).setDepth(2002);
+    this.add.text(400, 300, `获得福来币: ${this.coins}`, { fontSize: "20px", color: "#FFD700" }).setOrigin(0.5).setDepth(2002);
+    this.add.text(400, 330, `连击最高: ${this.comboCount}次`, { fontSize: "16px", color: "#AAAAAA" }).setOrigin(0.5).setDepth(2002);
+    
+    // Buttons
+    const nextBtn = this.add.rectangle(320, 400, 130, 45, 0x228B22).setInteractive({ useHandCursor: true }).setDepth(2002);
+    this.add.text(320, 400, "下一关 ▶", { fontSize: "16px", color: "#FFF", fontStyle: "bold" }).setOrigin(0.5).setDepth(2002);
+    nextBtn.on("pointerdown", () => {
+      if (!ProgressManager.useStamina()) { this.showMessage("体力不足!", 0xFF0000); return; }
+      this.scene.start("GameScene", { level: this.level + 1, fromMenu: true });
     });
     
-    const menuBtn = this.add.rectangle(480, 380, 120, 40, 0x4169E1).setInteractive({ useHandCursor: true });
-    this.add.text(480, 380, '主菜单', { fontSize: '16px', color: '#FFF' }).setOrigin(0.5);
-    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    const menuBtn = this.add.rectangle(480, 400, 130, 45, 0x4169E1).setInteractive({ useHandCursor: true }).setDepth(2002);
+    this.add.text(480, 400, "🏠 主菜单", { fontSize: "16px", color: "#FFF", fontStyle: "bold" }).setOrigin(0.5).setDepth(2002);
+    menuBtn.on("pointerdown", () => this.scene.start("MenuScene"));
+    
+    // Confetti effect
+    this.createConfetti();
+  }
+  
+  // M12: Confetti celebration effect
+  createConfetti() {
+    const colors = [0xFF0000, 0xFFD700, 0x00FF00, 0x00CED1, 0xFF69B4];
+    for (let i = 0; i < 50; i++) {
+      const x = Phaser.Math.Between(100, 700);
+      const y = Phaser.Math.Between(50, 200);
+      const color = colors[Phaser.Math.Between(0, colors.length - 1)];
+      const confetti = this.add.rectangle(x, y, 8, 8, color).setDepth(1999);
+      
+      this.tweens.add({
+        targets: confetti,
+        y: y + Phaser.Math.Between(200, 400),
+        x: x + Phaser.Math.Between(-100, 100),
+        rotation: Phaser.Math.Between(0, 360),
+        duration: Phaser.Math.Between(1500, 2500),
+        ease: "Power2",
+        onComplete: () => confetti.destroy()
+      });
+    }
   }
   
   // M6: Show combo animation
@@ -778,6 +1009,44 @@ const GameScene = class extends Phaser.Scene {
 
   addCoins(amount) { this.coins += amount; this.coinText.setText(`福来币: ${this.coins}`); }
   updateCardCount() { this.cardCountText.setText(`${this.boardCards.length}张`); }
+  // M10: Show hint - highlight valid card stacks and orders
+  showHint() {
+    let hintFound = false;
+    
+    // Check each stack against each order
+    for (const [type, stack] of Object.entries(this.stacks)) {
+      for (const order of this.orders) {
+        if (!order.completed) {
+          const result = order.canAcceptStack(stack);
+          if (result.canAccept) {
+            // Highlight this stack
+            stack.select();
+            order.highlight();
+            hintFound = true;
+            
+            // Auto deselect after 2 seconds
+            this.time.delayedCall(2000, () => {
+              stack.deselect();
+              order.clearHighlight();
+              if (this.selectedStack === stack) this.selectedStack = null;
+            });
+            
+            this.showMessage(`💡 提示: 选中${order.getTypeLabel(type)}堆叠，点击上方订单交付`, 0xFFD700);
+            return;
+          }
+        }
+      }
+    }
+    
+    if (!hintFound) {
+      if (this.boardCards.length > 0) {
+        this.showMessage("💡 提示: 没有可交付的堆叠，尝试拿更多牌", 0xFFD700);
+      } else {
+        this.showMessage("💡 提示: 牌堆已空，尝试使用刷新卡或撤销", 0xFFD700);
+      }
+    }
+  }
+
   showMessage(text, color) {
     const msg = this.add.text(400, 280, text, { fontSize: '18px', color: '#FFFFFF', backgroundColor: color.toString(16).padStart(6, '0'), padding: { x: 10, y: 5 } }).setOrigin(0.5);
     this.tweens.add({ targets: msg, y: 230, alpha: 0, duration: 1500, onComplete: () => msg.destroy() });
