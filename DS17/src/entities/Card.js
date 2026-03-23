@@ -1,4 +1,4 @@
-import * as Phaser from '../../vendor/phaser.esm.js';
+// Phaser is loaded from CDN in main.js
 
 export class Card {
   constructor(scene, x, y, type, id) {
@@ -6,16 +6,14 @@ export class Card {
     this.type = type;
     this.id = id;
     this.isFaceUp = true;
-    this.stackIndex = 0; // Position in stack
+    this.stackIndex = 0;
 
     this.container = scene.add.container(x, y);
     
-    // Card sprite
     this.sprite = scene.add.sprite(0, 0, type + '_full');
     this.sprite.setDisplaySize(50, 70);
     this.container.add(this.sprite);
     
-    // Type label
     this.label = scene.add.text(0, 25, this.getTypeLabel(type), {
       fontSize: '10px',
       color: '#333333',
@@ -23,16 +21,13 @@ export class Card {
     }).setOrigin(0.5);
     this.container.add(this.label);
 
-    // Make interactive
     this.container.setSize(50, 70);
     this.container.setInteractive({ useHandCursor: true });
     
-    // Click to select stack
     this.container.on('pointerdown', () => {
       this.scene.events.emit('cardClicked', this);
     });
     
-    // Hover effect
     this.container.on('pointerover', () => {
       if (!this.scene.selectedStack || this.scene.selectedStack.type !== this.type) {
         this.sprite.setTint(0xDDDDDD);
@@ -70,17 +65,12 @@ export class Card {
 
   setStackIndex(index, totalInStack) {
     this.stackIndex = index;
-    // Visual offset for stacked cards
     const offsetY = index * 8;
     this.sprite.y = -offsetY;
     this.label.y = 25 - offsetY;
-    
-    // Scale down slightly for cards behind
     const scale = 1 - (index * 0.03);
     this.sprite.setScale(scale);
     this.label.setScale(scale);
-    
-    // Adjust alpha for depth effect
     this.container.setAlpha(1 - (index * 0.1));
   }
 
@@ -107,7 +97,6 @@ export class Card {
   }
 }
 
-// Stack class to manage a stack of cards
 export class CardStack {
   constructor(scene, type, x, y) {
     this.scene = scene;
@@ -117,7 +106,6 @@ export class CardStack {
     this.y = y;
     this.isSelected = false;
     
-    // Click area for the whole stack
     this.hitArea = scene.add.rectangle(x, y, 60, 100, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     
@@ -126,18 +114,13 @@ export class CardStack {
     });
     
     this.hitArea.on('pointerover', () => {
-      if (!this.isSelected) {
-        this.showPreview();
-      }
+      if (!this.isSelected) this.showPreview();
     });
     
     this.hitArea.on('pointerout', () => {
-      if (!this.isSelected) {
-        this.hidePreview();
-      }
+      if (!this.isSelected) this.hidePreview();
     });
     
-    // Stack count label
     this.countLabel = scene.add.text(x, y + 50, '0', {
       fontSize: '14px',
       color: '#FFFFFF',
@@ -166,17 +149,14 @@ export class CardStack {
   }
 
   updateVisuals() {
-    // Update count label
     this.countLabel.setText(`${this.cards.length}`);
     this.countLabel.setPosition(this.x, this.y + 50);
     
-    // Update card positions
     this.cards.forEach((card, i) => {
       card.setPosition(this.x, this.y);
       card.setStackIndex(i, this.cards.length);
     });
     
-    // Update hit area
     this.hitArea.setPosition(this.x, this.y);
   }
 
@@ -184,9 +164,7 @@ export class CardStack {
     this.isSelected = true;
     this.cards.forEach(card => card.select());
     this.countLabel.setBackgroundColor('#00AA00');
-    
-    // Highlight matching orders
-    this.scene.highlightMatchingOrders(this.type);
+    this.scene.highlightValidOrders(this.type);
   }
 
   deselect() {

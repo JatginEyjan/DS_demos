@@ -1,4 +1,5 @@
-import * as Phaser from '../vendor/phaser.esm.js';
+// Use CDN for Phaser to avoid 404 issues with large files
+import * as Phaser from 'https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.esm.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { LevelSelectScene } from './scenes/LevelSelectScene.js';
