@@ -1,5 +1,3 @@
-import * as Phaser from '../../vendor/phaser.esm.js';
-
 export class AudioSystem {
   constructor(scene) {
     this.scene = scene;
@@ -17,7 +15,6 @@ export class AudioSystem {
     }
   }
 
-  // Play card flip sound
   playCardFlip() {
     if (!this.enabled || !this.context) return;
     const osc = this.context.createOscillator();
@@ -33,7 +30,6 @@ export class AudioSystem {
     osc.stop(this.context.currentTime + 0.1);
   }
 
-  // Play card drop sound
   playCardDrop() {
     if (!this.enabled || !this.context) return;
     const osc = this.context.createOscillator();
@@ -48,11 +44,9 @@ export class AudioSystem {
     osc.stop(this.context.currentTime + 0.08);
   }
 
-  // Play order complete sound
   playOrderComplete() {
     if (!this.enabled || !this.context) return;
-    // Happy major chord arpeggio
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+    const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, i) => {
       const osc = this.context.createOscillator();
       const gain = this.context.createGain();
@@ -67,11 +61,9 @@ export class AudioSystem {
     });
   }
 
-  // Play level up sound
   playLevelUp() {
     if (!this.enabled || !this.context) return;
     const now = this.context.currentTime;
-    // Fanfare
     [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
       const osc = this.context.createOscillator();
       const gain = this.context.createGain();
@@ -86,7 +78,6 @@ export class AudioSystem {
     });
   }
 
-  // Play error sound
   playError() {
     if (!this.enabled || !this.context) return;
     const osc = this.context.createOscillator();
@@ -102,7 +93,6 @@ export class AudioSystem {
     osc.stop(this.context.currentTime + 0.2);
   }
 
-  // Play click sound
   playClick() {
     if (!this.enabled || !this.context) return;
     const osc = this.context.createOscillator();

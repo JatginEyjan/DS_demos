@@ -1,16 +1,10 @@
-import * as Phaser from '../vendor/phaser.esm.js';
-import { AudioSystem } from '../systems/AudioSystem.js';
-
-export class MenuScene extends Phaser.Scene {
+export class MenuScene {
   constructor() {
-    super('MenuScene');
+    // Scene will be assigned by Phaser
   }
 
   create() {
     const { width, height } = this.scale;
-    
-    // Initialize audio
-    this.audioSystem = new AudioSystem(this);
     
     // Background with gradient
     const graphics = this.add.graphics();
@@ -48,17 +42,14 @@ export class MenuScene extends Phaser.Scene {
     
     // Buttons
     this.createButton(width/2, height * 0.65, '开始游戏', () => {
-      this.audioSystem.playClick();
       this.scene.start('GameScene', { level: 1, stamina: 20 });
     });
     
     this.createButton(width/2, height * 0.75, '选择关卡', () => {
-      this.audioSystem.playClick();
       this.scene.start('LevelSelectScene');
     });
     
     this.createButton(width/2, height * 0.85, '游戏规则', () => {
-      this.audioSystem.playClick();
       this.showRules();
     });
     
@@ -117,10 +108,10 @@ export class MenuScene extends Phaser.Scene {
     
     const rules = [
       '1. 点击牌堆拿牌到手牌区（最多20张）',
-      '2. 拖动卡牌到匹配的订单上完成交付',
-      '3. 完成订单获得福来币奖励',
-      '4. 完成目标订单数进入下一关',
-      '5. 体力不足时可刷新牌区（消耗体力）',
+      '2. 点击卡牌进行堆叠（同类型自动堆叠）',
+      '3. 选中堆叠后，点击订单提交',
+      '4. 复合订单需按顺序提交（先A后B）',
+      '5. 刚好10张=完美奖励(+20%)',
       '',
       '💡 提示：订单高亮表示需要该卡牌',
       '⭐ 完成紧急订单获得更多奖励！'
@@ -136,7 +127,6 @@ export class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.add.text(400, 520, '关闭', { fontSize: '18px', color: '#FFF' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => {
-      this.audioSystem.playClick();
       overlay.destroy();
       this.scene.restart();
     });

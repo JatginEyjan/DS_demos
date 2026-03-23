@@ -1,8 +1,6 @@
-import * as Phaser from '../vendor/phaser.esm.js';
-
-export class LevelSelectScene extends Phaser.Scene {
+export class LevelSelectScene {
   constructor() {
-    super('LevelSelectScene');
+    // Scene will be assigned by Phaser
   }
 
   create() {
@@ -45,18 +43,15 @@ export class LevelSelectScene extends Phaser.Scene {
     const btn = this.add.rectangle(x, y, 140, 100, bgColor)
       .setInteractive(unlocked ? { useHandCursor: true } : false);
     
-    // Level number
     this.add.text(x, y - 20, `第${level}关`, {
       fontSize: '20px', color: unlocked ? '#FFF' : '#999', fontStyle: 'bold'
     }).setOrigin(0.5);
     
-    // Stars (if completed)
     if (unlocked && level < this.getCurrentLevel()) {
       const stars = '⭐⭐⭐';
       this.add.text(x, y + 20, stars, { fontSize: '16px' }).setOrigin(0.5);
     }
     
-    // Lock icon if locked
     if (!unlocked) {
       this.add.text(x, y + 10, '🔒', { fontSize: '24px' }).setOrigin(0.5);
     }
