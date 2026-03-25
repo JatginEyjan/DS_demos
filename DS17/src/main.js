@@ -594,8 +594,7 @@ const GameScene = class extends Phaser.Scene {
     
     // 检查是否完成所有订单（通关）
     if (this.comp >= 3) {
-      this.showMsg('🎉 关卡完成!', 0xFFD700);
-      this.time.delayedCall(2000, () => this.scene.start('GameScene', { level: this.lv + 1 }));
+      this.showLevelComplete();
     } else {
       // 刷新新订单替换已完成的
       this.time.delayedCall(1000, () => this.refreshOrder(o));
@@ -628,6 +627,103 @@ const GameScene = class extends Phaser.Scene {
     
     // 显示新订单提示
     this.showMsg('新订单!', 0xFFD700);
+  }
+  
+  // 关卡完成结算界面
+  showLevelComplete() {
+    // 计算星级（基于总金币）
+    let stars = 1;
+    if (this.cn >= 400) stars = 3;
+    else if (this.cn >= 300) stars = 2;
+    
+    // 创建深色遮罩
+    const overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setDepth(2000);
+    
+    // 成功面板
+    const panel = this.add.rectangle(400, 300, 450, 380, 0x8B4513)
+      .setStrokeStyle(4, 0xFFD700).setDepth(2001);
+    
+    // 标题
+    const title = this.add.text(400, 140, '🎉 关卡完成!', {
+      fontSize: '40px', color: '#FFD700', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    // 星级动画
+    for (let i = 0; i < 3; i++) {
+      const star = this.add.text(400 + (i - 1) * 60, 210, '⭐', {
+        fontSize: '48px'
+      }).setOrigin(0.5).setAlpha(i < stars ? 1 : 0.3).setScale(0).setDepth(2002);
+      
+      this.tweens.add({
+        targets: star,
+        scale: i < stars ? 1.3 : 0.8,
+        duration: 400,
+        delay: i * 150,
+        ease: 'Back.easeOut'
+      });
+    }
+    
+    // 统计数据
+    this.add.text(400, 270, `第 ${this.lv} 关`, {
+      fontSize: '22px', color: '#FFFFFF'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    this.add.text(400, 305, `💰 总金币: ${this.cn}`, {
+      fontSize: '24px', color: '#FFD700', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    this.add.text(400, 340, `🏆 最高连击: ${this.cbo} 次`, {
+      fontSize: '18px', color: '#AAAAAA'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    // 按钮
+    const nextBtn = this.add.rectangle(310, 410, 140, 50, 0x228B22)
+      .setInteractive({ useHandCursor: true }).setDepth(2002);
+    this.add.text(310, 410, '下一关 ▶', {
+      fontSize: '18px', color: '#FFF', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    nextBtn.on('pointerover', () => nextBtn.setFillStyle(0x2E8B57));
+    nextBtn.on('pointerout', () => nextBtn.setFillStyle(0x228B22));
+    nextBtn.on('pointerdown', () => {
+      this.scene.start('GameScene', { level: this.lv + 1 });
+    });
+    
+    const menuBtn = this.add.rectangle(490, 410, 140, 50, 0x4169E1)
+      .setInteractive({ useHandCursor: true }).setDepth(2002);
+    this.add.text(490, 410, '🏠 主菜单', {
+      fontSize: '18px', color: '#FFF', fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(2002);
+    
+    menuBtn.on('pointerover', () => menuBtn.setFillStyle(0x5A7AEA));
+    menuBtn.on('pointerout', () => menuBtn.setFillStyle(0x4169E1));
+    menuBtn.on('pointerdown', () => this.scene.start('MenuScene'));
+    
+    // 礼花效果
+    this.createConfetti();
+  }
+  
+  createConfetti() {
+    const colors = [0xFF0000, 0xFFD700, 0x00FF00, 0x00CED1, 0xFF69B4, 0xFFFFFF];
+    for (let i = 0; i < 60; i++) {
+      const x = Phaser.Math.Between(50, 750);
+      const y = Phaser.Math.Between(30, 150);
+      const color = colors[Phaser.Math.Between(0, colors.length - 1)];
+      
+      const shape = Math.random() > 0.5 
+        ? this.add.rectangle(x, y, 10, 10, color).setDepth(1999)
+        : this.add.circle(x, y, 5, color).setDepth(1999);
+      
+      this.tweens.add({
+        targets: shape,
+        y: y + Phaser.Math.Between(300, 500),
+        x: x + Phaser.Math.Between(-150, 150),
+        rotation: Phaser.Math.Between(0, 720),
+        duration: Phaser.Math.Between(2000, 3500),
+        ease: 'Power2',
+        onComplete: () => shape.destroy()
+      });
+    }
   }
   
   showMsg(t, c) {
