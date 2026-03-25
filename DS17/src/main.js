@@ -515,10 +515,43 @@ const GameScene = class extends Phaser.Scene {
     this.cnt.setText(`💰 ${this.cn}`);
     this.showMsg(`订单完成! +${o.rw}金币`, 0x00FF00);
     if (this.ss) { this.ss.desel(); this.ss = null; }
+    
+    // 检查是否完成所有订单（通关）
     if (this.comp >= 3) {
       this.showMsg('🎉 关卡完成!', 0xFFD700);
       this.time.delayedCall(2000, () => this.scene.start('GameScene', { level: this.lv + 1 }));
+    } else {
+      // 刷新新订单替换已完成的
+      this.time.delayedCall(1000, () => this.refreshOrder(o));
     }
+  }
+  
+  refreshOrder(oldOrder) {
+    // 找到完成的订单索引
+    const idx = this.ords.indexOf(oldOrder);
+    if (idx === -1) return;
+    
+    // 销毁旧订单
+    oldOrder.cont.destroy();
+    
+    // 生成新订单
+    const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    const t = types[Math.floor(Math.random() * types.length)];
+    const c = 4 + Math.floor(Math.random() * 3); // 4-6张
+    const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
+    
+    const x = 150 + idx * 250;
+    const newOrder = new Order(this, x, 100, {
+      id: Date.now(),
+      req: { t, c },
+      rw: r
+    });
+    
+    // 替换数组中的订单
+    this.ords[idx] = newOrder;
+    
+    // 显示新订单提示
+    this.showMsg('新订单!', 0xFFD700);
   }
   
   showMsg(t, c) {
