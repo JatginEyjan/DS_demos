@@ -213,25 +213,101 @@ class Slot {
       const p = tt / this.max;
       this.pbr.width = 120 * p;
       
+      // 更鲜明的进度条颜色
       if (tt >= 15) {
         this.pbr.setFillStyle(0xFF0000);
         this.ct.setBackgroundColor('#FF0000');
       } else if (tt >= 12) {
-        this.pbr.setFillStyle(0xFFAA00);
-        this.ct.setBackgroundColor('#FFAA00');
+        this.pbr.setFillStyle(0xFF8800);
+        this.ct.setBackgroundColor('#FF8800');
+      } else if (tt >= 8) {
+        this.pbr.setFillStyle(0xFFDD00);
+        this.ct.setBackgroundColor('#CC9900');
       } else {
         this.pbr.setFillStyle(0x00FF00);
-        this.ct.setBackgroundColor('#8B0000');
+        this.ct.setBackgroundColor('#228B22');
       }
       
-      const d = Math.min(5, this.cds.length);
-      for (let j = 0; j < d; j++) {
-        const ci = this.cds.length - d + j;
-        const s = this.scene.add.sprite(0, -30 - (j * 8), this.cds[ci].type + '_full')
-          .setScale(0.6 - (j * 0.05)).setAlpha(1 - (j * 0.1));
-        this.cont.add(s);
-        this.csp.push(s);
+      // 渲染卡牌堆叠 - 增强视觉效果
+      this.renderCardStackEnhanced();
+    }
+  }
+  
+  // 增强版卡牌渲染
+  renderCardStackEnhanced() {
+    const displayCount = Math.min(6, this.cds.length);
+    const topType = this.gt();
+    
+    for (let j = 0; j < displayCount; j++) {
+      const cardIndex = this.cds.length - displayCount + j;
+      const card = this.cds[cardIndex];
+      const isTop = j === displayCount - 1;
+      
+      // 位置：Y偏移加大，增加层次感
+      const offsetY = -35 - (j * 10);
+      // 缩放：底层更小，顶层正常
+      const scale = 0.55 + (j * 0.03);
+      // 透明度：底层更透明
+      const alpha = 0.6 + (j * 0.08);
+      // 随机旋转：-4°到+4°，自然堆叠感
+      const rotation = (Math.random() - 0.5) * 0.14;
+      
+      // 创建卡牌容器
+      const cardContainer = this.scene.add.container(0, offsetY);
+      
+      // 阴影（底层才有）
+      if (j < displayCount - 1) {
+        const shadow = this.scene.add.rectangle(3, 3, 55, 75, 0x000000, 0.4)
+          .setOrigin(0.5);
+        cardContainer.add(shadow);
       }
+      
+      // 卡牌主体
+      const sprite = this.scene.add.sprite(0, 0, card.type + '_full')
+        .setScale(scale)
+        .setAlpha(alpha)
+        .setRotation(rotation);
+      
+      // 白色边框
+      const border = this.scene.add.rectangle(0, 0, 55 * scale, 75 * scale, 0x000000, 0)
+        .setStrokeStyle(2, 0xFFFFFF)
+        .setOrigin(0.5);
+      
+      cardContainer.add(sprite);
+      cardContainer.add(border);
+      
+      // 顶部卡牌发光效果
+      if (isTop && card.type === topType) {
+        const glow = this.scene.add.rectangle(0, 0, 60 * scale, 80 * scale, 0xFFFFFF, 0)
+          .setStrokeStyle(3, 0xFFD700)
+          .setOrigin(0.5);
+        cardContainer.add(glow);
+        
+        // 脉冲动画
+        this.scene.tweens.add({
+          targets: glow,
+          alpha: { from: 1, to: 0.3 },
+          duration: 800,
+          yoyo: true,
+          repeat: -1
+        });
+      }
+      
+      this.cont.add(cardContainer);
+      this.csp.push(cardContainer);
+    }
+    
+    // 如果卡牌很多，显示"+N"提示
+    if (this.cds.length > 6) {
+      const moreText = this.scene.add.text(0, -95, `+${this.cds.length - 6}`, {
+        fontSize: '14px',
+        color: '#FFD700',
+        fontStyle: 'bold',
+        backgroundColor: '#8B0000',
+        padding: { x: 6, y: 2 }
+      }).setOrigin(0.5);
+      this.cont.add(moreText);
+      this.csp.push(moreText);
     }
   }
   
