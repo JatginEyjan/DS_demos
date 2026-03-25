@@ -43,10 +43,59 @@ class Order {
     this.stk = scene.add.container(0, -75);
     this.cont.add(this.stk);
     
+    // 刷新按钮
+    this.refreshBtn = scene.add.rectangle(75, -50, 36, 36, 0x4169E1)
+      .setStrokeStyle(2, 0xFFFFFF)
+      .setInteractive({ useHandCursor: true });
+    this.refreshIcon = scene.add.text(75, -50, '🔄', { fontSize: '20px' }).setOrigin(0.5);
+    this.cont.add(this.refreshBtn);
+    this.cont.add(this.refreshIcon);
+    
+    this.refreshBtn.on('pointerover', () => this.refreshBtn.setFillStyle(0x5A7AEA));
+    this.refreshBtn.on('pointerout', () => this.refreshBtn.setFillStyle(0x4169E1));
+    this.refreshBtn.on('pointerdown', () => this.onRefresh());
+    
     this.bg.setInteractive({ useHandCursor: true });
     this.bg.on('pointerover', () => { if (!this.comp) this.bg.setFillStyle(0xFFFFE0); });
     this.bg.on('pointerout', () => { if (!this.comp) this.bg.setFillStyle(0xFFF8DC); });
     this.bg.on('pointerdown', () => this.onClick());
+  }
+  
+  onRefresh() {
+    if (this.comp) return;
+    // 随机更换订单类型和需求数量
+    const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    const oldType = this.req.t;
+    let newType = types[Math.floor(Math.random() * types.length)];
+    while (newType === oldType && types.length > 1) {
+      newType = types[Math.floor(Math.random() * types.length)];
+    }
+    this.req.t = newType;
+    this.req.c = 4 + Math.floor(Math.random() * 3); // 4-6张
+    this.del = 0; // 重置已交付数量
+    this.rw = 80 + Math.floor(Math.random() * 40); // 80-120金币
+    
+    // 更新显示
+    const names = { candy: '糖果订单', dumpling: '饺子订单', lantern: '灯笼订单', redpacket: '红包订单' };
+    const icons = { candy: '🍬', dumpling: '🥟', lantern: '🏮', redpacket: '🧧' };
+    
+    // 重新创建文字（因为直接修改比较麻烦，我们重新设置）
+    this.cont.list[1].setText(names[this.req.t]);
+    this.cont.list[2].setText(icons[this.req.t]);
+    this.upd();
+    this.cont.list[4].setText(`💰 ${this.rw}`);
+    
+    // 刷新动画
+    this.scene.tweens.add({
+      targets: this.cont,
+      rotation: 0.1,
+      duration: 100,
+      yoyo: true,
+      repeat: 3,
+      onComplete: () => this.cont.setRotation(0)
+    });
+    
+    this.scene.showMsg('订单已刷新!', 0x87CEEB);
   }
   
   tryD(cds, sl) {
@@ -469,17 +518,30 @@ const GameScene = class extends Phaser.Scene {
       stroke: '#FF6600', strokeThickness: 4
     }).setOrigin(0.5).setVisible(false).setDepth(1000);
     
-    this.dpb = this.add.rectangle(720, 480, 100, 80, 0x654321).setInteractive({ useHandCursor: true });
-    this.add.text(720, 460, '📦', { fontSize: '36px' }).setOrigin(0.5);
-    this.add.text(720, 490, '发牌', { fontSize: '14px', color: '#FFF' }).setOrigin(0.5);
-    this.dpct = this.add.text(720, 520, '40张', { fontSize: '12px', color: '#FFD700' }).setOrigin(0.5);
+    // 发牌按钮 - 中下方
+    this.dpb = this.add.rectangle(400, 500, 140, 70, 0x654321)
+      .setStrokeStyle(3, 0xFFD700)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(400, 490, '📦', { fontSize: '32px' }).setOrigin(0.5);
+    this.add.text(400, 515, '发牌', { fontSize: '16px', color: '#FFF', fontStyle: 'bold' }).setOrigin(0.5);
+    this.dpct = this.add.text(400, 540, '剩余 40 张', { fontSize: '12px', color: '#FFD700' }).setOrigin(0.5);
     this.dpb.on('pointerdown', () => this.deal());
+    this.dpb.on('pointerover', () => {
+      this.dpb.setFillStyle(0x7A5C3D);
+      this.dpb.setScale(1.05);
+    });
+    this.dpb.on('pointerout', () => {
+      this.dpb.setFillStyle(0x654321);
+      this.dpb.setScale(1);
+    });
     
-    const mb = this.add.rectangle(720, 560, 80, 35, 0x666666).setInteractive({ useHandCursor: true });
-    this.add.text(720, 560, '菜单', { fontSize: '14px', color: '#FFF' }).setOrigin(0.5);
+    // 菜单按钮 - 右上角
+    const mb = this.add.rectangle(750, 30, 80, 35, 0x666666).setInteractive({ useHandCursor: true });
+    this.add.text(750, 30, '菜单', { fontSize: '14px', color: '#FFF' }).setOrigin(0.5);
     mb.on('pointerdown', () => this.scene.start('MenuScene'));
     
-    this.add.text(400, 585, '点击槽选中 | 点击槽移动 | 点击订单交付(支持部分)', { fontSize: '12px', color: '#CCC' }).setOrigin(0.5);
+    // 底部提示
+    this.add.text(400, 575, '点击槽选中 | 点击槽移动 | 点击订单交付 | 点击🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
   }
   
   dealInit() {
@@ -514,8 +576,9 @@ const GameScene = class extends Phaser.Scene {
   }
   
   animDeal(s, c) {
+    // 从新的发牌按钮位置(400, 500)飞出
     for (let i = 0; i < c; i++) {
-      const sp = this.add.sprite(720, 480, 'cardback').setScale(0.4).setDepth(1000);
+      const sp = this.add.sprite(400, 500, 'cardback').setScale(0.4).setDepth(1000);
       this.tweens.add({
         targets: sp, x: s.x, y: s.y, scale: 0.6,
         duration: 300, delay: i * 80, ease: 'Power2',
@@ -524,7 +587,7 @@ const GameScene = class extends Phaser.Scene {
     }
   }
   
-  updDPC() { this.dpct.setText(`${this.dp.length}张`); }
+  updDPC() { this.dpct.setText(`剩余 ${this.dp.length} 张`); }
   
   onSlClick(s) {
     if (this.ss) {
