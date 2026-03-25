@@ -17,37 +17,38 @@ class Order {
     this.del = 0;
     
     this.cont = scene.add.container(x, y);
-    this.bg = scene.add.rectangle(0, 0, 200, 140, 0xFFF8DC)
+    // 缩小订单尺寸以适应5个订单
+    this.bg = scene.add.rectangle(0, 0, 145, 130, 0xFFF8DC)
       .setStrokeStyle(2, 0x8B4513);
     this.cont.add(this.bg);
     
     const names = { candy: '糖果订单', dumpling: '饺子订单', lantern: '灯笼订单', redpacket: '红包订单' };
-    this.cont.add(scene.add.text(0, -50, names[this.req.t], {
-      fontSize: '16px', color: '#8B0000', fontStyle: 'bold'
+    this.cont.add(scene.add.text(0, -45, names[this.req.t], {
+      fontSize: '13px', color: '#8B0000', fontStyle: 'bold'
     }).setOrigin(0.5));
     
     const icons = { candy: '🍬', dumpling: '🥟', lantern: '🏮', redpacket: '🧧' };
-    this.cont.add(scene.add.text(0, -20, icons[this.req.t], {
-      fontSize: '32px'
+    this.cont.add(scene.add.text(0, -18, icons[this.req.t], {
+      fontSize: '28px'
     }).setOrigin(0.5));
     
-    this.pt = scene.add.text(0, 15, `${icons[this.req.t]} 0/${this.req.c}`, {
-      fontSize: '18px', color: '#333', fontStyle: 'bold'
+    this.pt = scene.add.text(0, 12, `${icons[this.req.t]} 0/${this.req.c}`, {
+      fontSize: '15px', color: '#333', fontStyle: 'bold'
     }).setOrigin(0.5);
     this.cont.add(this.pt);
     
-    this.cont.add(scene.add.text(0, 50, `💰 ${this.rw}`, {
-      fontSize: '14px', color: '#FFD700'
+    this.cont.add(scene.add.text(0, 42, `💰 ${this.rw}`, {
+      fontSize: '12px', color: '#FFD700'
     }).setOrigin(0.5));
     
-    this.stk = scene.add.container(0, -75);
+    this.stk = scene.add.container(0, -65);
     this.cont.add(this.stk);
     
     // 刷新按钮
-    this.refreshBtn = scene.add.rectangle(75, -50, 36, 36, 0x4169E1)
+    this.refreshBtn = scene.add.rectangle(52, -42, 28, 28, 0x4169E1)
       .setStrokeStyle(2, 0xFFFFFF)
       .setInteractive({ useHandCursor: true });
-    this.refreshIcon = scene.add.text(75, -50, '🔄', { fontSize: '20px' }).setOrigin(0.5);
+    this.refreshIcon = scene.add.text(52, -42, '🔄', { fontSize: '14px' }).setOrigin(0.5);
     this.cont.add(this.refreshBtn);
     this.cont.add(this.refreshIcon);
     
@@ -437,7 +438,7 @@ const MenuScene = class extends Phaser.Scene {
     }).setOrigin(0.5);
     
     this.tweens.add({ targets: t, scale: { from: 1, to: 1.05 }, duration: 1000, yoyo: true, repeat: -1 });
-    this.add.text(width / 2, height / 3 + 70, '✨ 订单暂存', { fontSize: '22px', color: '#FFA500' }).setOrigin(0.5);
+    this.add.text(width / 2, height / 3 + 70, '✨ 5槽5订单 + 100张牌', { fontSize: '22px', color: '#FFA500' }).setOrigin(0.5);
     this.crtBtn(width / 2, height * 0.6, '🎮 开始游戏', () => this.scene.start('GameScene', { level: 1 }));
     this.crtBtn(width / 2, height * 0.75, '📜 游戏规则', () => this.showRules());
   }
@@ -470,7 +471,7 @@ const GameScene = class extends Phaser.Scene {
     this.ss = null;
     this.dp = [];
     this.ords = [];
-    this.tg = 3;
+    this.tg = 5; // 5个订单目标
     this.comp = 0;
     this.cn = 0;
     this.lot = 0;
@@ -494,16 +495,24 @@ const GameScene = class extends Phaser.Scene {
   }
   
   crtSl() {
-    const sx = 200, sp = 200, y = 320;
-    for (let i = 0; i < 3; i++) {
+    // 5个卡槽，调整间距
+    const sx = 130, sp = 135, y = 320;
+    for (let i = 0; i < 5; i++) {
       this.sl.push(new Slot(this, i, sx + i * sp, y));
     }
   }
   
   crtOrd() {
-    const cf = [{ t: 'candy', c: 5, r: 100 }, { t: 'dumpling', c: 6, r: 120 }, { t: 'lantern', c: 5, r: 100 }];
-    for (let i = 0; i < 3; i++) {
-      const x = 150 + i * 250, c = cf[i];
+    // 5个订单，调整位置和大小
+    const cf = [
+      { t: 'candy', c: 5, r: 100 },
+      { t: 'dumpling', c: 6, r: 120 },
+      { t: 'lantern', c: 5, r: 100 },
+      { t: 'redpacket', c: 5, r: 110 },
+      { t: 'candy', c: 6, r: 130 }
+    ];
+    for (let i = 0; i < 5; i++) {
+      const x = 100 + i * 155, c = cf[i];
       this.ords.push(new Order(this, x, 100, { id: i, req: { t: c.t, c: c.c }, rw: c.r }));
     }
   }
@@ -511,7 +520,7 @@ const GameScene = class extends Phaser.Scene {
   crtUI() {
     this.add.text(20, 15, `第${this.lv}关`, { fontSize: '20px', color: '#FFD700', fontStyle: 'bold' });
     this.cnt = this.add.text(150, 15, '💰 0', { fontSize: '18px', color: '#FFD700' });
-    this.pgt = this.add.text(500, 15, '订单: 0/3', { fontSize: '16px', color: '#FFF' });
+    this.pgt = this.add.text(500, 15, '订单: 0/5', { fontSize: '16px', color: '#FFF' });
     
     this.cbt = this.add.text(400, 200, '', {
       fontSize: '36px', color: '#FFD700', fontStyle: 'bold',
@@ -541,20 +550,22 @@ const GameScene = class extends Phaser.Scene {
     mb.on('pointerdown', () => this.scene.start('MenuScene'));
     
     // 底部提示
-    this.add.text(400, 575, '点击槽选中 | 点击槽移动 | 点击订单交付 | 点击🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
+    this.add.text(400, 575, '5槽5订单 | 点击槽选中/移动 | 点击订单交付 | 🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
   }
   
   dealInit() {
     const t = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    // 初始15张牌分给5个槽
     const ic = [];
-    for (let i = 0; i < 10; i++) ic.push(new Card(t[Math.floor(Math.random() * t.length)]));
-    const d = [4, 3, 3];
+    for (let i = 0; i < 15; i++) ic.push(new Card(t[Math.floor(Math.random() * t.length)]));
+    const d = [3, 3, 3, 3, 3]; // 5个槽各3张
     let ci = 0;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       this.sl[i].addC(ic.slice(ci, ci + d[i]));
       ci += d[i];
     }
-    for (let i = 0; i < 40; i++) this.dp.push(new Card(t[Math.floor(Math.random() * t.length)]));
+    // 100张牌堆
+    for (let i = 0; i < 100; i++) this.dp.push(new Card(t[Math.floor(Math.random() * t.length)]));
     this.updDPC();
   }
   
@@ -649,14 +660,14 @@ const GameScene = class extends Phaser.Scene {
   compOrd(o) {
     o.compO();
     this.comp++;
-    this.pgt.setText(`订单: ${this.comp}/3`);
+    this.pgt.setText(`订单: ${this.comp}/5`);
     this.cn += o.rw;
     this.cnt.setText(`💰 ${this.cn}`);
     this.showMsg(`订单完成! +${o.rw}金币`, 0x00FF00);
     if (this.ss) { this.ss.desel(); this.ss = null; }
     
     // 检查是否完成所有订单（通关）
-    if (this.comp >= 3) {
+    if (this.comp >= 5) {
       this.showLevelComplete();
     } else {
       // 刷新新订单替换已完成的
@@ -678,7 +689,7 @@ const GameScene = class extends Phaser.Scene {
     const c = 4 + Math.floor(Math.random() * 3); // 4-6张
     const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
     
-    const x = 150 + idx * 250;
+    const x = 100 + idx * 155;
     const newOrder = new Order(this, x, 100, {
       id: Date.now(),
       req: { t, c },
