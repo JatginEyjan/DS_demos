@@ -310,6 +310,23 @@ class Slot {
     return r;
   }
   
+  removeType(type, count) {
+    let remaining = count;
+    const kept = [];
+    for (let i = 0; i < this.cds.length; i++) {
+      const card = this.cds[i];
+      if (card.type === type && remaining > 0) {
+        remaining--;
+      } else {
+        kept.push(card);
+      }
+    }
+    const removed = count - remaining;
+    this.cds = kept;
+    this.upd();
+    return removed;
+  }
+  
   upd() {
     this.csp.forEach(s => s.destroy());
     this.csp = [];
@@ -555,6 +572,8 @@ const GameScene = class extends Phaser.Scene {
     this.cbo = 0;
     this.dryDealStreak = 0; // 第三阶段：保底扶持计数
     this.orderUnlockCosts = [0, 0, 0, 150, 280];
+    this.mergeCost = 35;
+    this.autoDeliverCost = 60;
   }
   
   create() {
@@ -637,13 +656,45 @@ const GameScene = class extends Phaser.Scene {
       this.dpb.setScale(1);
     });
     
+    // 整理按钮
+    this.mgb = this.add.rectangle(255, 500, 120, 62, 0x2F6B3C)
+      .setStrokeStyle(3, 0x9BE38C)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(255, 490, '🧹', { fontSize: '28px' }).setOrigin(0.5);
+    this.add.text(255, 512, `整理 ${this.mergeCost}💰`, { fontSize: '14px', color: '#FFF', fontStyle: 'bold' }).setOrigin(0.5);
+    this.mgb.on('pointerdown', () => this.autoMergeSlots());
+    this.mgb.on('pointerover', () => {
+      this.mgb.setFillStyle(0x3A8248);
+      this.mgb.setScale(1.05);
+    });
+    this.mgb.on('pointerout', () => {
+      this.mgb.setFillStyle(0x2F6B3C);
+      this.mgb.setScale(1);
+    });
+    
+    // 送货按钮
+    this.adb = this.add.rectangle(545, 500, 120, 62, 0x1E5F8C)
+      .setStrokeStyle(3, 0x8ED0FF)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(545, 490, '🚚', { fontSize: '28px' }).setOrigin(0.5);
+    this.add.text(545, 512, `送货 ${this.autoDeliverCost}💰`, { fontSize: '14px', color: '#FFF', fontStyle: 'bold' }).setOrigin(0.5);
+    this.adb.on('pointerdown', () => this.autoDeliverOrders());
+    this.adb.on('pointerover', () => {
+      this.adb.setFillStyle(0x2775AA);
+      this.adb.setScale(1.05);
+    });
+    this.adb.on('pointerout', () => {
+      this.adb.setFillStyle(0x1E5F8C);
+      this.adb.setScale(1);
+    });
+    
     // 菜单按钮 - 右上角
     const mb = this.add.rectangle(750, 30, 80, 35, 0x666666).setInteractive({ useHandCursor: true });
     this.add.text(750, 30, '菜单', { fontSize: '14px', color: '#FFF' }).setOrigin(0.5);
     mb.on('pointerdown', () => this.scene.start('MenuScene'));
     
     // 底部提示
-    this.add.text(400, 575, '槽位解锁: 180/320💰 | 订单位解锁: 150/280💰 | 10个一单 | 发牌会优先养成套', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
+    this.add.text(400, 575, '整理 35💰 | 送货 60💰 | 槽位解锁: 180/320💰 | 订单位解锁: 150/280💰', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
   }
   
   dealInit() {
@@ -875,6 +926,122 @@ const GameScene = class extends Phaser.Scene {
   }
   
   updDPC() { this.dpct.setText(`剩余 ${this.dp.length} 张`); }
+  
+  getUnlockedSlots() {
+    return this.sl.filter(s => !s.locked);
+  }
+  
+  autoMergeSlots() {
+    if (this.cn < this.mergeCost) {
+      this.showMsg(`需要 ${this.mergeCost} 金币整理`, 0xFF0000);
+      this.playCS();
+      return;
+    }
+    
+    const slots = this.getUnlockedSlots();
+    const allCards = [];
+    slots.forEach(slot => allCards.push(...slot.cds));
+    if (allCards.length === 0) {
+      this.showMsg('没有可整理的物品', 0xFF0000);
+      this.playCS();
+      return;
+    }
+    
+    const grouped = { candy: [], dumpling: [], lantern: [], redpacket: [] };
+    allCards.forEach(card => grouped[card.type].push(card));
+    const orderedTypes = Object.keys(grouped).sort((a, b) => grouped[b].length - grouped[a].length);
+    
+    slots.forEach(slot => { slot.cds = []; slot.upd(); });
+    
+    let slotIndex = 0;
+    orderedTypes.forEach(type => {
+      const cards = grouped[type];
+      while (cards.length > 0 && slotIndex < slots.length) {
+        const chunk = cards.splice(0, slots[slotIndex].max);
+        slots[slotIndex].cds = chunk;
+        slots[slotIndex].upd();
+        slotIndex++;
+      }
+    });
+    
+    while (slotIndex < slots.length) {
+      slots[slotIndex].cds = [];
+      slots[slotIndex].upd();
+      slotIndex++;
+    }
+    
+    if (this.ss) { this.ss.desel(); this.ss = null; }
+    this.cn -= this.mergeCost;
+    this.cnt.setText(`💰 ${this.cn}`);
+    this.showMsg(`整理完成! -${this.mergeCost}💰`, 0x00FF00);
+    this.playSS();
+  }
+  
+  countTypeAcrossSlots(type) {
+    return this.getUnlockedSlots().reduce((sum, slot) => sum + slot.cds.filter(card => card.type === type).length, 0);
+  }
+  
+  autoDeliverOrders() {
+    if (this.cn < this.autoDeliverCost) {
+      this.showMsg(`需要 ${this.autoDeliverCost} 金币送货`, 0xFF0000);
+      this.playCS();
+      return;
+    }
+    
+    const stock = {
+      candy: this.countTypeAcrossSlots('candy'),
+      dumpling: this.countTypeAcrossSlots('dumpling'),
+      lantern: this.countTypeAcrossSlots('lantern'),
+      redpacket: this.countTypeAcrossSlots('redpacket')
+    };
+    const deliverableOrders = [];
+    this.ords
+      .filter(o => !o.locked && !o.comp)
+      .sort((a, b) => b.del - a.del)
+      .forEach(order => {
+        const need = order.req.c - order.del;
+        if (stock[order.req.t] >= need) {
+          stock[order.req.t] -= need;
+          deliverableOrders.push(order);
+        }
+      });
+    
+    if (deliverableOrders.length === 0) {
+      this.showMsg('当前没有可直接完成的订单', 0xFF0000);
+      this.playCS();
+      return;
+    }
+    
+    this.cn -= this.autoDeliverCost;
+    this.cnt.setText(`💰 ${this.cn}`);
+    
+    let completed = 0;
+    const unlockedSlots = this.getUnlockedSlots();
+    
+    deliverableOrders.forEach(order => {
+      let need = order.req.c - order.del;
+      for (const slot of unlockedSlots) {
+        if (need <= 0) break;
+        const removed = slot.removeType(order.req.t, need);
+        need -= removed;
+      }
+      if (need <= 0) {
+        order.del = order.req.c;
+        order.upd();
+        completed++;
+        this.compOrd(order);
+      }
+    });
+    
+    if (completed > 0) {
+      if (this.ss) { this.ss.desel(); this.ss = null; }
+      this.showMsg(`送货完成 ${completed} 单! -${this.autoDeliverCost}💰`, 0x00FF00);
+      this.playSS();
+    } else {
+      this.showMsg('送货失败', 0xFF0000);
+      this.playCS();
+    }
+  }
   
   onSlClick(s) {
     // 检查卡槽是否锁定
