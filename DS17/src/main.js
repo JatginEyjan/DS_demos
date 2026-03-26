@@ -662,28 +662,72 @@ const GameScene = class extends Phaser.Scene {
     return entries[0][0];
   }
   
-  chooseTypeForSlot(slot, weights) {
+  getGrowthSlots(weights) {
+    const available = this.sl.filter(s => !s.locked && s.cds.length < 15);
+    if (available.length === 0) return [];
+    
+    const orderedTypes = Object.entries(weights)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type]) => type);
+    
+    const scored = available.map(slot => {
+      const topType = slot.gt();
+      const topCount = slot.gtc();
+      let score = 0;
+      
+      if (slot.isE()) score += 20; // 空槽可作为培养新线
+      if (topCount >= 2) score += 30 + topCount * 8; // 连堆越高越值得培养
+      if (topType && weights[topType]) score += weights[topType] * 10; // 订单权重高的优先
+      if (topType && orderedTypes[0] === topType) score += 25; // 当前最热类型优先
+      
+      return { slot, score };
+    }).sort((a, b) => b.score - a.score);
+    
+    const allScattered = available.every(slot => slot.gtc() <= 2);
+    const targetCount = allScattered ? Math.min(2, scored.length) : 1;
+    return scored.slice(0, targetCount).map(item => item.slot);
+  }
+  
+  chooseTypeForSlot(slot, weights, isGrowthSlot = false) {
     const topType = slot.gt();
     const topCount = slot.gtc();
     
-    // 顶层堆叠保护
+    // 第二阶段：成长槽机制
+    if (isGrowthSlot) {
+      // 空成长槽：优先吃当前最高权重类型
+      if (!topType) {
+        const ordered = Object.entries(weights).sort((a, b) => b[1] - a[1]);
+        const strongest = ordered[0][0];
+        if (Math.random() < 0.8) return strongest;
+        return this.pickWeightedType(weights);
+      }
+      
+      // 已有堆叠的成长槽：更强地延续顶部类型
+      let growthChance = 0.65;
+      if (topCount >= 4) growthChance = 0.85;
+      else if (topCount >= 2) growthChance = 0.7;
+      
+      if (Math.random() < growthChance) return topType;
+      return this.pickWeightedType(weights);
+    }
+    
+    // 第一阶段：顶层堆叠保护
     if (topType) {
       let continueChance = 0;
       if (topCount >= 4) continueChance = 0.75;
       else if (topCount >= 2) continueChance = 0.55;
       
-      if (Math.random() < continueChance) {
-        return topType;
-      }
+      if (Math.random() < continueChance) return topType;
     }
     
-    // 否则按订单权重发牌
+    // 其他按订单权重发牌
     return this.pickWeightedType(weights);
   }
   
   deal() {
     let ad = false;
     const weights = this.getDealWeights();
+    const growthSlots = this.getGrowthSlots(weights);
     
     for (const s of this.sl) {
       // 锁定卡槽和满槽都跳过
@@ -694,12 +738,13 @@ const GameScene = class extends Phaser.Scene {
       const ac = Math.min(dc, sp, this.dp.length);
       if (ac <= 0) continue;
       
-      this.animDeal(s, ac);
+      const isGrowthSlot = growthSlots.includes(s);
+      this.animDeal(s, ac, isGrowthSlot);
       
       // 动态生成更“会养一套”的牌，而不是直接用随机牌堆
       const cd = [];
       for (let i = 0; i < ac; i++) {
-        const type = this.chooseTypeForSlot(s, weights);
+        const type = this.chooseTypeForSlot(s, weights, isGrowthSlot);
         cd.push(new Card(type));
       }
       
@@ -710,20 +755,40 @@ const GameScene = class extends Phaser.Scene {
       ad = true;
     }
     
+    if (growthSlots.length > 0) {
+      this.highlightGrowthSlots(growthSlots);
+    }
+    
     if (!ad) this.showMsg('所有已解锁卡槽已满或牌堆空', 0xFF0000);
     else this.updDPC();
   }
   
-  animDeal(s, c) {
+  animDeal(s, c, isGrowthSlot = false) {
     // 从新的发牌按钮位置(400, 500)飞出
     for (let i = 0; i < c; i++) {
       const sp = this.add.sprite(400, 500, 'cardback').setScale(0.4).setDepth(1000);
+      if (isGrowthSlot) sp.setTint(0xFFD54F);
       this.tweens.add({
         targets: sp, x: s.x, y: s.y, scale: 0.6,
         duration: 300, delay: i * 80, ease: 'Power2',
         onComplete: () => sp.destroy()
       });
     }
+  }
+  
+  highlightGrowthSlots(slots) {
+    slots.forEach(slot => {
+      const pulse = this.add.rectangle(slot.x, slot.y, 176, 216, 0xFFD54F, 0)
+        .setStrokeStyle(3, 0xFFD54F)
+        .setDepth(999);
+      this.tweens.add({
+        targets: pulse,
+        alpha: { from: 1, to: 0 },
+        scale: { from: 1, to: 1.08 },
+        duration: 500,
+        onComplete: () => pulse.destroy()
+      });
+    });
   }
   
   updDPC() { this.dpct.setText(`剩余 ${this.dp.length} 张`); }
