@@ -72,7 +72,7 @@ class Order {
       newType = types[Math.floor(Math.random() * types.length)];
     }
     this.req.t = newType;
-    this.req.c = 4 + Math.floor(Math.random() * 3); // 4-6张
+    this.req.c = 10; // 统一10个
     this.del = 0; // 重置已交付数量
     this.rw = 80 + Math.floor(Math.random() * 40); // 80-120金币
     
@@ -199,6 +199,36 @@ class Slot {
     this.ha.on('pointerout', () => this.onHv(false));
     
     this.csp = [];
+    
+    // 锁定相关
+    this.locked = false;
+    this.lockCost = 0;
+    this.lockIcon = null;
+    this.lockText = null;
+  }
+  
+  // 设置锁定状态
+  setLock(cost) {
+    this.locked = true;
+    this.lockCost = cost;
+    this.et.setVisible(false);
+    this.lockIcon = this.scene.add.text(0, -20, '🔒', { fontSize: '40px' }).setOrigin(0.5);
+    this.lockText = this.scene.add.text(0, 20, `${cost}💰`, { fontSize: '18px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
+    this.cont.add(this.lockIcon);
+    this.cont.add(this.lockText);
+    this.bg.setFillStyle(0x444444, 0.6);
+    this.bg.setStrokeStyle(2, 0x666666);
+  }
+  
+  // 解锁
+  unlock() {
+    this.locked = false;
+    if (this.lockIcon) { this.lockIcon.destroy(); this.lockIcon = null; }
+    if (this.lockText) { this.lockText.destroy(); this.lockText = null; }
+    this.et.setVisible(true);
+    this.bg.setFillStyle(0x8B4513, 0.3);
+    this.bg.setStrokeStyle(2, 0x8B4513);
+    this.upd();
   }
   
   isE() { return this.cds.length === 0; }
@@ -454,7 +484,7 @@ const MenuScene = class extends Phaser.Scene {
   showRules() {
     const o = this.add.rectangle(400, 300, 720, 520, 0x000000, 0.95);
     this.add.text(400, 70, '📜 v2.0 规则', { fontSize: '26px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
-    const r = ['【核心】', '• 3槽×15张上限', '• 批量发牌(1-5张)', '• 槽间移动', '', '【订单暂存】', '• 部分交付，显示进度', '• 多槽凑齐订单'];
+    const r = ['【核心】', '• 5槽×15张上限(后2槽需解锁)', '• 第4槽300💰，第5槽500💰', '• 批量发牌(1-5张)', '• 槽间移动', '', '【订单】', '• 5订单，每单统一10个', '• 部分交付，显示进度', '• 多槽凑齐订单'];
     r.forEach((l, i) => this.add.text(400, 115 + i * 28, l, { fontSize: '15px', color: l.startsWith('【') ? '#FFD700' : '#FFFFFF' }).setOrigin(0.5));
     const c = this.add.rectangle(400, 480, 120, 40, 0xDC143C).setInteractive({ useHandCursor: true });
     this.add.text(400, 480, '关闭', { fontSize: '18px', color: '#FFF' }).setOrigin(0.5);
@@ -498,18 +528,22 @@ const GameScene = class extends Phaser.Scene {
     // 5个卡槽，调整间距
     const sx = 130, sp = 135, y = 320;
     for (let i = 0; i < 5; i++) {
-      this.sl.push(new Slot(this, i, sx + i * sp, y));
+      const s = new Slot(this, i, sx + i * sp, y);
+      // 第4个卡槽(索引3)300金币解锁，第5个(索引4)500金币解锁
+      if (i === 3) s.setLock(300);
+      if (i === 4) s.setLock(500);
+      this.sl.push(s);
     }
   }
   
   crtOrd() {
-    // 5个订单，调整位置和大小
+    // 5个订单，统一10个需求
     const cf = [
-      { t: 'candy', c: 5, r: 100 },
-      { t: 'dumpling', c: 6, r: 120 },
-      { t: 'lantern', c: 5, r: 100 },
-      { t: 'redpacket', c: 5, r: 110 },
-      { t: 'candy', c: 6, r: 130 }
+      { t: 'candy', c: 10, r: 100 },
+      { t: 'dumpling', c: 10, r: 120 },
+      { t: 'lantern', c: 10, r: 100 },
+      { t: 'redpacket', c: 10, r: 110 },
+      { t: 'candy', c: 10, r: 130 }
     ];
     for (let i = 0; i < 5; i++) {
       const x = 100 + i * 155, c = cf[i];
@@ -550,21 +584,26 @@ const GameScene = class extends Phaser.Scene {
     mb.on('pointerdown', () => this.scene.start('MenuScene'));
     
     // 底部提示
-    this.add.text(400, 575, '5槽5订单 | 点击槽选中/移动 | 点击订单交付 | 🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
+    this.add.text(400, 575, '5槽(后2槽需300/500💰解锁) | 点击槽选中/移动/解锁 | 订单统一10个 | 🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
   }
   
   dealInit() {
     const t = ['candy', 'dumpling', 'lantern', 'redpacket'];
-    // 初始15张牌分给5个槽
-    const ic = [];
-    for (let i = 0; i < 15; i++) ic.push(new Card(t[Math.floor(Math.random() * t.length)]));
-    const d = [3, 3, 3, 3, 3]; // 5个槽各3张
-    let ci = 0;
-    for (let i = 0; i < 5; i++) {
-      this.sl[i].addC(ic.slice(ci, ci + d[i]));
-      ci += d[i];
+    
+    // 只有第1关才初始发牌，进入下一关时不发牌
+    if (this.lv === 1) {
+      // 初始15张牌分给5个槽
+      const ic = [];
+      for (let i = 0; i < 15; i++) ic.push(new Card(t[Math.floor(Math.random() * t.length)]));
+      const d = [3, 3, 3, 3, 3]; // 5个槽各3张
+      let ci = 0;
+      for (let i = 0; i < 5; i++) {
+        this.sl[i].addC(ic.slice(ci, ci + d[i]));
+        ci += d[i];
+      }
     }
-    // 100张牌堆
+    
+    // 100张牌堆（每关都重置）
     for (let i = 0; i < 100; i++) this.dp.push(new Card(t[Math.floor(Math.random() * t.length)]));
     this.updDPC();
   }
@@ -601,6 +640,21 @@ const GameScene = class extends Phaser.Scene {
   updDPC() { this.dpct.setText(`剩余 ${this.dp.length} 张`); }
   
   onSlClick(s) {
+    // 检查卡槽是否锁定
+    if (s.locked) {
+      if (this.cn >= s.lockCost) {
+        this.cn -= s.lockCost;
+        this.cnt.setText(`💰 ${this.cn}`);
+        s.unlock();
+        this.showMsg(`解锁卡槽! -${s.lockCost}💰`, 0x00FF00);
+        this.playSS();
+      } else {
+        this.showMsg(`需要 ${s.lockCost} 金币解锁`, 0xFF0000);
+        this.playCS();
+      }
+      return;
+    }
+    
     if (this.ss) {
       if (this.ss === s) {
         this.ss.desel();
@@ -686,7 +740,7 @@ const GameScene = class extends Phaser.Scene {
     // 生成新订单
     const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
     const t = types[Math.floor(Math.random() * types.length)];
-    const c = 4 + Math.floor(Math.random() * 3); // 4-6张
+    const c = 10; // 统一10个
     const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
     
     const x = 100 + idx * 155;
