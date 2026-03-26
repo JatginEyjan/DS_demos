@@ -64,13 +64,29 @@ class Order {
   
   onRefresh() {
     if (this.comp) return;
-    // 随机更换订单类型和需求数量
+    // 获取当前场上各类型订单数量
+    const typeCount = {};
+    this.scene.ords.forEach(o => {
+      if (o !== this && !o.comp) {
+        typeCount[o.req.t] = (typeCount[o.req.t] || 0) + 1;
+      }
+    });
+    
+    // 随机更换订单类型，确保同类型不超过2个
     const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
     const oldType = this.req.t;
-    let newType = types[Math.floor(Math.random() * types.length)];
-    while (newType === oldType && types.length > 1) {
-      newType = types[Math.floor(Math.random() * types.length)];
+    let availableTypes = types.filter(t => (typeCount[t] || 0) < 2);
+    
+    // 如果所有类型都已经有2个，则随机选择（允许暂时超标，但概率很低）
+    if (availableTypes.length === 0) availableTypes = types;
+    
+    // 优先选择不同类型
+    let newType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    if (newType === oldType && availableTypes.length > 1) {
+      availableTypes = availableTypes.filter(t => t !== oldType);
+      newType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
     }
+    
     this.req.t = newType;
     this.req.c = 10; // 统一10个
     this.del = 0; // 重置已交付数量
@@ -537,17 +553,29 @@ const GameScene = class extends Phaser.Scene {
   }
   
   crtOrd() {
-    // 5个订单，统一10个需求
-    const cf = [
-      { t: 'candy', c: 10, r: 100 },
-      { t: 'dumpling', c: 10, r: 120 },
-      { t: 'lantern', c: 10, r: 100 },
-      { t: 'redpacket', c: 10, r: 110 },
-      { t: 'candy', c: 10, r: 130 }
-    ];
+    // 5个订单，统一10个需求，确保同类型不超过2个
+    const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
+    const typeCount = {};
+    const selectedTypes = [];
+    
+    // 随机选择5个类型，确保每种不超过2个
     for (let i = 0; i < 5; i++) {
-      const x = 100 + i * 155, c = cf[i];
-      this.ords.push(new Order(this, x, 100, { id: i, req: { t: c.t, c: c.c }, rw: c.r }));
+      // 找出可用的类型（数量<2）
+      const availableTypes = types.filter(t => (typeCount[t] || 0) < 2);
+      // 如果所有类型都已经有2个，则从所有类型中随机
+      const pool = availableTypes.length > 0 ? availableTypes : types;
+      const t = pool[Math.floor(Math.random() * pool.length)];
+      
+      typeCount[t] = (typeCount[t] || 0) + 1;
+      selectedTypes.push(t);
+    }
+    
+    // 创建订单
+    for (let i = 0; i < 5; i++) {
+      const x = 100 + i * 155;
+      const t = selectedTypes[i];
+      const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
+      this.ords.push(new Order(this, x, 100, { id: i, req: { t, c: 10 }, rw: r }));
     }
   }
   
@@ -737,9 +765,19 @@ const GameScene = class extends Phaser.Scene {
     // 销毁旧订单
     oldOrder.cont.destroy();
     
-    // 生成新订单
+    // 统计当前场上各类型订单数量（不包括已完成的）
+    const typeCount = {};
+    this.ords.forEach(o => {
+      if (o !== oldOrder && !o.comp) {
+        typeCount[o.req.t] = (typeCount[o.req.t] || 0) + 1;
+      }
+    });
+    
+    // 生成新订单，确保同类型不超过2个
     const types = ['candy', 'dumpling', 'lantern', 'redpacket'];
-    const t = types[Math.floor(Math.random() * types.length)];
+    const availableTypes = types.filter(t => (typeCount[t] || 0) < 2);
+    const pool = availableTypes.length > 0 ? availableTypes : types;
+    const t = pool[Math.floor(Math.random() * pool.length)];
     const c = 10; // 统一10个
     const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
     
