@@ -620,12 +620,24 @@ const GameScene = class extends Phaser.Scene {
     
     // 只有第1关才初始发牌，进入下一关时不发牌
     if (this.lv === 1) {
-      // 初始只发给已解锁的3个槽，每槽5张
+      // 第一关初始不要太散：前3个槽各自围绕一个“主类型”发牌
+      // 优先参考当前前3个订单的类型，让玩家开局就更容易养出一套
+      const seedTypes = this.ords.slice(0, 3).map(o => o.req.t);
+      
       for (let i = 0; i < 3; i++) {
         const cards = [];
-        for (let j = 0; j < 5; j++) {
-          cards.push(new Card(t[Math.floor(Math.random() * t.length)]));
+        const focusType = seedTypes[i] || t[i % t.length];
+        
+        // 每个槽 5 张牌：至少 4 张是主类型，第 5 张大概率仍然是主类型
+        for (let j = 0; j < 4; j++) {
+          cards.push(new Card(focusType));
         }
+        
+        const tailType = Math.random() < 0.7
+          ? focusType
+          : t[Math.floor(Math.random() * t.length)];
+        cards.push(new Card(tailType));
+        
         this.sl[i].addC(cards);
       }
     }
