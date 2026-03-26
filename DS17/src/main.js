@@ -620,14 +620,13 @@ const GameScene = class extends Phaser.Scene {
     
     // 只有第1关才初始发牌，进入下一关时不发牌
     if (this.lv === 1) {
-      // 初始15张牌分给5个槽
-      const ic = [];
-      for (let i = 0; i < 15; i++) ic.push(new Card(t[Math.floor(Math.random() * t.length)]));
-      const d = [3, 3, 3, 3, 3]; // 5个槽各3张
-      let ci = 0;
-      for (let i = 0; i < 5; i++) {
-        this.sl[i].addC(ic.slice(ci, ci + d[i]));
-        ci += d[i];
+      // 初始只发给已解锁的3个槽，每槽5张
+      for (let i = 0; i < 3; i++) {
+        const cards = [];
+        for (let j = 0; j < 5; j++) {
+          cards.push(new Card(t[Math.floor(Math.random() * t.length)]));
+        }
+        this.sl[i].addC(cards);
       }
     }
     
@@ -636,20 +635,82 @@ const GameScene = class extends Phaser.Scene {
     this.updDPC();
   }
   
+  // 第一阶段：订单导向权重 + 顶层堆叠保护
+  getDealWeights() {
+    const weights = { candy: 1, dumpling: 1, lantern: 1, redpacket: 1 };
+    
+    // 订单导向：场上每个同类型订单 +1 权重
+    this.ords.forEach(o => {
+      if (!o.comp) {
+        weights[o.req.t] += 1;
+        // 接近完成的订单再 +1
+        if (o.del >= 7) weights[o.req.t] += 1;
+      }
+    });
+    return weights;
+  }
+  
+  pickWeightedType(weights) {
+    const entries = Object.entries(weights);
+    const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+    let roll = Math.random() * total;
+    
+    for (const [type, weight] of entries) {
+      roll -= weight;
+      if (roll <= 0) return type;
+    }
+    return entries[0][0];
+  }
+  
+  chooseTypeForSlot(slot, weights) {
+    const topType = slot.gt();
+    const topCount = slot.gtc();
+    
+    // 顶层堆叠保护
+    if (topType) {
+      let continueChance = 0;
+      if (topCount >= 4) continueChance = 0.75;
+      else if (topCount >= 2) continueChance = 0.55;
+      
+      if (Math.random() < continueChance) {
+        return topType;
+      }
+    }
+    
+    // 否则按订单权重发牌
+    return this.pickWeightedType(weights);
+  }
+  
   deal() {
     let ad = false;
+    const weights = this.getDealWeights();
+    
     for (const s of this.sl) {
-      if (s.cds.length >= 15) continue;
+      // 锁定卡槽和满槽都跳过
+      if (s.locked || s.cds.length >= 15) continue;
+      
       const dc = Phaser.Math.Between(1, 5);
       const sp = 15 - s.cds.length;
       const ac = Math.min(dc, sp, this.dp.length);
       if (ac <= 0) continue;
+      
       this.animDeal(s, ac);
-      const cd = this.dp.splice(0, ac);
+      
+      // 动态生成更“会养一套”的牌，而不是直接用随机牌堆
+      const cd = [];
+      for (let i = 0; i < ac; i++) {
+        const type = this.chooseTypeForSlot(s, weights);
+        cd.push(new Card(type));
+      }
+      
+      // 只消耗牌堆数量
+      this.dp.splice(0, ac);
+      
       this.time.delayedCall(300, () => s.addC(cd));
       ad = true;
     }
-    if (!ad) this.showMsg('所有卡槽已满或牌堆空', 0xFF0000);
+    
+    if (!ad) this.showMsg('所有已解锁卡槽已满或牌堆空', 0xFF0000);
     else this.updDPC();
   }
   
