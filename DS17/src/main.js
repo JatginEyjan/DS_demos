@@ -15,6 +15,10 @@ class Order {
     this.rw = config.rw;
     this.comp = false;
     this.del = 0;
+    this.locked = false;
+    this.lockCost = 0;
+    this.lockMask = null;
+    this.lockLabel = null;
     
     this.cont = scene.add.container(x, y);
     // 缩小订单尺寸以适应5个订单
@@ -63,11 +67,11 @@ class Order {
   }
   
   onRefresh() {
-    if (this.comp) return;
+    if (this.comp || this.locked) return;
     // 获取当前场上各类型订单数量
     const typeCount = {};
     this.scene.ords.forEach(o => {
-      if (o !== this && !o.comp) {
+      if (o !== this && !o.comp && !o.locked) {
         typeCount[o.req.t] = (typeCount[o.req.t] || 0) + 1;
       }
     });
@@ -90,7 +94,7 @@ class Order {
     this.req.t = newType;
     this.req.c = 10; // 统一10个
     this.del = 0; // 重置已交付数量
-    this.rw = 80 + Math.floor(Math.random() * 40); // 80-120金币
+    this.rw = 110 + Math.floor(Math.random() * 51); // 110-160金币
     
     // 更新显示
     const names = { candy: '糖果订单', dumpling: '饺子订单', lantern: '灯笼订单', redpacket: '红包订单' };
@@ -153,6 +157,33 @@ class Order {
     this.pt.setText('✓ 完成!').setColor('#00AA00');
     this.stk.setVisible(false);
     this.scene.tweens.add({ targets: this.cont, scale: 1.1, duration: 200, yoyo: true });
+  }
+  
+  setLock(cost) {
+    this.locked = true;
+    this.lockCost = cost;
+    this.refreshBtn.setVisible(false);
+    this.refreshIcon.setVisible(false);
+    this.bg.setFillStyle(0x444444);
+    this.pt.setText('未解锁').setColor('#CCCCCC');
+    this.stk.setVisible(false);
+    this.lockMask = this.scene.add.rectangle(0, 0, 145, 130, 0x000000, 0.35);
+    this.lockLabel = this.scene.add.text(0, -8, `🔒 ${cost}💰`, {
+      fontSize: '16px', color: '#FFD700', fontStyle: 'bold', align: 'center'
+    }).setOrigin(0.5);
+    this.cont.add(this.lockMask);
+    this.cont.add(this.lockLabel);
+  }
+  
+  unlock() {
+    this.locked = false;
+    this.lockCost = 0;
+    if (this.lockMask) { this.lockMask.destroy(); this.lockMask = null; }
+    if (this.lockLabel) { this.lockLabel.destroy(); this.lockLabel = null; }
+    this.refreshBtn.setVisible(true);
+    this.refreshIcon.setVisible(true);
+    this.bg.setFillStyle(0xFFF8DC);
+    this.upd();
   }
   
   onClick() {
@@ -484,7 +515,7 @@ const MenuScene = class extends Phaser.Scene {
     }).setOrigin(0.5);
     
     this.tweens.add({ targets: t, scale: { from: 1, to: 1.05 }, duration: 1000, yoyo: true, repeat: -1 });
-    this.add.text(width / 2, height / 3 + 70, '✨ 5槽5订单 + 100张牌', { fontSize: '22px', color: '#FFA500' }).setOrigin(0.5);
+    this.add.text(width / 2, height / 3 + 70, '✨ 5槽5订单 + 保底养套机制', { fontSize: '22px', color: '#FFA500' }).setOrigin(0.5);
     this.crtBtn(width / 2, height * 0.6, '🎮 开始游戏', () => this.scene.start('GameScene', { level: 1 }));
     this.crtBtn(width / 2, height * 0.75, '📜 游戏规则', () => this.showRules());
   }
@@ -500,7 +531,7 @@ const MenuScene = class extends Phaser.Scene {
   showRules() {
     const o = this.add.rectangle(400, 300, 720, 520, 0x000000, 0.95);
     this.add.text(400, 70, '📜 v2.0 规则', { fontSize: '26px', color: '#FFD700', fontStyle: 'bold' }).setOrigin(0.5);
-    const r = ['【核心】', '• 5槽×15张上限(后2槽需解锁)', '• 第4槽300💰，第5槽500💰', '• 批量发牌(1-5张)', '• 槽间移动', '', '【订单】', '• 5订单，每单统一10个', '• 部分交付，显示进度', '• 多槽凑齐订单'];
+    const r = ['【核心】', '• 5槽×15张上限(后2槽需解锁)', '• 第4槽180💰，第5槽320💰', '• 批量发牌(1-5张)', '• 发牌会优先养成套', '', '【订单】', '• 5订单位，先开放3个', '• 第4订单位150💰，第5订单位280💰', '• 每单统一10个，支持部分交付'];
     r.forEach((l, i) => this.add.text(400, 115 + i * 28, l, { fontSize: '15px', color: l.startsWith('【') ? '#FFD700' : '#FFFFFF' }).setOrigin(0.5));
     const c = this.add.rectangle(400, 480, 120, 40, 0xDC143C).setInteractive({ useHandCursor: true });
     this.add.text(400, 480, '关闭', { fontSize: '18px', color: '#FFF' }).setOrigin(0.5);
@@ -522,6 +553,8 @@ const GameScene = class extends Phaser.Scene {
     this.cn = 0;
     this.lot = 0;
     this.cbo = 0;
+    this.dryDealStreak = 0; // 第三阶段：保底扶持计数
+    this.orderUnlockCosts = [0, 0, 0, 150, 280];
   }
   
   create() {
@@ -545,9 +578,9 @@ const GameScene = class extends Phaser.Scene {
     const sx = 130, sp = 135, y = 320;
     for (let i = 0; i < 5; i++) {
       const s = new Slot(this, i, sx + i * sp, y);
-      // 第4个卡槽(索引3)300金币解锁，第5个(索引4)500金币解锁
-      if (i === 3) s.setLock(300);
-      if (i === 4) s.setLock(500);
+      // 第4/5个卡槽金币解锁（平滑一些的数值）
+      if (i === 3) s.setLock(180);
+      if (i === 4) s.setLock(320);
       this.sl.push(s);
     }
   }
@@ -558,24 +591,22 @@ const GameScene = class extends Phaser.Scene {
     const typeCount = {};
     const selectedTypes = [];
     
-    // 随机选择5个类型，确保每种不超过2个
     for (let i = 0; i < 5; i++) {
-      // 找出可用的类型（数量<2）
       const availableTypes = types.filter(t => (typeCount[t] || 0) < 2);
-      // 如果所有类型都已经有2个，则从所有类型中随机
       const pool = availableTypes.length > 0 ? availableTypes : types;
       const t = pool[Math.floor(Math.random() * pool.length)];
-      
       typeCount[t] = (typeCount[t] || 0) + 1;
       selectedTypes.push(t);
     }
     
-    // 创建订单
+    // 创建订单（先开放3个，后2个金币解锁）
     for (let i = 0; i < 5; i++) {
       const x = 100 + i * 155;
       const t = selectedTypes[i];
-      const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
-      this.ords.push(new Order(this, x, 100, { id: i, req: { t, c: 10 }, rw: r }));
+      const r = 120 + Math.floor(Math.random() * 41); // 120-160金币，更容易推进解锁
+      const order = new Order(this, x, 100, { id: i, req: { t, c: 10 }, rw: r });
+      if (i >= 3) order.setLock(this.orderUnlockCosts[i]);
+      this.ords.push(order);
     }
   }
   
@@ -612,7 +643,7 @@ const GameScene = class extends Phaser.Scene {
     mb.on('pointerdown', () => this.scene.start('MenuScene'));
     
     // 底部提示
-    this.add.text(400, 575, '5槽(后2槽需300/500💰解锁) | 点击槽选中/移动/解锁 | 订单统一10个 | 🔄刷新订单', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
+    this.add.text(400, 575, '槽位解锁: 180/320💰 | 订单位解锁: 150/280💰 | 10个一单 | 发牌会优先养成套', { fontSize: '11px', color: '#CCC' }).setOrigin(0.5);
   }
   
   dealInit() {
@@ -653,7 +684,7 @@ const GameScene = class extends Phaser.Scene {
     
     // 订单导向：场上每个同类型订单 +1 权重
     this.ords.forEach(o => {
-      if (!o.comp) {
+      if (!o.comp && !o.locked) {
         weights[o.req.t] += 1;
         // 接近完成的订单再 +1
         if (o.del >= 7) weights[o.req.t] += 1;
@@ -736,13 +767,30 @@ const GameScene = class extends Phaser.Scene {
     return this.pickWeightedType(weights);
   }
   
+  projectTopCount(slot, incomingTypes) {
+    const combined = slot.cds.map(c => c.type).concat(incomingTypes);
+    if (combined.length === 0) return 0;
+    const topType = combined[combined.length - 1];
+    let count = 0;
+    for (let i = combined.length - 1; i >= 0; i--) {
+      if (combined[i] === topType) count++;
+      else break;
+    }
+    return count;
+  }
+  
   deal() {
     let ad = false;
     const weights = this.getDealWeights();
     const growthSlots = this.getGrowthSlots(weights);
+    const primaryGrowthSlot = growthSlots[0] || null;
+    const safeguardMode = this.dryDealStreak >= 2 && !!primaryGrowthSlot;
+    
+    const availableSlots = this.sl.filter(s => !s.locked && s.cds.length < 15);
+    const preMaxTop = availableSlots.length > 0 ? Math.max(...availableSlots.map(s => s.gtc())) : 0;
+    let projectedMaxTop = preMaxTop;
     
     for (const s of this.sl) {
-      // 锁定卡槽和满槽都跳过
       if (s.locked || s.cds.length >= 15) continue;
       
       const dc = Phaser.Math.Between(1, 5);
@@ -751,28 +799,50 @@ const GameScene = class extends Phaser.Scene {
       if (ac <= 0) continue;
       
       const isGrowthSlot = growthSlots.includes(s);
-      this.animDeal(s, ac, isGrowthSlot);
+      const isSafeguardSlot = safeguardMode && primaryGrowthSlot === s;
+      this.animDeal(s, ac, isGrowthSlot || isSafeguardSlot);
       
-      // 动态生成更“会养一套”的牌，而不是直接用随机牌堆
       const cd = [];
-      for (let i = 0; i < ac; i++) {
-        const type = this.chooseTypeForSlot(s, weights, isGrowthSlot);
-        cd.push(new Card(type));
+      const generatedTypes = [];
+      
+      // 第三阶段：保底扶持机制
+      if (isSafeguardSlot) {
+        const forcedType = s.gt() || Object.entries(weights).sort((a, b) => b[1] - a[1])[0][0];
+        for (let i = 0; i < ac; i++) {
+          const type = i < Math.min(3, ac) ? forcedType : this.chooseTypeForSlot(s, weights, true);
+          cd.push(new Card(type));
+          generatedTypes.push(type);
+        }
+      } else {
+        for (let i = 0; i < ac; i++) {
+          const type = this.chooseTypeForSlot(s, weights, isGrowthSlot);
+          cd.push(new Card(type));
+          generatedTypes.push(type);
+        }
       }
       
-      // 只消耗牌堆数量
+      projectedMaxTop = Math.max(projectedMaxTop, this.projectTopCount(s, generatedTypes));
       this.dp.splice(0, ac);
-      
       this.time.delayedCall(300, () => s.addC(cd));
       ad = true;
     }
     
     if (growthSlots.length > 0) {
-      this.highlightGrowthSlots(growthSlots);
+      this.highlightGrowthSlots(growthSlots, safeguardMode);
+    }
+    
+    // 更新保底计数：如果本轮没有明显成长，就累计一次
+    if (projectedMaxTop >= Math.max(5, preMaxTop + 2)) {
+      this.dryDealStreak = 0;
+    } else if (ad) {
+      this.dryDealStreak += 1;
     }
     
     if (!ad) this.showMsg('所有已解锁卡槽已满或牌堆空', 0xFF0000);
-    else this.updDPC();
+    else {
+      if (safeguardMode) this.showMsg('保底扶持生效：本轮重点培养一个槽', 0xFFD54F);
+      this.updDPC();
+    }
   }
   
   animDeal(s, c, isGrowthSlot = false) {
@@ -788,16 +858,17 @@ const GameScene = class extends Phaser.Scene {
     }
   }
   
-  highlightGrowthSlots(slots) {
-    slots.forEach(slot => {
-      const pulse = this.add.rectangle(slot.x, slot.y, 176, 216, 0xFFD54F, 0)
-        .setStrokeStyle(3, 0xFFD54F)
+  highlightGrowthSlots(slots, safeguardMode = false) {
+    slots.forEach((slot, idx) => {
+      const color = safeguardMode && idx === 0 ? 0xFF8C00 : 0xFFD54F;
+      const pulse = this.add.rectangle(slot.x, slot.y, 176, 216, color, 0)
+        .setStrokeStyle(3, color)
         .setDepth(999);
       this.tweens.add({
         targets: pulse,
         alpha: { from: 1, to: 0 },
-        scale: { from: 1, to: 1.08 },
-        duration: 500,
+        scale: { from: 1, to: safeguardMode && idx === 0 ? 1.12 : 1.08 },
+        duration: safeguardMode && idx === 0 ? 700 : 500,
         onComplete: () => pulse.destroy()
       });
     });
@@ -840,6 +911,21 @@ const GameScene = class extends Phaser.Scene {
   }
   
   onOrdClick(o) {
+    // 订单槽解锁
+    if (o.locked) {
+      if (this.cn >= o.lockCost) {
+        this.cn -= o.lockCost;
+        this.cnt.setText(`💰 ${this.cn}`);
+        o.unlock();
+        this.showMsg(`解锁订单槽! -${o.lockCost}💰`, 0x00FF00);
+        this.playSS();
+      } else {
+        this.showMsg(`需要 ${o.lockCost} 金币解锁订单槽`, 0xFF0000);
+        this.playCS();
+      }
+      return;
+    }
+    
     if (!this.ss) { this.showMsg('先选槽', 0xFF0000); return; }
     const st = this.ss.gt();
     if (st !== o.req.t) { this.showMsg(`需${o.getTN()}`, 0xFF0000); return; }
@@ -864,7 +950,7 @@ const GameScene = class extends Phaser.Scene {
   }
   
   showCbo(c) {
-    const b = Math.floor(10 * (c - 1));
+    const b = Math.floor(15 * (c - 1));
     this.cbt.setText(`${c}连击! +${b}`).setVisible(true).setAlpha(1).setScale(0.5);
     this.tweens.add({
       targets: this.cbt, scale: 1.5, duration: 200, yoyo: true,
@@ -906,7 +992,7 @@ const GameScene = class extends Phaser.Scene {
     // 统计当前场上各类型订单数量（不包括已完成的）
     const typeCount = {};
     this.ords.forEach(o => {
-      if (o !== oldOrder && !o.comp) {
+      if (o !== oldOrder && !o.comp && !o.locked) {
         typeCount[o.req.t] = (typeCount[o.req.t] || 0) + 1;
       }
     });
@@ -917,7 +1003,7 @@ const GameScene = class extends Phaser.Scene {
     const pool = availableTypes.length > 0 ? availableTypes : types;
     const t = pool[Math.floor(Math.random() * pool.length)];
     const c = 10; // 统一10个
-    const r = 80 + Math.floor(Math.random() * 40); // 80-120金币
+    const r = 110 + Math.floor(Math.random() * 51); // 110-160金币
     
     const x = 100 + idx * 155;
     const newOrder = new Order(this, x, 100, {
@@ -937,8 +1023,8 @@ const GameScene = class extends Phaser.Scene {
   showLevelComplete() {
     // 计算星级（基于总金币）
     let stars = 1;
-    if (this.cn >= 400) stars = 3;
-    else if (this.cn >= 300) stars = 2;
+    if (this.cn >= 750) stars = 3;
+    else if (this.cn >= 520) stars = 2;
     
     // 创建深色遮罩
     const overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.85).setDepth(2000);
