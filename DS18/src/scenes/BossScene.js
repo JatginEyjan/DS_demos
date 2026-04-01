@@ -1,0 +1,34 @@
+import { getTemplate } from '../data/cards.js';
+import { renderCardChip } from '../ui/CardView.js';
+import { renderHeroStats } from '../ui/HeroStatusPanel.js';
+import { renderBossHUD } from '../ui/BossHUD.js';
+
+export function renderBossScene(session) {
+  return `
+    <div class="workspace boss-mode">
+      <main class="panel main-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Boss 战</h2>
+            <p>堕落骑士进入最终试炼。</p>
+          </div>
+          <div class="inline-actions">
+            <button data-action="use-flask">使用治疗瓶</button>
+          </div>
+        </div>
+        ${renderBossHUD(session)}
+      </main>
+      <aside class="panel side-panel">
+        <section>
+          <h3>Boss 战消耗品</h3>
+          ${
+            session.state.inventory.filter((card) => getTemplate(card.templateId).type === 'consumable').map((card) =>
+              renderCardChip(card, [`<button data-action="use-item" data-card-id="${card.id}">使用</button>`])
+            ).join('') || '<div class="empty-panel">背包里没有可用消耗品。</div>'
+          }
+        </section>
+        ${renderHeroStats(session)}
+      </aside>
+    </div>
+  `;
+}
