@@ -7,28 +7,45 @@ export class HeroSystem {
     this.session = session;
   }
 
+  getEffectiveAttribute(attribute, rawValue) {
+    const softCap = {
+      vitality: 25,
+      endurance: 22,
+      strength: 30,
+      dexterity: 30,
+      intelligence: 30,
+      faith: 30
+    }[attribute] || 30;
+
+    if (rawValue <= softCap) return rawValue;
+    return softCap + (rawValue - softCap) * 0.5;
+  }
+
   syncDerivedStats() {
     if (!this.session.state.hero) return;
 
     const hero = this.session.state.hero;
+    const effective = Object.fromEntries(
+      Object.entries(hero.attributes).map(([attribute, value]) => [attribute, this.getEffectiveAttribute(attribute, value)])
+    );
     const weapon = hero.weaponId ? this.session.inventorySystem.findCardEverywhere(hero.weaponId) : null;
     const armor = hero.armorId ? this.session.inventorySystem.findCardEverywhere(hero.armorId) : null;
     const weaponTemplate = weapon ? getTemplate(weapon.templateId) : null;
     const armorTemplate = armor ? getTemplate(armor.templateId) : null;
 
-    const maxHp = hero.attributes.vitality * 15;
+    const maxHp = Math.round(effective.vitality * 15);
     const armorDefense = armorTemplate?.baseDefense || 0;
-    const baseDefense = 10 + armorDefense + hero.attributes.vitality;
+    const baseDefense = 10 + armorDefense + effective.vitality;
     const scalingBonus = weaponTemplate
       ? Object.entries(weaponTemplate.scaling || {}).reduce((total, [attr, grade]) => {
-          return total + SCALING_VALUE[grade] * ((hero.attributes[attr] || 0) / 50);
+          return total + SCALING_VALUE[grade] * ((effective[attr] || 0) / 50);
         }, 0)
       : 0;
     const weaponBase = weaponTemplate?.baseAttack || 18;
     const weaponUpgradeLevel = weapon?.upgradeLevel || 0;
     const upgradeMultiplier = 1 + weaponUpgradeLevel * 0.08;
-    const strengthFlat = hero.attributes.strength * 1.2;
-    const dexterityFlat = hero.attributes.dexterity * 0.4;
+    const strengthFlat = effective.strength * 1.2;
+    const dexterityFlat = effective.dexterity * 0.4;
     const buffMultiplier = hero.attackBuffMultiplier || 1;
     const curseMultiplier = hero.curseAttackMultiplier || 1;
     const attack = Math.round((weaponBase * (1 + scalingBonus) * upgradeMultiplier + strengthFlat + dexterityFlat) * buffMultiplier * curseMultiplier);
@@ -37,11 +54,11 @@ export class HeroSystem {
     hero.currentHp = clamp(hero.currentHp, 0, maxHp);
     hero.attack = attack;
     hero.defense = Math.round(baseDefense);
-    hero.dodgeRate = clamp(hero.attributes.dexterity * 0.012, 0.03, 0.42);
-    hero.critRate = clamp(hero.attributes.dexterity * 0.008, 0.05, 0.32);
-    hero.enduranceHours = hero.attributes.endurance;
-    hero.maxInventorySize = 10 + Math.floor(hero.attributes.strength / 2);
-    hero.flaskHealAmount = Math.round(maxHp * (0.28 + hero.attributes.faith * 0.01));
+    hero.dodgeRate = clamp(effective.dexterity * 0.012, 0.03, 0.42);
+    hero.critRate = clamp(effective.dexterity * 0.008, 0.05, 0.32);
+    hero.enduranceHours = Math.round(effective.endurance);
+    hero.maxInventorySize = 10 + Math.floor(effective.strength / 2);
+    hero.flaskHealAmount = Math.round(maxHp * (0.28 + effective.faith * 0.01));
   }
 
   getUpgradeCost(attribute) {

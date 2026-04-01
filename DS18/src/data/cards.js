@@ -102,6 +102,30 @@ export const CARD_TEMPLATES = [
     day: { power: 26, hp: 90, souls: [20, 30], loot: ['npc_merchant'] },
     night: { power: 44, hp: 118, souls: [40, 55], loot: ['consumable_flame_jar'] }
   }),
+  createRoomCard({
+    id: 'room_crystal_cavern',
+    quality: 'epic',
+    name: '结晶洞窟',
+    description: '高压高收益的消耗房间卡，直接以满探索度强度展开。',
+    duration: 4,
+    consumable: true,
+    embedCapacity: { npc: 1, event: 1 },
+    comboTags: ['crystal'],
+    day: { power: 110, hp: 310, souls: [200, 300], loot: ['material_chunk', 'armor_chainmail'] },
+    night: { power: 132, hp: 360, souls: [240, 340], loot: ['material_chunk', 'weapon_greatsword'] }
+  }),
+  createRoomCard({
+    id: 'room_merchant_tent',
+    quality: 'rare',
+    name: '流浪商人的帐篷',
+    description: '无战斗的临时商店房间，价格更友好。',
+    duration: 2,
+    consumable: true,
+    embedCapacity: { npc: 1, event: 1 },
+    comboTags: ['merchant'],
+    day: { power: 0, hp: 0, souls: [0, 0], loot: [] },
+    night: { power: 0, hp: 0, souls: [0, 0], loot: [] }
+  }),
   createTimeCard({
     id: 'time_bonfire',
     quality: 'common',
@@ -143,6 +167,20 @@ export const CARD_TEMPLATES = [
     name: '商人',
     description: '结算阶段开启三件商品的简易商店。',
     cooldownDays: 1
+  }),
+  createNPCCard({
+    id: 'npc_wandering_pyromancer',
+    quality: 'rare',
+    name: '流浪火焰术士',
+    description: '消耗型 NPC。提供临时火焰附魔并让勇者获得额外成长。',
+    consumable: true
+  }),
+  createNPCCard({
+    id: 'npc_hired_knight',
+    quality: 'common',
+    name: '雇佣骑士',
+    description: '消耗型 NPC。作为临时护卫协助房间战斗。',
+    consumable: true
   }),
   createEventCard({
     id: 'event_trapped_chest',

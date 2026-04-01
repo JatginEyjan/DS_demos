@@ -12,12 +12,13 @@ export class CombatSystem {
   resolveRoomSlot(slot, context) {
     const template = getTemplate(slot.card.templateId);
     const hero = this.session.state.hero;
+    const visitCount = this.session.getExplorationLevel(template.id) + 1;
 
     this.session.deathSystem.recoverSoulsIfNeeded(template.id);
 
     const roomMode = context.mode === 'night' ? 'night' : 'day';
     const roomData = template[roomMode];
-    const comboMultiplier = this.getRoomComboMultiplier(template.id);
+    const comboMultiplier = this.getRoomComboMultiplier(context.slotIndex);
     const crossBoundaryMultiplier = context.mode === 'twilight' ? 1.2 : 1;
 
     let attackMultiplier = 1;
@@ -28,25 +29,49 @@ export class CombatSystem {
 
     slot.embeds.forEach((embed) => {
       const embedTemplate = getTemplate(embed.templateId);
-      if (embedTemplate.type === 'npc') {
-        if (embedTemplate.id === 'npc_pilgrim') {
-          attackMultiplier *= 1.15;
-          const rewardCard = this.session.makeCard(pickRandom(RANDOM_EVENT_POOL));
-          this.session.state.inventory.push(rewardCard);
+      if (embedTemplate.type !== 'npc') return;
+
+      if (embedTemplate.id === 'npc_pilgrim') {
+        attackMultiplier *= 1.15;
+        const rewardCard = this.session.makeCard(pickRandom(RANDOM_EVENT_POOL));
+        const addResult = this.session.inventorySystem.addCard(rewardCard, {
+          onFull: 'soulify',
+          sourceLabel: '巡礼者馈赠'
+        });
+        if (addResult.mode === 'added') {
           this.session.log(`巡礼者揭示了弱点。你获得 15% 伤害加成，并带回 ${getTemplate(rewardCard.templateId).name}。`, 'positive');
         }
-        if (embedTemplate.id === 'npc_fire_keeper') {
-          this.session.state.dayContext.fireKeeperAvailable = true;
-          this.session.log('防火女在房间尽头等待。结算阶段可额外升级属性。', 'info');
-        }
-        if (embedTemplate.id === 'npc_blacksmith') {
-          this.session.state.dayContext.blacksmithAvailable = true;
-          this.session.log('铁匠在这里搭了临时炉台。结算阶段可尝试强化武器。', 'info');
-        }
-        if (embedTemplate.id === 'npc_merchant') {
-          this.session.state.dayContext.merchantOffers = this.rollMerchantOffers();
-          this.session.log('商人记下了你的需求，结算阶段会展示一小批货物。', 'info');
-        }
+      }
+
+      if (embedTemplate.id === 'npc_fire_keeper') {
+        this.session.state.dayContext.fireKeeperAvailable = true;
+        this.session.log('防火女在房间尽头等待。结算阶段可额外升级属性。', 'info');
+      }
+
+      if (embedTemplate.id === 'npc_blacksmith') {
+        this.session.state.dayContext.blacksmithAvailable = true;
+        this.session.log('铁匠在这里搭了临时炉台。结算阶段可尝试强化武器。', 'info');
+      }
+
+      if (embedTemplate.id === 'npc_merchant') {
+        this.session.state.dayContext.merchantOffers = this.rollMerchantOffers();
+        this.session.log('商人记下了你的需求，结算阶段会展示一小批货物。', 'info');
+      }
+
+      if (embedTemplate.id === 'npc_wandering_pyromancer') {
+        attackMultiplier *= 1.25;
+        hero.attackBuffMultiplier = Math.max(hero.attackBuffMultiplier, 1.25);
+        hero.attackBuffRooms = Math.max(hero.attackBuffRooms, 2);
+        hero.attributes.intelligence += 1;
+        hero.attributes.faith += 1;
+        this.session.heroSystem.syncDerivedStats();
+        this.session.log('流浪火焰术士为武器附上火焰，并带来额外成长。', 'positive');
+      }
+
+      if (embedTemplate.id === 'npc_hired_knight') {
+        attackMultiplier *= 1.1;
+        incomingMultiplier *= 0.8;
+        this.session.log('雇佣骑士加入战线，房间战斗压力降低。', 'positive');
       }
     });
 
@@ -74,30 +99,40 @@ export class CombatSystem {
 
       if (embedTemplate.id === 'event_trapped_chest') {
         const roll = this.session.diceSystem.roll();
-        if (roll >= 4) {
+        if (roll.finalValue >= 4) {
           const reward = this.session.makeCard(pickRandom(['room_starter_village', 'npc_fire_keeper', 'consumable_flame_jar']));
-          this.session.state.inventory.push(reward);
-          this.session.log(`宝箱陷阱判定 ${roll} 成功，获得 ${getTemplate(reward.templateId).name}。`, 'positive');
+          const addResult = this.session.inventorySystem.addCard(reward, {
+            onFull: 'soulify',
+            sourceLabel: '宝箱奖励'
+          });
+          if (addResult.mode === 'added') {
+            this.session.log(`宝箱陷阱判定 ${roll.finalValue} 成功，获得 ${getTemplate(reward.templateId).name}。`, 'positive');
+          }
         } else {
           const damage = Math.round(hero.maxHp * 0.15);
           hero.currentHp = clamp(hero.currentHp - damage, 0, hero.maxHp);
-          this.session.log(`宝箱陷阱判定 ${roll} 失败，勇者受到 ${damage} 点伤害。`, 'warning');
+          this.session.log(`宝箱陷阱判定 ${roll.finalValue} 失败，勇者受到 ${damage} 点伤害。`, 'warning');
         }
       }
 
       if (embedTemplate.id === 'event_mystic_altar') {
         const roll = this.session.diceSystem.roll();
-        if (roll >= 5) {
+        if (roll.finalValue >= 5) {
           const reward = this.session.makeCard(pickRandom(['weapon_greatsword', 'armor_chainmail', 'consumable_magic_resin']));
-          this.session.state.inventory.push(reward);
-          this.session.log(`神秘祭坛判定 ${roll} 大成功，获得 ${getTemplate(reward.templateId).name}。`, 'positive');
-        } else if (roll >= 3) {
+          const addResult = this.session.inventorySystem.addCard(reward, {
+            onFull: 'soulify',
+            sourceLabel: '祭坛奖励'
+          });
+          if (addResult.mode === 'added') {
+            this.session.log(`神秘祭坛判定 ${roll.finalValue} 大成功，获得 ${getTemplate(reward.templateId).name}。`, 'positive');
+          }
+        } else if (roll.finalValue >= 3) {
           this.session.economySystem.addSouls(100);
           flatSouls += 100;
-          this.session.log(`神秘祭坛判定 ${roll} 成功，额外获得 100 灵魂。`, 'positive');
+          this.session.log(`神秘祭坛判定 ${roll.finalValue} 成功，额外获得 100 灵魂。`, 'positive');
         } else {
           hero.curseAttackMultiplier = 0.8;
-          this.session.log(`神秘祭坛判定 ${roll} 失败，勇者本日攻击 -20%。`, 'warning');
+          this.session.log(`神秘祭坛判定 ${roll.finalValue} 失败，勇者本日攻击 -20%。`, 'warning');
         }
       }
 
@@ -111,6 +146,15 @@ export class CombatSystem {
       hero.currentHp = clamp(hero.currentHp + Math.round(hero.maxHp * 0.18), 0, hero.maxHp);
       flatSouls += randomInt(roomData.souls[0], roomData.souls[1]);
       this.session.log('古老教堂在白天给予庇护：回复生命，并临时多得到 1 瓶治疗。', 'positive');
+    }
+
+    if (template.id === 'room_merchant_tent') {
+      this.session.state.dayContext.merchantOffers = this.rollMerchantOffers().map((offer) => ({
+        ...offer,
+        price: Math.round(offer.price * 0.7)
+      }));
+      this.session.log('流浪商人的帐篷被触发：今日商店价格降低 30%。', 'positive');
+      skippedCombat = true;
     }
 
     if (!skippedCombat && roomData.hp > 0) {
@@ -140,16 +184,41 @@ export class CombatSystem {
       this.session.log(`${template.name} 战斗结束，勇者受到 ${damageTaken} 点伤害。`, damageTaken > 35 ? 'warning' : 'info');
     }
 
+    let explorationSoulMultiplier = 1;
+    if (visitCount === 2) {
+      flatSouls += 20;
+      this.session.economySystem.addMaterial('material_shard', 1);
+      this.session.log(`${template.name} 的隐藏区域被发现：额外获得 20 灵魂和 1 个普通石。`, 'positive');
+    } else if (visitCount === 3) {
+      flatSouls += 45;
+      const specialReward = this.session.makeCard(pickRandom(['consumable_magic_resin', 'consumable_flame_jar', 'npc_fire_keeper']));
+      this.session.inventorySystem.addCard(specialReward, {
+        onFull: 'soulify',
+        sourceLabel: '探索度特殊奖励',
+        soulValue: 70
+      });
+      this.session.log(`${template.name} 的特殊事件触发，探索奖励明显提升。`, 'positive');
+    } else if (visitCount >= 4) {
+      explorationSoulMultiplier = 0.7;
+      this.session.log(`${template.name} 已被反复探索，灵魂收益衰减 30%。`, 'warning');
+    }
+
     const soulsGain = skippedCombat
       ? flatSouls
-      : Math.round((randomInt(roomData.souls[0], roomData.souls[1]) + flatSouls) * comboMultiplier * crossBoundaryMultiplier);
+      : Math.round((randomInt(roomData.souls[0], roomData.souls[1]) + flatSouls) * comboMultiplier * crossBoundaryMultiplier * explorationSoulMultiplier);
 
     this.session.economySystem.addSouls(soulsGain);
     this.session.state.dayContext.dailySoulGain += soulsGain;
     this.session.state.dayContext.summary.push(`${template.name}：获得 ${soulsGain} 灵魂。`);
     this.session.log(`${template.name} 结算：获得 ${soulsGain} 灵魂。`, 'positive');
 
-    (roomData.loot || []).forEach((lootTemplateId) => this.applyLoot(lootTemplateId));
+    (roomData.loot || []).forEach((lootTemplateId) => {
+      const lootTemplate = getTemplate(lootTemplateId);
+      const dropRate = lootTemplate?.quality === 'rare' ? 0.25 : 0.4;
+      if (Math.random() < dropRate) {
+        this.applyLoot(lootTemplateId);
+      }
+    });
 
     this.session.incrementExploration(slot.card.templateId);
     this.session.heroSystem.decayAttackBuff();
@@ -181,16 +250,21 @@ export class CombatSystem {
     }
 
     const card = this.session.makeCard(templateId);
-    this.session.state.inventory.push(card);
-    this.session.log(`获得卡牌：${template.name}。`, 'positive');
+    const addResult = this.session.inventorySystem.addCard(card, {
+      onFull: 'soulify',
+      sourceLabel: '战斗掉落'
+    });
+    if (addResult.mode === 'added') {
+      this.session.log(`获得卡牌：${template.name}。`, 'positive');
+    }
   }
 
-  getRoomComboMultiplier(templateId) {
+  getRoomComboMultiplier(slotIndex) {
     const slots = this.session.state.layouts[this.session.state.day] || [];
-    const index = slots.findIndex((slot) => slot.card.templateId === templateId);
-    if (index === -1) return 1;
-    const prev = slots[index - 1]?.card.templateId;
-    const next = slots[index + 1]?.card.templateId;
+    if (slotIndex == null || !slots[slotIndex]) return 1;
+    const templateId = slots[slotIndex].card.templateId;
+    const prev = slots[slotIndex - 1]?.card.templateId;
+    const next = slots[slotIndex + 1]?.card.templateId;
     const neighbors = [prev, next].filter(Boolean);
     if (templateId === 'room_undead_settlement' && neighbors.includes('room_abandoned_cemetery')) {
       this.session.log('不死系连锁触发：不死聚落与废弃墓地相邻，灵魂收益提升。', 'positive');
@@ -241,23 +315,38 @@ export class CombatSystem {
     if (!this.session.economySystem.spendSouls(offer.price)) return { ok: false, reason: '灵魂不足。' };
 
     const card = this.session.makeCard(offer.templateId);
-    this.session.state.inventory.push(card);
+    const addResult = this.session.inventorySystem.addCard(card, {
+      onFull: 'block',
+      sourceLabel: '商人购买'
+    });
+    if (!addResult.ok) {
+      this.session.economySystem.addSouls(offer.price);
+      return addResult;
+    }
+
     this.session.state.dayContext.merchantOffers = this.session.state.dayContext.merchantOffers.filter((item) => item.id !== offerId);
     this.session.log(`从商人处购买 ${getTemplate(offer.templateId).name}，花费 ${offer.price} 灵魂。`, 'positive');
     this.session.persist();
     return { ok: true };
   }
 
-  startBoss() {
+  startBoss(isForcedByApproach = false) {
+    const approachBoost = isForcedByApproach ? 1.15 : 1;
     this.session.state.scene = 'boss';
     this.session.state.boss = {
       phaseIndex: 0,
       turn: 1,
-      hp: BOSS_PHASES[0].hp,
-      maxHp: BOSS_PHASES[0].hp,
-      pendingSpecial: BOSS_PHASES[0].special
+      hp: Math.round(BOSS_PHASES[0].hp * approachBoost),
+      maxHp: Math.round(BOSS_PHASES[0].hp * approachBoost),
+      pendingSpecial: BOSS_PHASES[0].special,
+      approachBoost
     };
-    this.session.log('堕落骑士出现。三阶段 Boss 战开始。', 'story');
+    this.session.log(
+      isForcedByApproach
+        ? 'Boss 逼近度已突破 100，堕落骑士被强制引来并获得了 15% 强化。'
+        : '堕落骑士出现。三阶段 Boss 战开始。',
+      'story'
+    );
     this.session.persist();
   }
 
@@ -299,7 +388,8 @@ export class CombatSystem {
       return;
     }
 
-    let bossDamage = Math.max(10, phase.attack - hero.defense * 0.35);
+    const phaseAttack = Math.round(phase.attack * (this.session.state.boss.approachBoost || 1));
+    let bossDamage = Math.max(10, phaseAttack - hero.defense * 0.35);
     const special = this.session.state.boss.turn % 2 === 0 ? phase.special : null;
     if (special) {
       if (response === 'dodge') {
@@ -359,8 +449,9 @@ export class CombatSystem {
 
     this.session.state.boss.phaseIndex += 1;
     const nextPhase = BOSS_PHASES[this.session.state.boss.phaseIndex];
-    this.session.state.boss.hp = nextPhase.hp;
-    this.session.state.boss.maxHp = nextPhase.hp;
+    const approachBoost = this.session.state.boss.approachBoost || 1;
+    this.session.state.boss.hp = Math.round(nextPhase.hp * approachBoost);
+    this.session.state.boss.maxHp = Math.round(nextPhase.hp * approachBoost);
     this.session.state.boss.pendingSpecial = nextPhase.special;
     this.session.log(`Boss 进入第 ${nextPhase.phase} 阶段：${nextPhase.name}。`, 'warning');
     return false;

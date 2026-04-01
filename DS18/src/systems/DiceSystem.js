@@ -10,7 +10,16 @@ export class DiceSystem {
     const intelligenceModifier = Math.floor((this.session.state.hero.attributes.intelligence - 5) / 5);
     const raw = randomInt(1, 6);
     const final = clamp(raw + intelligenceModifier, 1, 6);
-    this.session.log(`骰子判定：${raw} + ${intelligenceModifier} = ${final}。`);
-    return final;
+    let outcome = 'fail';
+    if (raw === 1) outcome = 'critical_fail';
+    else if (raw === 6) outcome = 'critical_success';
+    else if (final >= 4) outcome = 'success';
+    this.session.log(`骰子判定：${raw} + ${intelligenceModifier} = ${final}（${outcome}）。`);
+    return {
+      rawRoll: raw,
+      modifier: intelligenceModifier,
+      finalValue: final,
+      outcome
+    };
   }
 }

@@ -12,8 +12,8 @@ export const STARTER_CARD_TEMPLATE_IDS = [
 
 export const DAY_REWARD_POOLS = {
   1: ['room_starter_village', 'event_soul_vortex', 'npc_fire_keeper', 'consumable_flame_jar'],
-  2: ['room_mine', 'room_old_church', 'npc_blacksmith', 'event_mystic_altar', 'consumable_magic_resin'],
-  3: ['room_undead_settlement', 'event_hero_trial', 'weapon_greatsword', 'armor_chainmail']
+  2: ['room_mine', 'room_old_church', 'npc_blacksmith', 'event_mystic_altar', 'consumable_magic_resin', 'room_merchant_tent'],
+  3: ['room_undead_settlement', 'event_hero_trial', 'weapon_greatsword', 'armor_chainmail', 'room_crystal_cavern', 'npc_wandering_pyromancer']
 };
 
 export const MERCHANT_POOL = [
@@ -23,7 +23,9 @@ export const MERCHANT_POOL = [
   'event_soul_vortex',
   'event_trapped_chest',
   'room_old_church',
-  'room_starter_village'
+  'room_starter_village',
+  'npc_hired_knight',
+  'room_merchant_tent'
 ];
 
 export const RANDOM_EVENT_POOL = [

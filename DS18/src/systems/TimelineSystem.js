@@ -98,7 +98,8 @@ export class TimelineSystem {
     const context = {
       startHour: segment?.start || 0,
       endHour: segment?.end || segment?.start || 0,
-      mode: segment?.mode || 'day'
+      mode: segment?.mode || 'day',
+      slotIndex: execution.slotIndex
     };
 
     if (template.type === 'time') {

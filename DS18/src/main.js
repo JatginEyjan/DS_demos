@@ -211,6 +211,12 @@ function wireEvents() {
       return;
     }
 
+    if (action === 'start-boss-now') {
+      session.startBossNow();
+      renderApp();
+      return;
+    }
+
     if (action === 'boss-turn') {
       session.combatSystem.takeBossTurn(button.dataset.strategy, button.dataset.response);
       renderApp();

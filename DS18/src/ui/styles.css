@@ -70,13 +70,6 @@ button:disabled,
   padding: 24px;
 }
 
-.topbar,
-.dashboard,
-.workspace,
-.hero-panel {
-  animation: fadeIn 0.4s ease;
-}
-
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -362,6 +355,16 @@ button:disabled,
   line-height: 1.7;
 }
 
+.warning-banner {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(196, 90, 77, 0.16);
+  border: 1px solid rgba(196, 90, 77, 0.28);
+  color: #f5d0ca;
+  line-height: 1.6;
+}
+
 .execution-focus,
 .boss-arena,
 .settlement-grid {
@@ -445,6 +448,7 @@ button:disabled,
   gap: 18px;
   padding: 22px;
   margin-bottom: 18px;
+  animation: fadeIn 0.35s ease;
 }
 
 .hero-copy p,

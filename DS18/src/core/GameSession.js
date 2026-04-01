@@ -150,6 +150,10 @@ export class GameSession {
     this.state[key] = (this.state[key] || 0) + 1;
   }
 
+  getExplorationLevel(roomTemplateId) {
+    return this.state[`${roomTemplateId}_exploration`] || 0;
+  }
+
   createRewardChoice(type, payload) {
     return {
       id: payload.id || `reward_${type}_${Math.random().toString(36).slice(2, 8)}`,
@@ -167,7 +171,13 @@ export class GameSession {
       this.log(`结算奖励：获得 ${choice.payload.amount} 灵魂。`, 'positive');
     } else if (choice.type === 'card' || choice.type === 'consumable') {
       const card = this.makeCard(choice.payload.templateId);
-      this.state.inventory.push(card);
+      const addResult = this.inventorySystem.addCard(card, {
+        onFull: 'block',
+        sourceLabel: '结算奖励'
+      });
+      if (!addResult.ok) {
+        return;
+      }
       this.log(`结算奖励：获得 ${getTemplate(choice.payload.templateId).name}。`, 'positive');
     } else if (choice.type === 'attribute') {
       this.state.hero.attributes[choice.payload.attribute] += choice.payload.amount;
@@ -177,6 +187,24 @@ export class GameSession {
     this.state.dayContext.rewardChosen = true;
     this.heroSystem.syncDerivedStats();
     this.persist();
+  }
+
+  ensureSettlementRewardChosen() {
+    if (this.state.dayContext.rewardChosen) {
+      return true;
+    }
+
+    const defaultChoice =
+      this.state.dayContext.rewardChoices.find((choice) => choice.type === 'souls') ||
+      this.state.dayContext.rewardChoices[0];
+
+    if (!defaultChoice) {
+      return true;
+    }
+
+    this.log('你没有手动选择结算奖励，系统已自动领取默认奖励以继续流程。', 'info');
+    this.chooseReward(defaultChoice.id);
+    return this.state.dayContext.rewardChosen;
   }
 
   finishDay(reason) {
@@ -200,8 +228,8 @@ export class GameSession {
   }
 
   nextDay() {
-    if (!this.state.dayContext.rewardChosen) {
-      return { ok: false, reason: '先选择结算奖励。' };
+    if (!this.ensureSettlementRewardChosen()) {
+      return { ok: false, reason: '结算奖励领取失败。' };
     }
 
     this.state.hero.currentHp = Math.min(
@@ -213,8 +241,8 @@ export class GameSession {
     this.state.hero.attackBuffMultiplier = 1;
     this.state.hero.attackBuffRooms = 0;
 
-    if (this.state.day >= this.state.totalDays) {
-      this.combatSystem.startBoss();
+    if (this.state.day >= this.state.totalDays || this.state.bossApproach >= 100) {
+      this.combatSystem.startBoss(this.state.bossApproach >= 100);
       return { ok: true };
     }
 
@@ -224,6 +252,19 @@ export class GameSession {
     this.log(`进入第 ${this.state.day} 天规划阶段。Boss 逼近度来到 ${this.state.bossApproach}。`, 'story');
     this.heroSystem.syncDerivedStats();
     this.persist();
+    return { ok: true };
+  }
+
+  startBossNow() {
+    if (!this.ensureSettlementRewardChosen()) {
+      return { ok: false, reason: '结算奖励领取失败。' };
+    }
+
+    if (this.state.bossApproach < 70) {
+      return { ok: false, reason: 'Boss 逼近度不足 70，暂时不能主动挑战。' };
+    }
+
+    this.combatSystem.startBoss(false);
     return { ok: true };
   }
 

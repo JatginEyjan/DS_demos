@@ -15,6 +15,9 @@ export function renderPlanningScene(session, uiState) {
   } : null;
   const selectedTemplate = selectedSlot ? getTemplate(selectedSlot.card.templateId) : null;
   const usedHours = session.timelineSystem.getUsedHours(currentDay);
+  const droppedSouls = session.state.deathState?.droppedSouls || 0;
+  const dropRoomTemplateId = session.state.deathState?.dropRoomTemplateId;
+  const dropRoomName = dropRoomTemplateId ? getTemplate(dropRoomTemplateId)?.name : '';
   const dayTabs = [1, 2, 3].map((day) => `
     <button class="${day === currentDay ? 'tab active' : 'tab'}" data-action="select-day" data-day="${day}">
       Day ${day}
@@ -29,6 +32,7 @@ export function renderPlanningScene(session, uiState) {
           <div>
             <h2>规划阶段</h2>
             <p>当前耐力预算 ${usedHours} / ${session.state.hero.enduranceHours}h</p>
+            ${droppedSouls > 0 ? `<p class="warning-banner">你有 ${droppedSouls} 灵魂掉落在「${escapeHtml(dropRoomName)}」中。请尽快安排对应房间卡去回收，否则再次死亡会永久失去它们。</p>` : ''}
           </div>
           <div class="inline-actions">
             ${dayTabs}

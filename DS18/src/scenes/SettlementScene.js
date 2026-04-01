@@ -43,9 +43,12 @@ export function renderSettlementScene(session) {
           <div>
             <h2>结算阶段</h2>
             <p>${settlementReasonLabel(ctx.reason)}</p>
+            <p class="muted-text">点击“进入下一天”时，若尚未选奖励，系统会自动领取默认奖励。</p>
+            ${session.state.bossApproach >= 70 && session.state.day < session.state.totalDays ? '<p class="muted-text">Boss 逼近度已超过 70，你也可以提前挑战 Boss。</p>' : ''}
           </div>
           <div class="inline-actions">
             <button class="primary" data-action="next-day">${session.state.day >= session.state.totalDays ? '进入 Boss 战' : '进入下一天'}</button>
+            ${session.state.bossApproach >= 70 && session.state.day < session.state.totalDays ? '<button data-action="start-boss-now">立即挑战 Boss</button>' : ''}
           </div>
         </div>
 

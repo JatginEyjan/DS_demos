@@ -38,10 +38,12 @@ export function renderInventoryPanel(session, planningDay, selectedSlot) {
     const template = getTemplate(card.templateId);
     const actions = [];
     if (template.type === 'weapon') {
-      actions.push(`<button data-action="equip-weapon" data-card-id="${card.id}">装备武器</button>`);
+      const validation = session.inventorySystem.canEquip(card.id);
+      actions.push(`<button data-action="equip-weapon" data-card-id="${card.id}" ${validation.ok ? '' : 'disabled'} title="${validation.reason || ''}">装备武器</button>`);
     }
     if (template.type === 'armor') {
-      actions.push(`<button data-action="equip-armor" data-card-id="${card.id}">装备护甲</button>`);
+      const validation = session.inventorySystem.canEquip(card.id);
+      actions.push(`<button data-action="equip-armor" data-card-id="${card.id}" ${validation.ok ? '' : 'disabled'} title="${validation.reason || ''}">装备护甲</button>`);
     }
     if (template.type === 'consumable') {
       actions.push(`<button data-action="use-item" data-card-id="${card.id}">立即使用</button>`);

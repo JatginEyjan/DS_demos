@@ -25,6 +25,14 @@ export class PreLayoutSystem {
     if (this.session.state.scene === 'execution' && day === this.session.state.day) {
       return { ok: false, reason: '执行中的当天已锁定。' };
     }
+    const slots = this.session.state.layouts[day] || [];
+    const existingBonfires = slots.filter((slot) => slot.card.templateId === 'time_bonfire').length;
+    if (template.id === 'time_bonfire' && existingBonfires >= 1) {
+      return { ok: false, reason: '每天最多放置 1 张篝火卡。' };
+    }
+    if (template.quality === 'epic' || template.quality === 'legendary') {
+      return { ok: true, warnsBossApproach: true };
+    }
     return { ok: true };
   }
 
@@ -39,6 +47,10 @@ export class PreLayoutSystem {
       embeds: []
     });
     this.session.log(`已将 ${getTemplate(removedCard.templateId).name} 放入第 ${day} 天时间轴。`);
+    if (validation.warnsBossApproach) {
+      this.session.bossApproachSystem.addCardPressure(2);
+      this.session.log('强力高品质卡的命运波动让 Boss 逼近度 +2。', 'warning');
+    }
     this.session.heroSystem.syncDerivedStats();
     this.session.persist();
     return { ok: true };
