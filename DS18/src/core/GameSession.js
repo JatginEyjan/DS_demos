@@ -2,7 +2,7 @@ import { GAME_CONFIG } from '../config/game.config.js';
 import { createCardInstance, getTemplate } from '../data/cards.js';
 import { createHero, ensureHeroState } from '../entities/Hero.js';
 import { STARTER_CARD_TEMPLATE_IDS } from '../data/rewards.js';
-import { writeSave } from '../utils/save.js';
+import { SAVE_VERSION, writeSave } from '../utils/save.js';
 import { EventBus } from '../utils/event-bus.js';
 import { InventorySystem } from '../systems/InventorySystem.js';
 import { CardSystem } from '../systems/CardSystem.js';
@@ -33,8 +33,12 @@ export class GameSession {
   }
 
   createMenuState() {
+    const layouts = {};
+    for (let day = 1; day <= GAME_CONFIG.totalDays; day += 1) {
+      layouts[day] = [];
+    }
     return {
-      version: '0.1',
+      version: SAVE_VERSION,
       scene: 'menu',
       serial: 1,
       saveStamp: null,
@@ -45,7 +49,7 @@ export class GameSession {
       logs: [],
       hero: null,
       inventory: [],
-      layouts: { 1: [], 2: [], 3: [] },
+      layouts,
       dayContext: this.createDayContext(),
       execution: null,
       boss: null,
@@ -68,17 +72,40 @@ export class GameSession {
       summary: [],
       dailySoulGain: 0,
       dailyMaterialGain: { material_shard: 0, material_chunk: 0 },
-      reason: 'day_end'
+      reason: 'day_end',
+      eliteDecisionMade: false,
+      eliteResolved: false,
+      eliteOutcome: null,
+      eliteRewardChoices: [],
+      eliteRewardChosen: false,
+      earlyBossRewardBonus: 1
     };
   }
 
   hydrateState(savedState) {
     const hydrated = JSON.parse(JSON.stringify(savedState));
-    hydrated.dayContext = hydrated.dayContext || this.createDayContext();
+    hydrated.version = hydrated.version || SAVE_VERSION;
+    hydrated.dayContext = {
+      ...this.createDayContext(),
+      ...(hydrated.dayContext || {}),
+      dailyMaterialGain: {
+        material_shard: 0,
+        material_chunk: 0,
+        ...(hydrated.dayContext?.dailyMaterialGain || {})
+      },
+      merchantOffers: hydrated.dayContext?.merchantOffers || [],
+      rewardChoices: hydrated.dayContext?.rewardChoices || [],
+      summary: hydrated.dayContext?.summary || [],
+      eliteRewardChoices: hydrated.dayContext?.eliteRewardChoices || []
+    };
     hydrated.layouts = hydrated.layouts || { 1: [], 2: [], 3: [] };
+    for (let day = 1; day <= (hydrated.totalDays || GAME_CONFIG.totalDays); day += 1) {
+      hydrated.layouts[day] = hydrated.layouts[day] || [];
+    }
     hydrated.logs = hydrated.logs || [];
     hydrated.serial = hydrated.serial || 1;
     hydrated.hero = ensureHeroState(hydrated.hero);
+    hydrated.bossApproach = hydrated.bossApproach || 0;
     hydrated.deathState = hydrated.deathState || {
       deathCount: 0,
       droppedSouls: 0,
@@ -120,7 +147,11 @@ export class GameSession {
   }
 
   getEquippedCard(slot) {
-    const cardId = slot === 'weapon' ? this.state.hero.weaponId : this.state.hero.armorId;
+    const cardId = {
+      weapon: this.state.hero.weaponId,
+      armor: this.state.hero.armorId,
+      shield: this.state.hero.shieldId
+    }[slot];
     return cardId ? this.inventorySystem.findCardEverywhere(cardId) : null;
   }
 
@@ -142,6 +173,7 @@ export class GameSession {
 
   persist() {
     this.state.saveStamp = Date.now();
+    this.state.version = SAVE_VERSION;
     writeSave(this.state);
   }
 
@@ -162,31 +194,55 @@ export class GameSession {
     };
   }
 
-  chooseReward(rewardId) {
-    const choice = this.state.dayContext.rewardChoices.find((item) => item.id === rewardId);
-    if (!choice || this.state.dayContext.rewardChosen) return;
+  applyRewardChoice(choice, sourceLabel) {
+    if (!choice) return { ok: false, reason: '奖励不存在。' };
 
     if (choice.type === 'souls') {
       this.economySystem.addSouls(choice.payload.amount);
-      this.log(`结算奖励：获得 ${choice.payload.amount} 灵魂。`, 'positive');
+      this.log(`${sourceLabel}：获得 ${choice.payload.amount} 灵魂。`, 'positive');
     } else if (choice.type === 'card' || choice.type === 'consumable') {
       const card = this.makeCard(choice.payload.templateId);
       const addResult = this.inventorySystem.addCard(card, {
         onFull: 'block',
-        sourceLabel: '结算奖励'
+        sourceLabel
       });
       if (!addResult.ok) {
-        return;
+        return addResult;
       }
-      this.log(`结算奖励：获得 ${getTemplate(choice.payload.templateId).name}。`, 'positive');
+      this.log(`${sourceLabel}：获得 ${getTemplate(choice.payload.templateId).name}。`, 'positive');
     } else if (choice.type === 'attribute') {
       this.state.hero.attributes[choice.payload.attribute] += choice.payload.amount;
-      this.log(`结算奖励：${choice.payload.label || '属性提升'}。`, 'positive');
+      this.log(`${sourceLabel}：${choice.payload.label || '属性提升'}。`, 'positive');
     }
 
-    this.state.dayContext.rewardChosen = true;
     this.heroSystem.syncDerivedStats();
+    return { ok: true };
+  }
+
+  chooseReward(rewardId) {
+    const choice = this.state.dayContext.rewardChoices.find((item) => item.id === rewardId);
+    if (!choice || this.state.dayContext.rewardChosen) return;
+
+    const result = this.applyRewardChoice(choice, '结算奖励');
+    if (!result.ok) {
+      return result;
+    }
+    this.state.dayContext.rewardChosen = true;
     this.persist();
+    return result;
+  }
+
+  chooseEliteReward(rewardId) {
+    const choice = this.state.dayContext.eliteRewardChoices.find((item) => item.id === rewardId);
+    if (!choice || this.state.dayContext.eliteRewardChosen) return;
+
+    const result = this.applyRewardChoice(choice, '精英奖励');
+    if (!result.ok) {
+      return result;
+    }
+    this.state.dayContext.eliteRewardChosen = true;
+    this.persist();
+    return result;
   }
 
   ensureSettlementRewardChosen() {
@@ -212,7 +268,19 @@ export class GameSession {
     this.state.execution = null;
     this.state.scene = 'settlement';
     this.state.dayContext.reason = reason;
-    this.bossApproachSystem.advanceDay();
+    this.state.dayContext.eliteDecisionMade = false;
+    this.state.dayContext.eliteResolved = false;
+    this.state.dayContext.eliteOutcome = null;
+    this.state.dayContext.eliteRewardChoices = [];
+    this.state.dayContext.eliteRewardChosen = false;
+    this.state.dayContext.earlyBossRewardBonus = 1;
+    const bossAdvance = this.bossApproachSystem.advanceDay();
+    this.eventBus.emit('timeline:day_end', {
+      day: this.state.day,
+      reason,
+      bossApproach: this.state.bossApproach,
+      delta: bossAdvance.delta
+    });
     this.combatSystem.rollSettlementRewards();
     this.reduceCooldowns();
     this.heroSystem.syncDerivedStats();
@@ -228,6 +296,22 @@ export class GameSession {
   }
 
   nextDay() {
+    if (this.state.day < this.state.totalDays && !this.state.dayContext.eliteDecisionMade) {
+      this.log('你需要先在结算阶段决定是否挑战精英，才能推进到下一天。', 'warning');
+      return { ok: false, reason: '需要先完成精英决策。' };
+    }
+
+    if (this.state.dayContext.eliteRewardChoices.length > 0 && !this.state.dayContext.eliteRewardChosen) {
+      const defaultEliteReward = this.state.dayContext.eliteRewardChoices[0];
+      if (defaultEliteReward) {
+        this.log('你没有手动选择精英奖励，系统已自动领取第一项奖励。', 'info');
+        const eliteRewardResult = this.chooseEliteReward(defaultEliteReward.id);
+        if (eliteRewardResult && eliteRewardResult.ok === false) {
+          return { ok: false, reason: eliteRewardResult.reason || '精英奖励领取失败。' };
+        }
+      }
+    }
+
     if (!this.ensureSettlementRewardChosen()) {
       return { ok: false, reason: '结算奖励领取失败。' };
     }
@@ -241,8 +325,8 @@ export class GameSession {
     this.state.hero.attackBuffMultiplier = 1;
     this.state.hero.attackBuffRooms = 0;
 
-    if (this.state.day >= this.state.totalDays || this.state.bossApproach >= 100) {
-      this.combatSystem.startBoss(this.state.bossApproach >= 100);
+    if (this.state.day >= this.state.totalDays || this.bossApproachSystem.shouldForceBoss()) {
+      this.combatSystem.startBoss(this.bossApproachSystem.shouldForceBoss(), false);
       return { ok: true };
     }
 
@@ -260,11 +344,61 @@ export class GameSession {
       return { ok: false, reason: '结算奖励领取失败。' };
     }
 
-    if (this.state.bossApproach < 70) {
+    if (this.state.dayContext.eliteRewardChoices.length > 0 && !this.state.dayContext.eliteRewardChosen) {
+      const eliteRewardResult = this.chooseEliteReward(this.state.dayContext.eliteRewardChoices[0]?.id);
+      if (eliteRewardResult && eliteRewardResult.ok === false) {
+        return { ok: false, reason: eliteRewardResult.reason || '精英奖励领取失败。' };
+      }
+    }
+
+    if (!this.bossApproachSystem.canChallengeEarlyBoss()) {
       return { ok: false, reason: 'Boss 逼近度不足 70，暂时不能主动挑战。' };
     }
 
-    this.combatSystem.startBoss(false);
+    this.state.dayContext.eliteDecisionMade = true;
+    this.state.dayContext.eliteResolved = true;
+    this.state.dayContext.eliteOutcome = 'challenge_boss';
+    this.state.dayContext.earlyBossRewardBonus = 1.2;
+    this.combatSystem.startBoss(false, true);
+    return { ok: true };
+  }
+
+  skipEliteBattle() {
+    if (this.state.scene !== 'settlement' || this.state.day >= this.state.totalDays) {
+      return { ok: false, reason: '当前不需要进行精英决策。' };
+    }
+    if (this.state.dayContext.eliteDecisionMade) {
+      return { ok: false, reason: '精英决策已完成。' };
+    }
+
+    const result = this.bossApproachSystem.skipElite();
+    this.state.dayContext.eliteDecisionMade = true;
+    this.state.dayContext.eliteResolved = true;
+    this.state.dayContext.eliteOutcome = 'skipped';
+    this.log(`你选择跳过今日精英战。Boss 逼近度 +${result.delta}。`, 'warning');
+    this.persist();
+    return { ok: true };
+  }
+
+  challengeEliteBattle() {
+    if (this.state.scene !== 'settlement' || this.state.day >= this.state.totalDays) {
+      return { ok: false, reason: '当前不需要进行精英决策。' };
+    }
+    if (this.state.dayContext.eliteDecisionMade) {
+      return { ok: false, reason: '精英决策已完成。' };
+    }
+
+    const result = this.combatSystem.resolveEliteBattle();
+    if (!result.ok) {
+      return result;
+    }
+
+    this.state.dayContext.eliteDecisionMade = true;
+    this.state.dayContext.eliteResolved = true;
+    this.state.dayContext.eliteOutcome = 'victory';
+    this.state.dayContext.eliteRewardChoices = result.rewardChoices;
+    this.state.dayContext.eliteRewardChosen = false;
+    this.persist();
     return { ok: true };
   }
 

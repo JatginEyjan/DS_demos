@@ -102,6 +102,13 @@ export class TimelineSystem {
       slotIndex: execution.slotIndex
     };
 
+    this.session.eventBus.emit('timeline:slot_enter', {
+      day: this.session.state.day,
+      slotIndex: execution.slotIndex,
+      templateId: slot.card.templateId,
+      context
+    });
+
     if (template.type === 'time') {
       this.resolveTimeSlot(template);
     } else if (template.type === 'room') {

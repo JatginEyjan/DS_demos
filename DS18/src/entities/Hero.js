@@ -21,6 +21,7 @@ export function createHero() {
     },
     weaponId: null,
     armorId: null,
+    shieldId: null,
     attackBuffRooms: 0,
     attackBuffMultiplier: 1,
     curseAttackMultiplier: 1
@@ -33,5 +34,6 @@ export function ensureHeroState(hero) {
     material_shard: 0,
     material_chunk: 0
   };
+  hero.shieldId = hero.shieldId || null;
   return hero;
 }

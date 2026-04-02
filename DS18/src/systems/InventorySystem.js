@@ -90,6 +90,9 @@ export class InventorySystem {
     if (template.type === 'armor' && !this.session.state.hero.armorId) {
       this.session.state.hero.armorId = card.id;
     }
+    if (template.type === 'shield' && !this.session.state.hero.shieldId) {
+      this.session.state.hero.shieldId = card.id;
+    }
 
     this.session.state.inventory.push(card);
   }
@@ -106,6 +109,9 @@ export class InventorySystem {
     }
     if (slotType === 'armor') {
       this.session.state.hero.armorId = cardId;
+    }
+    if (slotType === 'shield') {
+      this.session.state.hero.shieldId = cardId;
     }
 
     const equipped = this.findCardEverywhere(cardId);

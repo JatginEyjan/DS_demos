@@ -7,6 +7,7 @@ export function renderDashboard(session, sceneLabel) {
   const hero = session.state.hero;
   const weapon = session.getEquippedCard('weapon');
   const armor = session.getEquippedCard('armor');
+  const shield = session.getEquippedCard('shield');
   return `
     <section class="dashboard">
       <div class="stat-tile">
@@ -32,7 +33,7 @@ export function renderDashboard(session, sceneLabel) {
       <div class="stat-tile">
         <span>装备</span>
         <strong>${weapon ? getTemplate(weapon.templateId).name : '无武器'}</strong>
-        <small>${armor ? getTemplate(armor.templateId).name : '无护甲'}</small>
+        <small>${armor ? getTemplate(armor.templateId).name : '无护甲'} / ${shield ? getTemplate(shield.templateId).name : '无副手'}</small>
       </div>
     </section>
   `;

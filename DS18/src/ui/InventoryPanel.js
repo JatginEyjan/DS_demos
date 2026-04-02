@@ -45,6 +45,10 @@ export function renderInventoryPanel(session, planningDay, selectedSlot) {
       const validation = session.inventorySystem.canEquip(card.id);
       actions.push(`<button data-action="equip-armor" data-card-id="${card.id}" ${validation.ok ? '' : 'disabled'} title="${validation.reason || ''}">装备护甲</button>`);
     }
+    if (template.type === 'shield') {
+      const validation = session.inventorySystem.canEquip(card.id);
+      actions.push(`<button data-action="equip-shield" data-card-id="${card.id}" ${validation.ok ? '' : 'disabled'} title="${validation.reason || ''}">装备副手</button>`);
+    }
     if (template.type === 'consumable') {
       actions.push(`<button data-action="use-item" data-card-id="${card.id}">立即使用</button>`);
     }

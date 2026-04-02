@@ -161,6 +161,14 @@ function wireEvents() {
       return;
     }
 
+    if (action === 'equip-shield') {
+      session.inventorySystem.equip(button.dataset.cardId, 'shield');
+      session.heroSystem.syncDerivedStats();
+      session.persist();
+      renderApp();
+      return;
+    }
+
     if (action === 'use-item') {
       session.heroSystem.useConsumable(button.dataset.cardId);
       renderApp();
@@ -181,6 +189,12 @@ function wireEvents() {
 
     if (action === 'choose-reward') {
       session.chooseReward(button.dataset.rewardId);
+      renderApp();
+      return;
+    }
+
+    if (action === 'choose-elite-reward') {
+      session.chooseEliteReward(button.dataset.rewardId);
       renderApp();
       return;
     }
@@ -207,6 +221,18 @@ function wireEvents() {
       session.nextDay();
       uiState.selectedPlanningDay = session.state.day;
       uiState.selectedSlotIndex = null;
+      renderApp();
+      return;
+    }
+
+    if (action === 'challenge-elite') {
+      session.challengeEliteBattle();
+      renderApp();
+      return;
+    }
+
+    if (action === 'skip-elite') {
+      session.skipEliteBattle();
       renderApp();
       return;
     }

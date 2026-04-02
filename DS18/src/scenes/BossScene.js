@@ -10,7 +10,7 @@ export function renderBossScene(session) {
         <div class="panel-head">
           <div>
             <h2>Boss 战</h2>
-            <p>堕落骑士进入最终试炼。${session.state.boss?.approachBoost > 1 ? '本次为强制 Boss 战，敌人已强化。': ''}</p>
+            <p>堕落骑士进入最终试炼。${session.state.boss?.approachBoost > 1 ? '本次为强制 Boss 战，敌人已强化。' : session.state.boss?.isEarlyChallenge ? '这是一次提前挑战，胜利奖励已提升 20%。' : ''}</p>
           </div>
           <div class="inline-actions">
             <button data-action="use-flask">使用治疗瓶</button>

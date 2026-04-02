@@ -5,11 +5,21 @@ export class EconomySystem {
 
   addSouls(amount) {
     this.session.state.hero.souls += amount;
+    this.session.eventBus.emit('economy:souls_changed', {
+      amount,
+      nextSouls: this.session.state.hero.souls,
+      type: 'gain'
+    });
   }
 
   spendSouls(amount) {
     if (this.session.state.hero.souls < amount) return false;
     this.session.state.hero.souls -= amount;
+    this.session.eventBus.emit('economy:souls_changed', {
+      amount: -amount,
+      nextSouls: this.session.state.hero.souls,
+      type: 'spend'
+    });
     return true;
   }
 

@@ -3,19 +3,38 @@ export class BossApproachSystem {
     this.session = session;
   }
 
+  change(amount, reason = 'unknown') {
+    const previous = this.session.state.bossApproach;
+    this.session.state.bossApproach = Math.max(0, previous + amount);
+    return {
+      previous,
+      current: this.session.state.bossApproach,
+      delta: this.session.state.bossApproach - previous,
+      reason
+    };
+  }
+
   advanceDay() {
-    this.session.state.bossApproach += 10;
+    return this.change(10, 'advance_day');
   }
 
   addCardPressure(amount) {
-    this.session.state.bossApproach += amount;
+    return this.change(amount, 'high_quality_card');
   }
 
   skipElite() {
-    this.session.state.bossApproach += 5;
+    return this.change(5, 'skip_elite');
   }
 
   defeatElite() {
-    this.session.state.bossApproach = Math.max(0, this.session.state.bossApproach - 3);
+    return this.change(-3, 'defeat_elite');
+  }
+
+  canChallengeEarlyBoss() {
+    return this.session.state.bossApproach >= 70 && this.session.state.bossApproach < 100;
+  }
+
+  shouldForceBoss() {
+    return this.session.state.bossApproach >= 100;
   }
 }

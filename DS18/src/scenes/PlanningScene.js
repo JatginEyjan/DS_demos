@@ -18,7 +18,7 @@ export function renderPlanningScene(session, uiState) {
   const droppedSouls = session.state.deathState?.droppedSouls || 0;
   const dropRoomTemplateId = session.state.deathState?.dropRoomTemplateId;
   const dropRoomName = dropRoomTemplateId ? getTemplate(dropRoomTemplateId)?.name : '';
-  const dayTabs = [1, 2, 3].map((day) => `
+  const dayTabs = Array.from({ length: session.state.totalDays }, (_, index) => index + 1).map((day) => `
     <button class="${day === currentDay ? 'tab active' : 'tab'}" data-action="select-day" data-day="${day}">
       Day ${day}
     </button>

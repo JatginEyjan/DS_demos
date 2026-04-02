@@ -30,12 +30,15 @@ export class HeroSystem {
     );
     const weapon = hero.weaponId ? this.session.inventorySystem.findCardEverywhere(hero.weaponId) : null;
     const armor = hero.armorId ? this.session.inventorySystem.findCardEverywhere(hero.armorId) : null;
+    const shield = hero.shieldId ? this.session.inventorySystem.findCardEverywhere(hero.shieldId) : null;
     const weaponTemplate = weapon ? getTemplate(weapon.templateId) : null;
     const armorTemplate = armor ? getTemplate(armor.templateId) : null;
+    const shieldTemplate = shield ? getTemplate(shield.templateId) : null;
 
     const maxHp = Math.round(effective.vitality * 15);
     const armorDefense = armorTemplate?.baseDefense || 0;
-    const baseDefense = 10 + armorDefense + effective.vitality;
+    const shieldDefense = shieldTemplate?.baseDefense || 0;
+    const baseDefense = 10 + armorDefense + shieldDefense + effective.vitality;
     const scalingBonus = weaponTemplate
       ? Object.entries(weaponTemplate.scaling || {}).reduce((total, [attr, grade]) => {
           return total + SCALING_VALUE[grade] * ((effective[attr] || 0) / 50);
@@ -59,6 +62,47 @@ export class HeroSystem {
     hero.enduranceHours = Math.round(effective.endurance);
     hero.maxInventorySize = 10 + Math.floor(effective.strength / 2);
     hero.flaskHealAmount = Math.round(maxHp * (0.28 + effective.faith * 0.01));
+    hero.guardChance = shieldTemplate?.guardEffect?.chance || 0;
+    hero.guardReduction = shieldTemplate?.guardEffect?.reduction || 0;
+  }
+
+  applyDamage(amount, options = {}) {
+    const hero = this.session.state.hero;
+    const source = options.source || 'unknown';
+    let finalDamage = Math.max(0, Math.round(amount));
+    let lethalGuardTriggered = false;
+
+    if (options.allowLethalGuard !== false && hero.shieldId) {
+      const shield = this.session.inventorySystem.findCardEverywhere(hero.shieldId);
+      const shieldTemplate = shield ? getTemplate(shield.templateId) : null;
+      const guardEffect = shieldTemplate?.guardEffect;
+      if (
+        guardEffect?.type === 'fatal_guard' &&
+        finalDamage >= hero.currentHp &&
+        Math.random() < (guardEffect.chance || 0)
+      ) {
+        finalDamage = Math.round(finalDamage * (1 - (guardEffect.reduction || 0)));
+        if (finalDamage >= hero.currentHp) {
+          finalDamage = Math.max(1, hero.currentHp - 1);
+        }
+        lethalGuardTriggered = true;
+        this.session.log(`${shieldTemplate.name} 挡下了致命一击，伤害被削减。`, 'positive');
+      }
+    }
+
+    hero.currentHp = clamp(hero.currentHp - finalDamage, 0, hero.maxHp);
+    this.session.eventBus.emit('hero:damage', {
+      amount: finalDamage,
+      source,
+      currentHp: hero.currentHp,
+      maxHp: hero.maxHp,
+      lethalGuardTriggered
+    });
+    return {
+      amount: finalDamage,
+      lethalGuardTriggered,
+      currentHp: hero.currentHp
+    };
   }
 
   getUpgradeCost(attribute) {

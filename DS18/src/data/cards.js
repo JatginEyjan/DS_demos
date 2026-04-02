@@ -35,6 +35,13 @@ export const SCALING_VALUE = {
   E: 0.1
 };
 
+export const LOOT_DROP_RATE_BY_QUALITY = {
+  common: 0.05,
+  rare: 0.1,
+  epic: 0.3,
+  legendary: 0.3
+};
+
 export const CARD_TEMPLATES = [
   createRoomCard({
     id: 'room_abandoned_cemetery',
@@ -88,6 +95,12 @@ export const CARD_TEMPLATES = [
     duration: 3,
     embedCapacity: { npc: 1, event: 1 },
     comboTags: ['faith'],
+    effects: [
+      { trigger: 'day', type: 'heal_percent', value: 0.18 },
+      { trigger: 'day', type: 'add_flask', value: 1 },
+      { trigger: 'day', type: 'grant_flat_souls', range: [12, 20] },
+      { trigger: 'day', type: 'skip_room_combat', value: true }
+    ],
     day: { power: 8, hp: 0, souls: [12, 20], loot: ['consumable_magic_resin'] },
     night: { power: 60, hp: 145, souls: [60, 80], loot: ['consumable_magic_resin', 'armor_chainmail'] }
   }),
@@ -123,6 +136,10 @@ export const CARD_TEMPLATES = [
     consumable: true,
     embedCapacity: { npc: 1, event: 1 },
     comboTags: ['merchant'],
+    effects: [
+      { trigger: 'all', type: 'merchant_discount', value: 0.3 },
+      { trigger: 'all', type: 'skip_room_combat', value: true }
+    ],
     day: { power: 0, hp: 0, souls: [0, 0], loot: [] },
     night: { power: 0, hp: 0, souls: [0, 0], loot: [] }
   }),
@@ -267,6 +284,20 @@ export const CARD_TEMPLATES = [
     description: '更高护甲，并偶尔能完全格挡伤害。',
     baseDefense: 25,
     requirements: { strength: 14 }
+  }),
+  createEquipmentCard({
+    id: 'shield_iron',
+    quality: 'common',
+    type: 'shield',
+    name: '铁盾',
+    description: '副手铁盾。力量足够时可显著提升防御，并在致命时争取一线生机。',
+    baseDefense: 20,
+    requirements: { strength: 12 },
+    guardEffect: {
+      type: 'fatal_guard',
+      chance: 0.25,
+      reduction: 0.5
+    }
   }),
   createConsumableCard({
     id: 'consumable_flame_jar',
