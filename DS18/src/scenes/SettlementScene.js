@@ -50,7 +50,8 @@ export function renderSettlementScene(session) {
     : '<div class="empty-panel">今天没有商人服务。</div>';
 
   return `
-    <div class="workspace">
+    <div class="scene scene-settlement">
+      <div class="workspace">
       <main class="panel main-panel">
         <div class="panel-head">
           <div>
@@ -109,6 +110,7 @@ export function renderSettlementScene(session) {
       <aside class="panel side-panel">
         ${renderHeroStats(session)}
       </aside>
+      </div>
     </div>
   `;
 }

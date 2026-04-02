@@ -1,7 +1,7 @@
 export function renderGameOverScene(session, type) {
   const isVictory = type === 'victory';
   return `
-    <section class="hero-panel">
+    <section class="scene-card intro-card">
       <div class="hero-copy">
         <p class="eyebrow">${isVictory ? 'Run Complete' : 'Run Failed'}</p>
         <h1>${isVictory ? '堕落骑士已陨落' : '命运编排中断'}</h1>

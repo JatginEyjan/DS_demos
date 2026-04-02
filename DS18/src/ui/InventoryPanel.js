@@ -10,33 +10,39 @@ export function getInventoryGroups(session) {
 
   session.state.inventory.forEach((card) => {
     const template = getTemplate(card.templateId);
-    if (!template || !groups[template.category]) return;
-    groups[template.category].push(card);
+    if (!template) return;
+    if (template.category === 'journey') groups.journey.push(card);
+    if (template.category === 'embed') groups.embed.push(card);
+    if (template.category === 'character') groups.character.push(card);
   });
 
   return groups;
 }
 
-export function renderInventoryPanel(session, planningDay, selectedSlot) {
+export function renderInventoryPanel(session, uiState, selectedSlot) {
   const groups = getInventoryGroups(session);
   const selectedTemplate = selectedSlot ? getTemplate(selectedSlot.card.templateId) : null;
+  const currentTab = uiState.selectedInventoryTab || 'journey';
+  const cards = groups[currentTab] || [];
+  const tabLabel = {
+    journey: '路程卡',
+    embed: '镶嵌卡',
+    character: '角色卡'
+  };
 
-  const journeyCards = groups.journey.map((card) =>
-    renderCardChip(card, [
-      `<button data-action="place-card" data-card-id="${card.id}" data-day="${planningDay}">放入第 ${planningDay} 天</button>`
-    ])
-  ).join('');
-
-  const embedCards = groups.embed.map((card) => {
-    const button = selectedTemplate && selectedTemplate.type === 'room'
-      ? `<button data-action="embed-card" data-card-id="${card.id}" data-day="${planningDay}" data-slot-index="${selectedSlot.index}">镶嵌到已选房间</button>`
-      : '<button disabled>先选中一个房间卡槽</button>';
-    return renderCardChip(card, [button]);
-  }).join('');
-
-  const characterCards = groups.character.map((card) => {
+  const list = cards.map((card) => {
     const template = getTemplate(card.templateId);
     const actions = [];
+    if (currentTab === 'journey') {
+      actions.push(`<button data-action="place-card" data-card-id="${card.id}" data-day="${uiState.selectedPlanningDay}">放入 Day ${uiState.selectedPlanningDay}</button>`);
+    }
+    if (currentTab === 'embed') {
+      actions.push(
+        selectedTemplate && selectedTemplate.type === 'room'
+          ? `<button data-action="embed-card" data-card-id="${card.id}" data-day="${uiState.selectedPlanningDay}" data-slot-index="${selectedSlot.index}">镶嵌到当前房间</button>`
+          : '<button disabled>先选中一个房间卡槽</button>'
+      );
+    }
     if (template.type === 'weapon') {
       const validation = session.inventorySystem.canEquip(card.id);
       actions.push(`<button data-action="equip-weapon" data-card-id="${card.id}" ${validation.ok ? '' : 'disabled'} title="${validation.reason || ''}">装备武器</button>`);
@@ -52,26 +58,37 @@ export function renderInventoryPanel(session, planningDay, selectedSlot) {
     if (template.type === 'consumable') {
       actions.push(`<button data-action="use-item" data-card-id="${card.id}">立即使用</button>`);
     }
-    return renderCardChip(card, actions);
+
+    return renderCardChip(card, actions, {
+      variant: currentTab === 'journey' ? 'inventory-journey' : currentTab === 'embed' ? 'inventory-embed' : 'inventory-character',
+      draggable: true,
+      dragPayload: {
+        originType: 'inventory',
+        cardId: card.id,
+        category: currentTab,
+        templateType: template.type
+      }
+    });
   }).join('');
 
   return `
-    <aside class="panel inventory-panel">
+    <aside class="panel inventory-panel" data-drop-kind="inventory-return">
       <div class="panel-head">
-        <h2>背包</h2>
+        <div>
+          <h2>背包卡库</h2>
+          <p class="muted-text">拖拽卡牌到中间轨道或房间插槽，构筑当天路线。</p>
+        </div>
         <span>容量 ${session.state.inventory.length}/${session.state.hero.maxInventorySize}</span>
       </div>
-      <section>
-        <h3>路程卡</h3>
-        ${journeyCards || '<div class="empty-panel">没有可放置的路程卡。</div>'}
-      </section>
-      <section>
-        <h3>镶嵌卡</h3>
-        ${embedCards || '<div class="empty-panel">暂无 NPC / 事件卡。</div>'}
-      </section>
-      <section>
-        <h3>角色卡</h3>
-        ${characterCards || '<div class="empty-panel">暂无角色卡。</div>'}
+      <div class="inventory-tabs">
+        ${Object.entries(tabLabel).map(([tabId, label]) => `
+          <button class="tab ${currentTab === tabId ? 'active' : ''}" data-action="set-inventory-tab" data-tab="${tabId}">
+            ${label}
+          </button>
+        `).join('')}
+      </div>
+      <section class="inventory-list">
+        ${list || `<div class="empty-panel">当前 ${tabLabel[currentTab]} 为空。</div>`}
       </section>
     </aside>
   `;

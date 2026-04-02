@@ -5,7 +5,8 @@ import { renderBossHUD } from '../ui/BossHUD.js';
 
 export function renderBossScene(session) {
   return `
-    <div class="workspace boss-mode">
+    <div class="scene scene-boss">
+      <div class="workspace boss-mode">
       <main class="panel main-panel">
         <div class="panel-head">
           <div>
@@ -29,6 +30,7 @@ export function renderBossScene(session) {
         </section>
         ${renderHeroStats(session)}
       </aside>
+      </div>
     </div>
   `;
 }

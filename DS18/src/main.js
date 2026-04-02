@@ -14,7 +14,12 @@ const session = new GameSession(loadSave());
 const uiState = {
   selectedPlanningDay: session.state.day || 1,
   selectedSlotIndex: null,
-  executionTimer: null
+  selectedInventoryTab: 'journey',
+  logsOpen: false,
+  executionSpeed: 1,
+  executionTimer: null,
+  dragging: null,
+  dropTarget: null
 };
 
 function sceneLabel(scene) {
@@ -34,7 +39,7 @@ function renderCurrentScene() {
 
   if (session.state.scene === 'menu') return renderMenuScene(hasSave);
   if (session.state.scene === 'planning') return renderPlanningScene(session, uiState);
-  if (session.state.scene === 'execution') return renderExecutionScene(session);
+  if (session.state.scene === 'execution') return renderExecutionScene(session, uiState);
   if (session.state.scene === 'settlement') return renderSettlementScene(session);
   if (session.state.scene === 'boss') return renderBossScene(session);
   if (session.state.scene === 'gameover') return renderGameOverScene(session, 'gameover');
@@ -47,14 +52,14 @@ function renderApp() {
     uiState.selectedPlanningDay = session.state.day;
   }
 
-  root.innerHTML = renderAppShell(session, renderCurrentScene(), sceneLabel);
+  root.innerHTML = renderAppShell(session, renderCurrentScene(), sceneLabel, uiState);
   syncExecutionLoop();
 }
 
 function syncExecutionLoop() {
   if (session.state.scene === 'execution' && !uiState.executionTimer) {
     uiState.executionTimer = window.setInterval(() => {
-      session.timelineSystem.advance(100);
+      session.timelineSystem.advance(100 * uiState.executionSpeed);
       renderApp();
     }, 100);
   }
@@ -62,6 +67,57 @@ function syncExecutionLoop() {
   if (session.state.scene !== 'execution' && uiState.executionTimer) {
     window.clearInterval(uiState.executionTimer);
     uiState.executionTimer = null;
+  }
+}
+
+function clearDropHighlights() {
+  root.querySelectorAll('.is-active-drop').forEach((node) => node.classList.remove('is-active-drop'));
+}
+
+function resetTransientUi() {
+  uiState.dragging = null;
+  uiState.dropTarget = null;
+  clearDropHighlights();
+}
+
+function parseDragPayload(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function handleDrop(dropTarget, payload) {
+  if (!dropTarget || !payload) return;
+
+  if (dropTarget.kind === 'timeline-insert') {
+    if (payload.originType === 'inventory' && payload.category === 'journey') {
+      session.cardSystem.placeCard(payload.cardId, Number(dropTarget.day), Number(dropTarget.index));
+      uiState.selectedSlotIndex = null;
+    }
+    if (payload.originType === 'layout-slot' && Number(payload.day) === Number(dropTarget.day)) {
+      session.cardSystem.moveSlotToIndex(Number(dropTarget.day), Number(payload.index), Number(dropTarget.index));
+      uiState.selectedSlotIndex = null;
+    }
+    return;
+  }
+
+  if (dropTarget.kind === 'room-embed') {
+    if (payload.originType === 'inventory' && payload.category === 'embed') {
+      session.cardSystem.embedCard(payload.cardId, Number(dropTarget.day), Number(dropTarget.slotIndex));
+    }
+    return;
+  }
+
+  if (dropTarget.kind === 'inventory-return') {
+    if (payload.originType === 'layout-slot') {
+      session.cardSystem.removeSlot(Number(payload.day), Number(payload.index));
+      uiState.selectedSlotIndex = null;
+    }
+    if (payload.originType === 'layout-embed') {
+      session.cardSystem.removeEmbed(Number(payload.day), Number(payload.slotIndex), Number(payload.embedIndex));
+    }
   }
 }
 
@@ -76,6 +132,8 @@ function wireEvents() {
       session.createNewRun();
       uiState.selectedPlanningDay = session.state.day;
       uiState.selectedSlotIndex = null;
+      uiState.selectedInventoryTab = 'journey';
+      uiState.executionSpeed = 1;
       renderApp();
       return;
     }
@@ -94,6 +152,24 @@ function wireEvents() {
     if (action === 'clear-save') {
       clearSave();
       window.location.reload();
+      return;
+    }
+
+    if (action === 'toggle-logs') {
+      uiState.logsOpen = !uiState.logsOpen;
+      renderApp();
+      return;
+    }
+
+    if (action === 'set-inventory-tab') {
+      uiState.selectedInventoryTab = button.dataset.tab;
+      renderApp();
+      return;
+    }
+
+    if (action === 'set-speed') {
+      uiState.executionSpeed = Number(button.dataset.speed) || 1;
+      renderApp();
       return;
     }
 
@@ -246,8 +322,50 @@ function wireEvents() {
     if (action === 'boss-turn') {
       session.combatSystem.takeBossTurn(button.dataset.strategy, button.dataset.response);
       renderApp();
-      return;
     }
+  });
+
+  root.addEventListener('dragstart', (event) => {
+    const node = event.target.closest('[data-drag-payload]');
+    if (!node) return;
+    const payload = parseDragPayload(node.dataset.dragPayload);
+    if (!payload) return;
+    uiState.dragging = payload;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', node.dataset.dragPayload);
+  });
+
+  root.addEventListener('dragover', (event) => {
+    const target = event.target.closest('[data-drop-kind]');
+    if (!target) return;
+    event.preventDefault();
+    clearDropHighlights();
+    target.classList.add('is-active-drop');
+    uiState.dropTarget = {
+      kind: target.dataset.dropKind,
+      day: target.dataset.day,
+      index: target.dataset.index,
+      slotIndex: target.dataset.slotIndex
+    };
+  });
+
+  root.addEventListener('drop', (event) => {
+    const target = event.target.closest('[data-drop-kind]');
+    if (!target) return;
+    event.preventDefault();
+    const payload = parseDragPayload(event.dataTransfer.getData('text/plain'));
+    handleDrop({
+      kind: target.dataset.dropKind,
+      day: target.dataset.day,
+      index: target.dataset.index,
+      slotIndex: target.dataset.slotIndex
+    }, payload);
+    resetTransientUi();
+    renderApp();
+  });
+
+  root.addEventListener('dragend', () => {
+    resetTransientUi();
   });
 }
 

@@ -36,16 +36,21 @@ export class PreLayoutSystem {
     return { ok: true };
   }
 
-  placeCard(cardId, day) {
+  placeCard(cardId, day, insertIndex = null) {
     const validation = this.canPlaceCard(cardId, day);
     if (!validation.ok) return validation;
 
     const index = this.session.state.inventory.findIndex((item) => item.id === cardId);
     const [removedCard] = this.session.state.inventory.splice(index, 1);
-    this.session.state.layouts[day].push({
+    const slot = {
       card: removedCard,
       embeds: []
-    });
+    };
+    if (insertIndex == null || insertIndex < 0 || insertIndex > this.session.state.layouts[day].length) {
+      this.session.state.layouts[day].push(slot);
+    } else {
+      this.session.state.layouts[day].splice(insertIndex, 0, slot);
+    }
     this.session.log(`已将 ${getTemplate(removedCard.templateId).name} 放入第 ${day} 天时间轴。`);
     if (validation.warnsBossApproach) {
       this.session.bossApproachSystem.addCardPressure(2);

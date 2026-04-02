@@ -1,12 +1,12 @@
 export function renderMenuScene(hasSave) {
   return `
-    <section class="hero-panel">
+    <section class="scene-card intro-card">
       <div class="hero-copy">
         <p class="eyebrow">DS18 / Fate Weaver</p>
         <h1>命运编排者</h1>
         <p>
-          这是一个按照技术文档重组后的 Web MVP。你可以在规划阶段编排时间轴，
-          把 NPC / 事件镶嵌进房间，然后看勇者自动执行，最终挑战堕落骑士。
+          你将扮演命运编排者，在白昼与夜晚之间铺设一条危险却高收益的道路。
+          将路程卡摆上轨道，把 NPC 与事件嵌入关键房间，再看勇者踏入你亲手设计的战役。
         </p>
         <div class="menu-actions">
           <button class="primary" data-action="start-run">开始新战役</button>
@@ -15,7 +15,7 @@ export function renderMenuScene(hasSave) {
         </div>
       </div>
       <div class="hero-summary">
-        <h3>当前实现</h3>
+        <h3>当前战役特性</h3>
         <ul>
           <li>3 天规划 → 执行 → 结算 → Boss 的完整流程</li>
           <li>房间卡、NPC 卡、事件卡、篝火 / 返回卡</li>

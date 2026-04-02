@@ -5,8 +5,8 @@ export class CardSystem {
     this.session = session;
   }
 
-  placeCard(cardId, day) {
-    return this.session.preLayoutSystem.placeCard(cardId, day);
+  placeCard(cardId, day, insertIndex = null) {
+    return this.session.preLayoutSystem.placeCard(cardId, day, insertIndex);
   }
 
   moveSlot(day, index, direction) {
@@ -17,6 +17,19 @@ export class CardSystem {
     slots.splice(nextIndex, 0, slot);
     this.session.log(`已调整第 ${day} 天卡槽顺序。`);
     this.session.persist();
+  }
+
+  moveSlotToIndex(day, fromIndex, toIndex) {
+    const slots = this.session.state.layouts[day];
+    if (!slots || !slots[fromIndex]) return { ok: false, reason: '目标卡槽不存在。' };
+
+    const boundedIndex = Math.max(0, Math.min(toIndex, slots.length));
+    const [slot] = slots.splice(fromIndex, 1);
+    const adjustedIndex = boundedIndex > fromIndex ? boundedIndex - 1 : boundedIndex;
+    slots.splice(adjustedIndex, 0, slot);
+    this.session.log(`已拖拽调整第 ${day} 天卡槽顺序。`);
+    this.session.persist();
+    return { ok: true };
   }
 
   removeSlot(day, index) {
