@@ -1,0 +1,34 @@
+module,field,source_file,source_or_formula,when_set,notes
+SpeciesStatic,speciesId,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,物种主键
+SpeciesStatic,type1/type2,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,主副属性
+SpeciesStatic,ability1/ability2/abilityHidden,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,基础能力池
+SpeciesStatic,baseStats,src/data/balance/pokemon-species.ts,[HP,ATK,DEF,SPATK,SPDEF,SPD],new species template,种族值六围
+SpeciesStatic,baseTotal,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,种族值总和
+SpeciesStatic,catchRate,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,捕获率
+SpeciesStatic,baseFriendship,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,基础亲密度
+SpeciesStatic,baseExp,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,基础经验
+SpeciesStatic,growthRate,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,成长率
+SpeciesStatic,malePercent,src/data/balance/pokemon-species.ts,initSpecies() 里硬编码,new species template,雄性概率
+PokemonRuntime,id,src/field/pokemon.ts,randSeedInt(4294967296),new pokemon,32 位随机 id
+PokemonRuntime,ivs,src/field/pokemon.ts + src/utils/common.ts,"传入 ivs 或 getIvsFromId(id)",new pokemon,默认由 id 拆 6 段 5-bit
+PokemonRuntime,gender,src/field/pokemon.ts + src/data/pokemon-species.ts,"species.generateGender()",new pokemon,genderless / malePercent 决定
+PokemonRuntime,abilityIndex,src/field/pokemon.ts,"传入值或 generateAbilityIndex()",new pokemon,0=特性1 1=特性2 2=隐藏特性
+PokemonRuntime,formIndex,src/field/pokemon.ts + src/battle-scene.ts,"传入值或 getSpeciesFormIndex(...)",new pokemon,按物种/性别/性格/模式判定
+PokemonRuntime,shiny,src/field/pokemon.ts,"trySetShiny()",new pokemon,按 trainerId/secretId/id XOR 判定
+PokemonRuntime,variant,src/field/pokemon.ts,"shiny ? generateShinyVariant() : 0",new pokemon,非闪默认为 0
+PokemonRuntime,nature,src/field/pokemon.ts,"传入值或 generateNature()",new pokemon,25 性格随机
+PokemonRuntime,friendship,src/field/pokemon.ts,"species.baseFriendship",new pokemon,trainer 敌人后续会覆盖
+PokemonRuntime,teraType,src/field/pokemon.ts,"randSeedItem(getTypes(false,false,true))",new pokemon,从可用属性里随机
+PokemonRuntime,exp,src/field/pokemon.ts + src/data/exp.ts,"getLevelTotalExp(level, growthRate)",new pokemon,等级经验下限
+PokemonRuntime,levelExp,src/field/pokemon.ts,0,new pokemon,当前等级内经验
+EnemyTrainerOverride,ivs,src/field/pokemon.ts,"6 次 randSeedIntRange(floor(waveIndex / 10), 31)",enemy trainer only,覆盖默认 IV
+EnemyTrainerOverride,friendship,src/field/pokemon.ts,"clamp(round(255 * (waveIndex / TRAINER_MAX_FRIENDSHIP_WAVE)), TRAINER_MIN_FRIENDSHIP, 255)",enemy trainer only,覆盖基础亲密度
+StatCalc,baseStats stage 1,src/field/pokemon.ts,"getSpeciesForm(true).baseStats.slice(0)",calculateStats(),取 form 基础六围
+StatCalc,baseStats stage 2,src/field/pokemon.ts,applyChallenges(FLIP_STAT),calculateStats(),挑战先修正
+StatCalc,baseStats stage 3,src/field/pokemon.ts,applyModifiers(PokemonBaseStatTotalModifier / PokemonBaseStatFlatModifier),calculateStats(),总量和平面修正
+StatCalc,baseStats stage 4,src/field/pokemon.ts,"fusion 时 ceil((a+b)/2)；splicedOnly 时 ceil(base/2)",calculateStats(),融合相关修正
+StatCalc,baseStats stage 5,src/field/pokemon.ts,applyModifiers(BaseStatModifier),calculateStats(),维生素等最终 base 修正
+StatCalc,HP formula,src/field/pokemon.ts,"floor((2*baseHp + iv) * level * 0.01) + level + 10",calculateStats(),再应用 PokemonIncrementingStatModifier
+StatCalc,NonHP formula,src/field/pokemon.ts,"floor((2*baseStat + iv) * level * 0.01) + 5",calculateStats(),之后再套性格倍率和增量 modifier
+StatCalc,Nature multiplier,src/field/pokemon.ts + src/data/nature.ts,"getNatureStatMultiplier(nature, stat)",calculateStats(),增益用 ceil 减益用 floor
+

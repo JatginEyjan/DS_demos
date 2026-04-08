@@ -1,0 +1,36 @@
+area,data_or_rule,source_file,structure_or_formula,notes
+MoveStatic,allMoves container,src/data/data-lists.ts,readonly Move[],全局招式模板表
+MoveStatic,init entry,src/init/init.ts,initializeGame() -> initMoves(),游戏初始化时装载
+MoveStatic,move definitions,src/data/moves/move.ts,"new AttackMove / StatusMove / SelfStatusMove",每个 MoveId 一条静态定义
+MoveStatic,AttackMove fields,src/data/moves/move.ts,"id,type,category,power,accuracy,pp,chance,priority,generation",默认 target=NEAR_OTHER
+MoveStatic,StatusMove fields,src/data/moves/move.ts,"id,type,accuracy,pp,chance,priority,generation",category=STATUS power=-1
+MoveStatic,SelfStatusMove fields,src/data/moves/move.ts,"id,type,accuracy,pp,chance,priority,generation",category=STATUS target=USER
+MoveRuntime,PokemonMove fields,src/data/moves/pokemon-move.ts,"moveId,ppUsed,ppUp,maxPpOverride",宝可梦自身携带的招式实例
+MoveRuntime,PP formula,src/data/moves/pokemon-move.ts,"maxPpOverride || basePp + ppUp * toDmgValue(basePp/5)",当前可用 PP 上限
+LearnPool,level-up moves,src/data/balance/pokemon-level-moves.ts,"pokemonSpeciesLevelMoves / pokemonFormLevelMoves",升级招式来源
+LearnPool,level-up entry format,src/data/balance/pokemon-level-moves.ts,"[learnLevel, MoveId]",learnLevel 可为等级/EVOLVE_MOVE/RELEARN_MOVE
+LearnPool,egg moves,src/data/balance/moves/egg-moves.ts,"speciesEggMoves[rootSpeciesId] = [m0,m1,m2,m3]",第 4 个槽位是 rare egg move
+LearnPool,egg moves source note,src/data/balance/moves/egg-moves.ts,由 eggMoves:parse 自动生成,输入来自 Balance Team CSV
+LearnPool,TM compatibility map,src/data/balance/tm-species-map.ts,"tmSpecies[MoveId] = [SpeciesId 或 [SpeciesId, formKey...]]",TM 正向兼容表
+LearnPool,species TM reverse map,src/data/balance/tms.ts,"speciesTmMoves[speciesId] = [MoveId 或 [formKey, MoveId]]",由 transposeTmSpecies() 自动翻转
+LearnPool,TM tiers,src/data/balance/tms.ts,tmPoolTiers[MoveId] = COMMON/GREAT/ULTRA,用于 moveset gen 权重和等级门槛
+StarterRules,starter move validation,src/data/pokemon-species.ts,"已解锁 egg move 或 <=5 级 level-up move",starter 初始招式合法性
+MoveGen,entry,src/ai/ai-moveset-gen.ts,generateMoveset(pokemon, forceRivalSignatures),敌方自动招式生成入口
+MoveGen,level move base weight,src/ai/ai-moveset-gen.ts + src/data/balance/moves/moveset-generation.ts,"learnLevel + 20",BASE_LEVEL_WEIGHT_OFFSET=20
+MoveGen,evolution move weight,src/data/balance/moves/moveset-generation.ts,70,EVOLUTION_MOVE_WEIGHT
+MoveGen,relearn move weight,src/data/balance/moves/moveset-generation.ts,60,RELEARN_MOVE_WEIGHT
+MoveGen,common TM level gate,src/data/balance/moves/moveset-generation.ts,25,低于 25 不可生成 TM
+MoveGen,great TM level gate,src/data/balance/moves/moveset-generation.ts,40,40 起可生成 GREAT TM
+MoveGen,ultra TM level gate,src/data/balance/moves/moveset-generation.ts,55,55 起可生成 ULTRA TM
+MoveGen,egg move level gate,src/data/balance/moves/moveset-generation.ts,80,80 以下不可生成 egg move
+MoveGen,rare egg move level gate,src/data/balance/moves/moveset-generation.ts,170,170 以下不可生成 rare egg move
+MoveGen,common TM weight,src/data/balance/moves/moveset-generation.ts,12,COMMON_TM_MOVESET_WEIGHT
+MoveGen,great TM weight,src/data/balance/moves/moveset-generation.ts,14,GREAT_TM_MOVESET_WEIGHT
+MoveGen,ultra TM weight,src/data/balance/moves/moveset-generation.ts,18,ULTRA_TM_MOVESET_WEIGHT
+MoveGen,egg move weight cap,src/data/balance/moves/moveset-generation.ts,60,EGG_MOVE_WEIGHT_MAX
+MoveGen,egg move level weight ratio,src/data/balance/moves/moveset-generation.ts,0.85,EGG_MOVE_TO_LEVEL_WEIGHT
+MoveGen,forced signature chance,src/data/balance/moves/moveset-generation.ts,60%,FORCED_SIGNATURE_MOVE_CHANCE
+MoveGen,base weight multiplier,src/data/balance/moves/moveset-generation.ts,1.6,BASE_WEIGHT_MULTIPLIER
+MoveGen,boss extra multiplier,src/data/balance/moves/moveset-generation.ts,0.4,BOSS_EXTRA_WEIGHT_MULTIPLIER
+MoveGen,move power ceiling,src/data/balance/moves/moveset-generation.ts,120,威力调权上限
+

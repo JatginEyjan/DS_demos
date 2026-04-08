@@ -1,0 +1,27 @@
+category,name,type,source_file,encoding_or_formula,notes
+DexEntry,seenAttr,bigint,src/@types/dex-data.ts,按位图存 seen 的 shiny/性别/variant/form,通过 Pokemon.getDexAttr() 写入
+DexEntry,caughtAttr,bigint,src/@types/dex-data.ts,按位图存 caught 的 shiny/性别/variant/form,写入前会与 species.getFullUnlocksData() 相与
+DexEntry,natureAttr,number,src/@types/dex-data.ts,"1 << (nature + 1)",记录已捕获/解锁的性格
+DexEntry,seenCount,number,src/@types/dex-data.ts,整数累加,真实见到次数
+DexEntry,caughtCount,number,src/@types/dex-data.ts,整数累加,真实捕获次数
+DexEntry,hatchedCount,number,src/@types/dex-data.ts,整数累加,孵蛋获得次数
+DexEntry,ivs,number[6],src/@types/dex-data.ts,记录历史最高六项 IV,通过 updateSpeciesDexIvs() 逐项取 max
+DexEntry,ribbons,RibbonData,src/@types/dex-data.ts,位图/对象,记录该物种线 ribbon
+DexAttr,NON_SHINY,bigint,src/enums/dex-attr.ts,1,非闪
+DexAttr,SHINY,bigint,src/enums/dex-attr.ts,2,闪光
+DexAttr,MALE,bigint,src/enums/dex-attr.ts,4,雄性
+DexAttr,FEMALE,bigint,src/enums/dex-attr.ts,8,雌性
+DexAttr,DEFAULT_VARIANT,bigint,src/enums/dex-attr.ts,16,默认变体
+DexAttr,VARIANT_2,bigint,src/enums/dex-attr.ts,32,第二变体
+DexAttr,VARIANT_3,bigint,src/enums/dex-attr.ts,64,第三变体
+DexAttr,DEFAULT_FORM,bigint,src/enums/dex-attr.ts,128,默认形态 bit
+DexAttr,FORM_N,bigint,src/system/game-data.ts,"1 << (7 + formIndex)",任意 formIndex 的位
+Init,default starter seenAttr,bigint,src/system/game-data.ts,"NON_SHINY | MALE | FEMALE | DEFAULT_VARIANT | DEFAULT_FORM",仅 defaultStarterSpecies
+Init,default starter caughtAttr,bigint,src/system/game-data.ts,"NON_SHINY | MALE | FEMALE | DEFAULT_VARIANT | DEFAULT_FORM",仅 defaultStarterSpecies
+Init,default starter natureAttr,number,src/system/game-data.ts,"1 << (neutralNature + 1)",中性性格池固定 seed 生成
+Init,default starter ivs,number[6],src/system/game-data.ts,[15,15,15,15,15,15],仅 defaultStarterSpecies
+Writer,seenAttr write,bigint,src/system/game-data.ts,"dexEntry.seenAttr |= pokemon.getDexAttr()",setPokemonSeen()
+Writer,caughtAttr write,bigint,src/system/game-data.ts,"dexEntry.caughtAttr |= (pokemon.getDexAttr() & species.getFullUnlocksData())",setPokemonSpeciesCaught()
+Writer,natureAttr write,number,src/system/game-data.ts,"dexEntry.natureAttr |= 1 << (pokemon.nature + 1)",捕获时写入
+Writer,ivs update,number[6],src/system/game-data.ts,逐项 max(old,new),会沿前置形态链回写
+
