@@ -1,0 +1,1 @@
+export const EXECUTION_MS_PER_HOUR = 3000;
