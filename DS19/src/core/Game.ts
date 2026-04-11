@@ -1,7 +1,9 @@
 import Phaser from 'phaser'
+import { StartScene } from '../scenes/StartScene'
 import { BattleScene } from '../battle/BattleScene'
 import { PostBattleScene } from '../battle/PostBattleScene'
 import { UpgradeScene } from '../upgrade/UpgradeScene'
+import { MapScene } from '../map/MapScene'
 
 export class Game {
   private game: Phaser.Game
@@ -13,7 +15,7 @@ export class Game {
       height: 720,
       parent: 'game-container',
       backgroundColor: '#1a1a2e',
-      scene: [BattleScene, PostBattleScene, UpgradeScene],
+      scene: [StartScene, MapScene, BattleScene, PostBattleScene, UpgradeScene],
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,

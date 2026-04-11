@@ -520,8 +520,8 @@ export class BattleScene extends Phaser.Scene {
         expReward: 1, // 普通战斗1经验
         goldReward: 18,
         onComplete: () => {
-          // 战后结算完成，可以返回地图或开始下一场战斗
-          this.scene.start('BattleScene')
+          // 战后结算完成，返回地图
+          this.scene.start('MapScene', { characters: this.characters })
         }
       })
     })
