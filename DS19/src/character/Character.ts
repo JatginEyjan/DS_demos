@@ -1,5 +1,8 @@
 import { Card, StatusEffect } from '../core/types'
 
+// 升级所需经验表
+export const LEVEL_UP_EXP = [0, 2, 5, 9, 14] // Lv1->2: 2, Lv2->3: 3, Lv3->4: 4, Lv4->5: 5
+
 export class Character {
   id: string
   name: string
@@ -16,17 +19,76 @@ export class Character {
   // 状态效果
   statusEffects: StatusEffect[] = []
   
-  // 等级
+  // 等级与经验
   level: number = 1
   exp: number = 0
+  
+  // 成长牌池
+  skillPool: {
+    common: Card[]
+    uncommon: Card[]
+    rare: Card[]
+  }
 
-  constructor(id: string, name: string, maxHp: number, baseDeck: Card[]) {
+  constructor(
+    id: string, 
+    name: string, 
+    maxHp: number, 
+    baseDeck: Card[],
+    skillPool?: { common: Card[]; uncommon: Card[]; rare: Card[] }
+  ) {
     this.id = id
     this.name = name
     this.maxHp = maxHp
     this.currentHp = maxHp
-    this.drawPile = [...baseDeck]  // 复制基础牌库
+    this.drawPile = [...baseDeck]
     this.shuffleDrawPile()
+    
+    // 初始化成长牌池
+    this.skillPool = skillPool || { common: [], uncommon: [], rare: [] }
+  }
+
+  // 获得经验
+  gainExp(amount: number): { leveledUp: boolean; newLevel?: number } {
+    this.exp += amount
+    
+    // 检查是否升级
+    const requiredExp = LEVEL_UP_EXP[this.level - 1]
+    if (requiredExp && this.exp >= requiredExp && this.level < 5) {
+      this.levelUp()
+      return { leveledUp: true, newLevel: this.level }
+    }
+    
+    return { leveledUp: false }
+  }
+
+  // 升级
+  private levelUp(): void {
+    if (this.level >= 5) return
+    
+    this.level++
+    
+    // 生命成长
+    const hpGrowth = this.id === 'warrior' ? 5 : 4
+    this.maxHp += hpGrowth
+    this.currentHp = Math.min(this.maxHp, this.currentHp + 8) // 升级回复8HP
+  }
+
+  // 获取升级候选卡牌（三选一）
+  getLevelUpCandidates(): Card[] {
+    const candidates: Card[] = []
+    const pool = [...this.skillPool.common, ...this.skillPool.uncommon, ...this.skillPool.rare]
+    
+    // 随机选择3张不重复的卡牌
+    const shuffled = [...pool].sort(() => Math.random() - 0.5)
+    return shuffled.slice(0, 3)
+  }
+
+  // 添加卡牌到牌库
+  addCardToDeck(card: Card): void {
+    // 复制卡牌并设置归属
+    const newCard = { ...card, ownerId: this.id }
+    this.drawPile.push(newCard)
   }
 
   // 洗牌
@@ -45,7 +107,7 @@ export class Character {
       // 如果抽牌堆空了，洗弃牌堆
       if (this.drawPile.length === 0) {
         if (this.discardPile.length === 0) {
-          break  // 无牌可抽
+          break // 无牌可抽
         }
         this.drawPile = [...this.discardPile]
         this.discardPile = []
@@ -83,7 +145,7 @@ export class Character {
   // 回合开始
   onTurnStart(): void {
     this.currentEnergy = this.maxEnergy
-    this.drawCards(4)  // 每回合抽4张
+    this.drawCards(4) // 每回合抽4张
   }
 
   // 回合结束
@@ -155,5 +217,16 @@ export class Character {
     } else {
       this.statusEffects.push({ ...effect })
     }
+  }
+  
+  // 获取当前等级所需经验
+  getExpForNextLevel(): number {
+    return LEVEL_UP_EXP[this.level - 1] || 0
+  }
+  
+  // 获取当前等级已累积的经验
+  getExpForCurrentLevel(): number {
+    if (this.level <= 1) return this.exp
+    return this.exp - LEVEL_UP_EXP[this.level - 2]
   }
 }

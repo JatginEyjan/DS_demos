@@ -38,7 +38,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private createTestData(): void {
-    // 创建战士
+    // 创建战士基础牌
     const warriorCards: Card[] = [
       { id: 'strike', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
       { id: 'strike2', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
@@ -50,7 +50,23 @@ export class BattleScene extends Phaser.Scene {
       { id: 'defend4', name: '防御', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
     ]
     
-    // 创建游侠
+    // 战士成长牌池
+    const warriorSkillPool = {
+      common: [
+        { id: 'w1', name: '固守', cost: 1, type: 'skill', rarity: 'common', description: '获得10点格挡', effects: [{ type: 'block', value: 10, target: 'self' }] },
+        { id: 'w2', name: '压制打击', cost: 1, type: 'attack', rarity: 'common', description: '造成8点伤害；有护甲时额外造成4点', effects: [{ type: 'damage', value: 8, target: 'enemy' }] },
+        { id: 'w3', name: '震荡斩', cost: 1, type: 'attack', rarity: 'common', description: '造成7点伤害并施加1层虚弱', effects: [{ type: 'damage', value: 7, target: 'enemy' }] },
+      ] as Card[],
+      uncommon: [
+        { id: 'w4', name: '堡垒', cost: 2, type: 'skill', rarity: 'uncommon', description: '获得16点格挡', effects: [{ type: 'block', value: 16, target: 'self' }] },
+        { id: 'w5', name: '守护反击', cost: 2, type: 'skill', rarity: 'uncommon', description: '获得12点格挡，并对随机敌人造成10点伤害', effects: [{ type: 'block', value: 12, target: 'self' }] },
+      ] as Card[],
+      rare: [
+        { id: 'w6', name: '钢铁壁垒', cost: 2, type: 'skill', rarity: 'rare', description: '获得18点格挡；回合结束时保留一半护甲', effects: [{ type: 'block', value: 18, target: 'self' }] },
+      ] as Card[]
+    }
+    
+    // 创建游侠基础牌
     const rangerCards: Card[] = [
       { id: 'shoot', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
       { id: 'shoot2', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
@@ -62,9 +78,25 @@ export class BattleScene extends Phaser.Scene {
       { id: 'dodge4', name: '闪避', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
     ]
     
+    // 游侠成长牌池
+    const rangerSkillPool = {
+      common: [
+        { id: 'r1', name: '速射', cost: 1, type: 'attack', rarity: 'common', description: '造成5点伤害两次', effects: [{ type: 'damage', value: 5, target: 'enemy' }] },
+        { id: 'r2', name: '标记', cost: 1, type: 'skill', rarity: 'common', description: '施加2层易伤', effects: [] },
+        { id: 'r3', name: '瞄准', cost: 1, type: 'skill', rarity: 'common', description: '下一张攻击牌伤害+8', effects: [] },
+      ] as Card[],
+      uncommon: [
+        { id: 'r4', name: '暴雨箭', cost: 2, type: 'attack', rarity: 'uncommon', description: '对随机敌人造成4点伤害四次', effects: [{ type: 'damage', value: 4, target: 'enemy' }] },
+        { id: 'r5', name: '箭雨', cost: 2, type: 'attack', rarity: 'uncommon', description: '对所有敌人造成8点伤害', effects: [{ type: 'damage', value: 8, target: 'enemy' }] },
+      ] as Card[],
+      rare: [
+        { id: 'r6', name: '终结时刻', cost: 3, type: 'attack', rarity: 'rare', description: '造成28点伤害；目标有易伤时返还1点能量', effects: [{ type: 'damage', value: 28, target: 'enemy' }] },
+      ] as Card[]
+    }
+    
     this.characters = [
-      new Character('warrior', '战士', 72, warriorCards),
-      new Character('ranger', '游侠', 58, rangerCards)
+      new Character('warrior', '战士', 72, warriorCards, warriorSkillPool),
+      new Character('ranger', '游侠', 58, rangerCards, rangerSkillPool)
     ]
     
     // 创建敌人
@@ -479,6 +511,20 @@ export class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5)
     
     this.isPlayerTurn = false
+    
+    // 延迟后进入战后结算
+    this.time.delayedCall(1500, () => {
+      this.scene.start('PostBattleScene', {
+        characters: this.characters,
+        isVictory: true,
+        expReward: 1, // 普通战斗1经验
+        goldReward: 18,
+        onComplete: () => {
+          // 战后结算完成，可以返回地图或开始下一场战斗
+          this.scene.start('BattleScene')
+        }
+      })
+    })
   }
 
   private defeat(): void {
