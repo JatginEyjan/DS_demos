@@ -173,7 +173,7 @@ class Character {
 
 ### Mission 6: Boss战 (v0.3.0)
 **优先级**: 🟡 P1
-**状态**: ⬜ 未开始
+**状态**: [x] 已完成 (2024-04-12)
 **预估工时**: 4h
 **引用**: [v0.3.0](../doc/version/v0.3.0.md), [Boss数值](../doc/02_Demo数值表.md#boss-stats)
 

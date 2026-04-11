@@ -9,6 +9,7 @@ export class BattleScene extends Phaser.Scene {
   private enemies: Enemy[] = []
   private selectedCharacterIndex: number = 0
   private isPlayerTurn: boolean = true
+  private enemyType: string = 'battle'
   
   // UI元素
   private characterContainers: Phaser.GameObjects.Container[] = []
@@ -26,9 +27,14 @@ export class BattleScene extends Phaser.Scene {
     super({ key: 'BattleScene' })
   }
 
+  init(data: { characters: Character[]; enemyType?: string }): void {
+    this.characters = data.characters
+    this.enemyType = data.enemyType || 'battle'
+  }
+
   create(): void {
-    // 创建测试角色和敌人
-    this.createTestData()
+    // 创建敌人
+    this.createEnemyData()
     
     // 创建UI
     this.createUI()
@@ -37,82 +43,57 @@ export class BattleScene extends Phaser.Scene {
     this.startBattle()
   }
 
-  private createTestData(): void {
-    // 创建战士基础牌
-    const warriorCards: Card[] = [
-      { id: 'strike', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'strike2', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'strike3', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'strike4', name: '斩击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'defend', name: '防御', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'defend2', name: '防御', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'defend3', name: '防御', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'defend4', name: '防御', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-    ]
-    
-    // 战士成长牌池
-    const warriorSkillPool = {
-      common: [
-        { id: 'w1', name: '固守', cost: 1, type: 'skill', rarity: 'common', description: '获得10点格挡', effects: [{ type: 'block', value: 10, target: 'self' }] },
-        { id: 'w2', name: '压制打击', cost: 1, type: 'attack', rarity: 'common', description: '造成8点伤害；有护甲时额外造成4点', effects: [{ type: 'damage', value: 8, target: 'enemy' }] },
-        { id: 'w3', name: '震荡斩', cost: 1, type: 'attack', rarity: 'common', description: '造成7点伤害并施加1层虚弱', effects: [{ type: 'damage', value: 7, target: 'enemy' }] },
-      ] as Card[],
-      uncommon: [
-        { id: 'w4', name: '堡垒', cost: 2, type: 'skill', rarity: 'uncommon', description: '获得16点格挡', effects: [{ type: 'block', value: 16, target: 'self' }] },
-        { id: 'w5', name: '守护反击', cost: 2, type: 'skill', rarity: 'uncommon', description: '获得12点格挡，并对随机敌人造成10点伤害', effects: [{ type: 'block', value: 12, target: 'self' }] },
-      ] as Card[],
-      rare: [
-        { id: 'w6', name: '钢铁壁垒', cost: 2, type: 'skill', rarity: 'rare', description: '获得18点格挡；回合结束时保留一半护甲', effects: [{ type: 'block', value: 18, target: 'self' }] },
-      ] as Card[]
-    }
-    
-    // 创建游侠基础牌
-    const rangerCards: Card[] = [
-      { id: 'shoot', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'shoot2', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'shoot3', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'shoot4', name: '射击', cost: 1, type: 'attack', rarity: 'common', description: '造成6点伤害', effects: [{ type: 'damage', value: 6, target: 'enemy' }] },
-      { id: 'dodge', name: '闪避', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'dodge2', name: '闪避', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'dodge3', name: '闪避', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-      { id: 'dodge4', name: '闪避', cost: 1, type: 'skill', rarity: 'common', description: '获得6点格挡', effects: [{ type: 'block', value: 6, target: 'self' }] },
-    ]
-    
-    // 游侠成长牌池
-    const rangerSkillPool = {
-      common: [
-        { id: 'r1', name: '速射', cost: 1, type: 'attack', rarity: 'common', description: '造成5点伤害两次', effects: [{ type: 'damage', value: 5, target: 'enemy' }] },
-        { id: 'r2', name: '标记', cost: 1, type: 'skill', rarity: 'common', description: '施加2层易伤', effects: [] },
-        { id: 'r3', name: '瞄准', cost: 1, type: 'skill', rarity: 'common', description: '下一张攻击牌伤害+8', effects: [] },
-      ] as Card[],
-      uncommon: [
-        { id: 'r4', name: '暴雨箭', cost: 2, type: 'attack', rarity: 'uncommon', description: '对随机敌人造成4点伤害四次', effects: [{ type: 'damage', value: 4, target: 'enemy' }] },
-        { id: 'r5', name: '箭雨', cost: 2, type: 'attack', rarity: 'uncommon', description: '对所有敌人造成8点伤害', effects: [{ type: 'damage', value: 8, target: 'enemy' }] },
-      ] as Card[],
-      rare: [
-        { id: 'r6', name: '终结时刻', cost: 3, type: 'attack', rarity: 'rare', description: '造成28点伤害；目标有易伤时返还1点能量', effects: [{ type: 'damage', value: 28, target: 'enemy' }] },
-      ] as Card[]
-    }
-    
-    this.characters = [
-      new Character('warrior', '战士', 72, warriorCards, warriorSkillPool),
-      new Character('ranger', '游侠', 58, rangerCards, rangerSkillPool)
-    ]
-    
-    // 创建敌人
-    this.enemies = [
-      new Enemy({
-        id: 'basic_enemy',
-        name: '敌人',
-        hp: 35,
-        damage: 8,
-        patterns: [
-          { type: 'attack', value: 8 },
-          { type: 'attack', value: 10 },
-          { type: 'attack', value: 6 }
+  private createEnemyData(): void {
+    // 根据敌人类型创建不同的敌人
+    switch (this.enemyType) {
+      case 'elite':
+        this.enemies = [
+          new Enemy({
+            id: 'elite_enemy',
+            name: '精英敌人',
+            hp: 80,
+            damage: 15,
+            patterns: [
+              { type: 'attack', value: 15 },
+              { type: 'attack', value: 18 },
+              { type: 'attack', value: 12 },
+              { type: 'attack', value: 20 }
+            ]
+          })
         ]
-      })
-    ]
+        break
+      case 'boss':
+        this.enemies = [
+          new Enemy({
+            id: 'boss_enemy',
+            name: '章节Boss',
+            hp: 200,
+            damage: 20,
+            patterns: [
+              { type: 'attack', value: 15 },
+              { type: 'attack', value: 18 },
+              { type: 'attack', value: 12 },
+              { type: 'attack', value: 25 }, // 爆发
+              { type: 'attack', value: 15 }
+            ]
+          })
+        ]
+        break
+      default: // 'battle'
+        this.enemies = [
+          new Enemy({
+            id: 'basic_enemy',
+            name: '敌人',
+            hp: 35,
+            damage: 8,
+            patterns: [
+              { type: 'attack', value: 8 },
+              { type: 'attack', value: 10 },
+              { type: 'attack', value: 6 }
+            ]
+          })
+        ]
+    }
   }
 
   private createUI(): void {
@@ -505,25 +486,65 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private victory(): void {
-    this.add.text(this.WIDTH / 2, this.HEIGHT / 2, '胜利!', {
+    const isBoss = this.enemyType === 'boss'
+    const titleText = isBoss ? '章节通关!' : '胜利!'
+    
+    this.add.text(this.WIDTH / 2, this.HEIGHT / 2, titleText, {
       fontSize: '48px',
       color: '#4ecdc4'
     }).setOrigin(0.5)
     
     this.isPlayerTurn = false
     
+    // Boss战有特殊奖励
+    const expReward = isBoss ? 3 : (this.enemyType === 'elite' ? 2 : 1)
+    const goldReward = isBoss ? 60 : (this.enemyType === 'elite' ? 35 : 18)
+    
     // 延迟后进入战后结算
     this.time.delayedCall(1500, () => {
-      this.scene.start('PostBattleScene', {
-        characters: this.characters,
-        isVictory: true,
-        expReward: 1, // 普通战斗1经验
-        goldReward: 18,
-        onComplete: () => {
-          // 战后结算完成，返回地图
-          this.scene.start('MapScene', { characters: this.characters })
-        }
-      })
+      if (isBoss) {
+        // Boss战直接显示通关画面
+        this.showChapterComplete()
+      } else {
+        this.scene.start('PostBattleScene', {
+          characters: this.characters,
+          isVictory: true,
+          expReward: expReward,
+          goldReward: goldReward,
+          onComplete: () => {
+            // 战后结算完成，返回地图
+            this.scene.start('MapScene', { characters: this.characters })
+          }
+        })
+      }
+    })
+  }
+
+  private showChapterComplete(): void {
+    // 简单的通关画面
+    this.add.rectangle(this.WIDTH / 2, this.HEIGHT / 2, this.WIDTH, this.HEIGHT, 0x1a1a2e)
+    
+    this.add.text(this.WIDTH / 2, 200, '🎉 章节通关! 🎉', {
+      fontSize: '56px',
+      color: '#ffd93d',
+      fontStyle: 'bold'
+    }).setOrigin(0.5)
+    
+    this.add.text(this.WIDTH / 2, 320, '恭喜击败Boss!', {
+      fontSize: '28px',
+      color: '#4ecdc4'
+    }).setOrigin(0.5)
+    
+    // 重新开始按钮
+    const restartBtn = this.add.text(this.WIDTH / 2, 450, '重新开始', {
+      fontSize: '24px',
+      color: '#ffffff',
+      backgroundColor: '#4a5568',
+      padding: { x: 20, y: 10 }
+    }).setOrigin(0.5).setInteractive()
+    
+    restartBtn.on('pointerdown', () => {
+      this.scene.start('StartScene')
     })
   }
 
